@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="..\build\CeylonQuest.props" />
+</Project>
