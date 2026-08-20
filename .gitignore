@@ -1,23 +1,67 @@
-# .NET
+## .NET
 bin/
 obj/
+out/
+[Bb]uild/
+[Ll]og/
+[Ll]ogs/
 *.user
+*.userosscache
+*.suo
+*.userprefs
+*.dbmdl
+*.jfm
+*.pfx
+*.publishsettings
+project.lock.json
+project.fragment.lock.json
+artifacts/
 
-# Node / React
+## Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.rsuser
+*.sln.docstates
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+## NuGet
+*.nupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+
+## OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+## Node / React (Vite)
 node_modules/
 dist/
-.vite/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Environment files 
+## Env / secrets
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+appsettings.*.local.json
+appsettings.Development.json
+**/secrets.json
+**/credentials.json
 
-# OS files
-.DS_Store
-Thumbs.db
+## Test / coverage
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
 
-# IDE
-.vs/
-.vscode/
-*.suo
+## Docker
+*.log
