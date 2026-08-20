@@ -16,14 +16,21 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public IActionResult Register(RegisterRequest request)
+    public async Task<IActionResult> Register(RegisterRequest request)
     {
-        var user = _registrationService.Register(request);
-
-        return Ok(new
+        try
         {
-            message = "Registration successful",
-            userId = user.Id
-        });
+            var user = await _registrationService.RegisterAsync(request);
+
+            return Ok(new
+            {
+                message = "Registration successful",
+                userId = user.Id
+            });
+        }
+        catch (DuplicateEmailException)
+        {
+            return Conflict(new { message = "Email already in use" });
+        }
     }
 }
