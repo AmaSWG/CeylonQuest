@@ -26,6 +26,11 @@ public class RegistrationService
             Role = UserRole.Visitor
         };
 
+        if (request.RegistrationType == RegistrationType.ServiceProvider)
+        {
+            user.Role = UserRole.Visitor;
+        }
+
         user.PasswordHash = _passwordHasher.HashPassword(
             user,
             request.Password
