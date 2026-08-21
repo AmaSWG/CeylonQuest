@@ -1,0 +1,409 @@
+/* =====================================================
+   ProviderApplication.css — CeylonQuest Provider Portal
+   ===================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ── Page wrapper ── */
+.provider-app-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 48px 20px;
+  box-sizing: border-box;
+  background-color: #f7f3e8;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* ── Card ── */
+.provider-app-card {
+  position: relative;
+  width: 100%;
+  max-width: 660px;
+  padding: 44px 48px 40px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 12px 40px rgba(18, 59, 93, 0.13);
+  box-sizing: border-box;
+}
+
+/* Green accent bar at the top of the card */
+.provider-app-card__accent {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 88px;
+  height: 5px;
+  background: linear-gradient(90deg, #4f8a45, #6ab85e);
+  border-radius: 0 0 6px 6px;
+}
+
+/* ── Header ── */
+.provider-app-header {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+/* Logo row */
+.provider-app-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.provider-app-logo__brand {
+  color: #123b5d;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.provider-app-logo__badge {
+  display: inline-block;
+  padding: 3px 10px;
+  background: rgba(79, 138, 69, 0.12);
+  color: #4f8a45;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  border-radius: 20px;
+  border: 1px solid rgba(79, 138, 69, 0.3);
+}
+
+.provider-app-header h1 {
+  margin: 0 0 10px;
+  color: #123b5d;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.provider-app-header p {
+  margin: 0 0 16px;
+  color: #555555;
+  font-size: 14.5px;
+  line-height: 1.65;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Flow badge */
+.provider-app-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  background: rgba(214, 168, 95, 0.12);
+  border: 1px solid rgba(214, 168, 95, 0.4);
+  border-radius: 30px;
+  color: #8a6030;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.provider-app-status-badge__icon {
+  font-size: 14px;
+}
+
+/* ── Form ── */
+.provider-app-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Sections */
+.provider-app-section {
+  padding: 24px 0;
+  border-top: 1px solid #eeeeee;
+}
+
+.provider-app-section:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.provider-app-section__title {
+  margin: 0 0 20px;
+  color: #123b5d;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+}
+
+/* Shared field styles (horizontal: label left, input right) */
+.provider-app-form .form-row {
+  display: flex;
+  gap: 14px;
+}
+
+.provider-app-form .form-row .form-group {
+  flex: 1;
+}
+
+.provider-app-form .form-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.provider-app-form .form-group label {
+  flex-shrink: 0;
+  width: 110px;
+  padding-top: 12px;
+  color: #123b5d;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: right;
+  line-height: 1.35;
+}
+
+.provider-app-required-star {
+  color: #c0392b;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.provider-app-form .form-group .field-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.provider-app-form .form-group input,
+.provider-app-form .form-group select,
+.provider-app-form .form-group textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  border: 1px solid #d4d4d4;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #222222;
+  font-size: 13.5px;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.provider-app-form .form-group textarea {
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.provider-app-form .form-group input::placeholder,
+.provider-app-form .form-group textarea::placeholder {
+  color: #999999;
+}
+
+.provider-app-form .form-group input:hover,
+.provider-app-form .form-group select:hover,
+.provider-app-form .form-group textarea:hover {
+  border-color: #4f8a45;
+}
+
+.provider-app-form .form-group input:focus,
+.provider-app-form .form-group select:focus,
+.provider-app-form .form-group textarea:focus {
+  outline: none;
+  border-color: #4f8a45;
+  box-shadow: 0 0 0 3px rgba(79, 138, 69, 0.12);
+}
+
+.provider-app-form .form-group small {
+  display: block;
+  margin-top: 5px;
+  color: #777777;
+  font-size: 12px;
+}
+
+/* ── File upload field ── */
+.file-upload-zone {
+  position: relative;
+  border: 2px dashed #c8ddc5;
+  border-radius: 9px;
+  background: rgba(79, 138, 69, 0.04);
+  padding: 18px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.file-upload-zone:hover {
+  border-color: #4f8a45;
+  background: rgba(79, 138, 69, 0.08);
+}
+
+.file-upload-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.file-upload-zone input[type="file"]:focus {
+  box-shadow: none;
+  border: none;
+  outline: none;
+}
+
+.file-upload-zone:focus-within {
+  border-color: #4f8a45;
+  box-shadow: 0 0 0 3px rgba(79, 138, 69, 0.12);
+}
+
+.file-upload-icon {
+  font-size: 22px;
+  margin-bottom: 6px;
+  line-height: 1;
+}
+
+.file-upload-label {
+  display: block;
+  color: #4f8a45;
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.file-upload-hint {
+  display: block;
+  color: #999999;
+  font-size: 12px;
+}
+
+/* ── Notice box ── */
+.provider-app-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  margin: 6px 0 22px;
+  background: rgba(22, 138, 173, 0.07);
+  border: 1px solid rgba(22, 138, 173, 0.25);
+  border-radius: 10px;
+}
+
+.provider-app-notice__icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  line-height: 1.5;
+}
+
+.provider-app-notice p {
+  margin: 0;
+  color: #1a5e78;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ── Submit button ── */
+.provider-app-submit-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #4f8a45 0%, #3d6e36 100%);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.2px;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+  box-shadow: 0 4px 14px rgba(79, 138, 69, 0.3);
+}
+
+.provider-app-submit-btn:hover {
+  background: linear-gradient(135deg, #3d6e36 0%, #2f5529 100%);
+  box-shadow: 0 6px 18px rgba(79, 138, 69, 0.38);
+  transform: translateY(-1px);
+}
+
+.provider-app-submit-btn:active {
+  transform: translateY(0);
+}
+
+/* ── Back link ── */
+.provider-app-back {
+  margin: 20px 0 0;
+  text-align: center;
+}
+
+.provider-app-back__btn {
+  background: none;
+  border: none;
+  color: #168aad;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  transition: color 0.2s ease;
+  text-decoration: none;
+}
+
+.provider-app-back__btn:hover {
+  color: #123b5d;
+  text-decoration: underline;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .provider-app-page {
+    padding: 24px 12px;
+    align-items: flex-start;
+  }
+
+  .provider-app-card {
+    padding: 34px 18px 28px;
+    border-radius: 16px;
+  }
+
+  .provider-app-header h1 {
+    font-size: 21px;
+  }
+
+  .provider-app-logo__brand {
+    font-size: 22px;
+  }
+
+  /* Stack label above input on mobile */
+  .provider-app-form .form-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    margin-bottom: 14px;
+  }
+
+  .provider-app-form .form-group label {
+    width: auto;
+    padding-top: 0;
+    text-align: left;
+    font-size: 13px;
+  }
+
+  .provider-app-form .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .provider-app-status-badge {
+    font-size: 11px;
+    padding: 7px 14px;
+  }
+}

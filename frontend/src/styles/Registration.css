@@ -1,0 +1,366 @@
+/* =====================================================
+   Registration.css — CeylonQuest Visitor Registration
+   ===================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ── Page wrapper ── */
+.registration-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  box-sizing: border-box;
+  background-color: #f7f3e8;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* ── Card ── */
+.registration-card {
+  position: relative;
+  width: 100%;
+  max-width: 680px;
+  padding: 42px 45px;
+  background-color: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 10px 35px rgba(18, 59, 93, 0.12);
+  box-sizing: border-box;
+}
+
+/* Sand accent bar at the very top of the card */
+.registration-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 5px;
+  background-color: #d6a85f;
+  border-radius: 0 0 6px 6px;
+}
+
+/* ── Header ── */
+.registration-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.registration-header h1 {
+  margin: 0;
+  color: #123b5d;
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.registration-header h2 {
+  margin: 8px 0 10px;
+  color: #123b5d;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.registration-header p {
+  margin: 0;
+  color: #666666;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ── Form fields ── */
+.form-row {
+  display: flex;
+  gap: 14px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+.form-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  flex-shrink: 0;
+  width: 110px;
+  padding-top: 12px;   /* align with input padding */
+  color: #123b5d;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: right;
+  line-height: 1.35;
+}
+
+.required-star {
+  color: #c0392b;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.form-group .field-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  border: 1px solid #d4d4d4;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #222222;
+  font-size: 13.5px;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input::placeholder {
+  color: #999999;
+}
+
+.form-group input:hover,
+.form-group select:hover {
+  border-color: #168aad;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #168aad;
+  box-shadow: 0 0 0 3px rgba(22, 138, 173, 0.12);
+}
+
+.form-group small {
+  display: block;
+  margin-top: 5px;
+  color: #777777;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* ── Primary CTA: Create Account ── */
+.register-button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 7px;
+  border: none;
+  border-radius: 9px;
+  background-color: #168aad;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.2px;
+  transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 14px rgba(22, 138, 173, 0.25);
+}
+
+.register-button:hover {
+  background-color: #123b5d;
+  box-shadow: 0 6px 18px rgba(18, 59, 93, 0.22);
+  transform: translateY(-1px);
+}
+
+.register-button:active {
+  transform: translateY(0);
+}
+
+/* ── Login link ── */
+.login-link {
+  margin-top: 20px;
+  text-align: center;
+  color: #666666;
+  font-size: 14px;
+}
+
+.login-link a {
+  color: #168aad;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.login-link a:hover {
+  color: #4f8a45;
+  text-decoration: underline;
+}
+
+/* ══════════════════════════════════════════════════════
+   Provider Section — visually separated at the bottom
+   ══════════════════════════════════════════════════════ */
+
+.provider-section {
+  margin-top: 28px;
+}
+
+/* Divider with label */
+.provider-section__divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.provider-section__divider-line {
+  flex: 1;
+  height: 1px;
+  background: #e0dcd4;
+}
+
+.provider-section__divider-text {
+  flex-shrink: 0;
+  color: #999999;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Content panel */
+.provider-section__content {
+  background: linear-gradient(135deg, #f7f3e8 0%, #faf8f3 100%);
+  border: 1px solid #e8e1d4;
+  border-radius: 14px;
+  padding: 26px 28px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle green left-border accent */
+.provider-section__content::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #4f8a45, #6ab85e);
+  border-radius: 14px 0 0 14px;
+}
+
+/* Icon */
+.provider-section__icon {
+  font-size: 28px;
+  margin-bottom: 10px;
+  line-height: 1;
+}
+
+/* Title */
+.provider-section__title {
+  margin: 0 0 8px;
+  color: #123b5d;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+/* Description */
+.provider-section__desc {
+  margin: 0 0 20px;
+  color: #555555;
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 380px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ── Secondary CTA: Apply as Provider ── */
+.provider-apply-button {
+  display: inline-block;
+  padding: 12px 28px;
+  border: 2px solid #4f8a45;
+  border-radius: 9px;
+  background-color: transparent;
+  color: #4f8a45;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.1px;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.provider-apply-button:hover {
+  background-color: #4f8a45;
+  color: #ffffff;
+  box-shadow: 0 5px 16px rgba(79, 138, 69, 0.28);
+  transform: translateY(-1px);
+}
+
+.provider-apply-button:active {
+  transform: translateY(0);
+}
+
+/* Fine-print note below provider CTA */
+.provider-section__note {
+  margin: 12px 0 0;
+  color: #999999;
+  font-size: 12px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .registration-page {
+    padding: 25px 12px;
+    align-items: flex-start;
+  }
+
+  .registration-card {
+    margin-top: 20px;
+    padding: 32px 18px 26px;
+    border-radius: 15px;
+  }
+
+  .registration-header {
+    margin-bottom: 24px;
+  }
+
+  .registration-header h1 {
+    font-size: 32px;
+  }
+
+  .registration-header h2 {
+    font-size: 20px;
+  }
+
+  /* Stack label above input on small screens */
+  .form-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    margin-bottom: 15px;
+  }
+
+  .form-group label {
+    width: auto;
+    padding-top: 0;
+    text-align: left;
+    font-size: 13px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .provider-section__content {
+    padding: 20px 16px;
+  }
+
+  .provider-apply-button {
+    width: 100%;
+    text-align: center;
+  }
+}
