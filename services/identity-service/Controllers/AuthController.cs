@@ -22,7 +22,8 @@ public class AuthController : ControllerBase
         {
             var user = await _registrationService.RegisterAsync(request);
 
-            return Ok(new
+            // Return 201 Created. No sensitive data returned.
+            return Created($"/api/auth/register/{user.Id}", new
             {
                 message = "Registration successful",
                 userId = user.Id
