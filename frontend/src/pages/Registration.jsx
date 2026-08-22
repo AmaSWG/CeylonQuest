@@ -19,7 +19,7 @@ function SuccessToast({ message, onClose }) {
   )
 }
 
-function Registration({ onApplyAsProvider }) {
+function Registration({ onApplyAsProvider, onLogin }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
@@ -43,7 +43,7 @@ function Registration({ onApplyAsProvider }) {
     }
 
     try {
-      const resp = await fetch('http://localhost:5000/api/auth/register', {
+      const resp = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -185,7 +185,7 @@ function Registration({ onApplyAsProvider }) {
         </form>
 
         <p className="login-link">
-          Already have an account? <a href="#">Login</a>
+          Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); onLogin && onLogin(); }}>Login</a>
         </p>
 
         <div className="provider-section">
