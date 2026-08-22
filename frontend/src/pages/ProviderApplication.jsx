@@ -1,27 +1,99 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import '../styles/ProviderApplication.css'
+
+function ProviderSuccessToast({ message, onClose }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 5000)
+    return () => clearTimeout(timer)
+  }, [onClose])
+
+  return (
+    <div className="reg-toast reg-toast--success" role="alert" aria-live="polite">
+      <div className="reg-toast__icon">✓</div>
+      <div className="reg-toast__body">
+        <p className="reg-toast__title">Application Submitted!</p>
+        <p className="reg-toast__msg">{message}</p>
+      </div>
+      <button className="reg-toast__close" onClick={onClose} aria-label="Close notification">✕</button>
+    </div>
+  )
+}
 
 function ProviderApplication({ onBack }) {
   const [fileName, setFileName] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [toast, setToast] = useState(null)
 
   const handleFileChange = (e) => {
     const file = e.target.files[0]
     setFileName(file ? file.name : '')
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
-    console.log('Provider application submitted')
+    setError(null)
+    setToast(null)
+    setLoading(true)
+
+    const form = event.target
+    const fd = new FormData(form)
+
+    const payload = {
+      firstName:            fd.get('firstName'),
+      lastName:             fd.get('lastName'),
+      email:                fd.get('email'),
+      phoneNumber:          fd.get('phoneNumber'),
+      password:             fd.get('password'),
+      confirmPassword:      fd.get('confirmPassword'),
+      businessName:         fd.get('businessName'),
+      serviceType:          fd.get('serviceType'),
+      location:             fd.get('location'),
+      description:          fd.get('description'),
+      legalDocumentFileName: (() => {
+        const f = fd.get('legalDocument')
+        return f && f.name ? f.name : ''
+      })()
+    }
+
+    try {
+      const resp = await fetch('http://localhost:5000/api/provider-applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      if (resp.status === 201) {
+        const body = await resp.json().catch(() => ({}))
+        setToast(
+          body.message ||
+          'Your service provider application has been submitted successfully and is pending admin review.'
+        )
+        form.reset()
+        setFileName('')
+      } else if (resp.status === 409) {
+        setError('An application with this email already exists.')
+      } else if (resp.status === 400) {
+        const body = await resp.json().catch(() => ({}))
+        setError(body.message || 'Validation error. Please check your input.')
+      } else {
+        setError('Server error. Please try again later.')
+      }
+    } catch (ex) {
+      setError('Network error. Please check your connection.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <div className="provider-app-page">
+      {toast && <ProviderSuccessToast message={toast} onClose={() => setToast(null)} />}
+
       <div className="provider-app-card">
 
-        {/* Top accent bar */}
         <div className="provider-app-card__accent" />
 
-        {/* Header */}
         <div className="provider-app-header">
           <div className="provider-app-logo">
             <span className="provider-app-logo__brand">CeylonQuest</span>
@@ -39,10 +111,10 @@ function ProviderApplication({ onBack }) {
           </div>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="provider-app-form">
 
-          {/* ── Personal / Account details ── */}
+          {error && <div className="pa-form-error">{error}</div>}
+
           <div className="provider-app-section">
             <h2 className="provider-app-section__title">Your Account Details</h2>
 
@@ -130,7 +202,6 @@ function ProviderApplication({ onBack }) {
             </div>
           </div>
 
-          {/* ── Business details ── */}
           <div className="provider-app-section">
             <h2 className="provider-app-section__title">Business Details</h2>
 
@@ -188,7 +259,6 @@ function ProviderApplication({ onBack }) {
               </div>
             </div>
 
-            {/* Legal document upload */}
             <div className="form-group">
               <label htmlFor="pa-legalDoc"><span className="provider-app-required-star">*</span> Legal Document</label>
               <div className="field-wrap">
@@ -219,7 +289,6 @@ function ProviderApplication({ onBack }) {
             </div>
           </div>
 
-          {/* Info notice */}
           <div className="provider-app-notice">
             <span className="provider-app-notice__icon">ℹ️</span>
             <p>
@@ -229,13 +298,16 @@ function ProviderApplication({ onBack }) {
             </p>
           </div>
 
-          {/* Submit */}
-          <button type="submit" className="provider-app-submit-btn" id="submit-application">
-            Submit Application
+          <button
+            type="submit"
+            className="provider-app-submit-btn"
+            id="submit-application"
+            disabled={loading}
+          >
+            {loading ? 'Submitting…' : 'Submit Application'}
           </button>
         </form>
 
-        {/* Back link */}
         <p className="provider-app-back">
           <button
             type="button"
