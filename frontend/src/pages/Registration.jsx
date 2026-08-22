@@ -1,13 +1,77 @@
 import '../styles/Registration.css'
+import { useState, useEffect } from 'react'
+
+function SuccessToast({ message, onClose }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 5000)
+    return () => clearTimeout(timer)
+  }, [onClose])
+
+  return (
+    <div className="reg-toast reg-toast--success" role="alert" aria-live="polite">
+      <div className="reg-toast__icon">✓</div>
+      <div className="reg-toast__body">
+        <p className="reg-toast__title">Registration Successful!</p>
+        <p className="reg-toast__msg">{message}</p>
+      </div>
+      <button className="reg-toast__close" onClick={onClose} aria-label="Close notification">✕</button>
+    </div>
+  )
+}
 
 function Registration({ onApplyAsProvider }) {
-  const handleSubmit = (event) => {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [toast, setToast] = useState(null)
+
+  const handleSubmit = async (event) => {
     event.preventDefault()
-    console.log('Registration submitted')
+    setError(null)
+    setToast(null)
+    setLoading(true)
+
+    const form = event.target
+    const data = {
+      firstName: form.firstName.value.trim(),
+      lastName: form.lastName.value.trim(),
+      email: form.email.value.trim(),
+      phoneNumber: form.phoneNumber.value.trim(),
+      nationality: form.nationality.value.trim(),
+      password: form.password.value,
+      confirmPassword: form.confirmPassword.value,
+      registrationType: 'Visitor'
+    }
+
+    try {
+      const resp = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+
+      if (resp.status === 201) {
+        const body = await resp.json().catch(() => ({}))
+        setToast(body.message || 'Your account has been created successfully.')
+        form.reset()
+      } else if (resp.status === 409) {
+        setError('Email already in use.')
+      } else if (resp.status === 400) {
+        const body = await resp.json().catch(() => ({}))
+        setError(body.message || 'Validation error. Check your input.')
+      } else {
+        setError('Server error. Please try again later.')
+      }
+    } catch (ex) {
+      setError('Network error. Please check your connection.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <div className="registration-page">
+      {toast && <SuccessToast message={toast} onClose={() => setToast(null)} />}
+
       <div className="registration-card">
 
         <div className="registration-header">
@@ -17,6 +81,8 @@ function Registration({ onApplyAsProvider }) {
         </div>
 
         <form onSubmit={handleSubmit}>
+          {error && <div className="form-error">{error}</div>}
+
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="firstName"><span className="required-star">*</span> First Name</label>
@@ -113,8 +179,8 @@ function Registration({ onApplyAsProvider }) {
             </div>
           </div>
 
-          <button type="submit" className="register-button" id="create-account">
-            Create Account
+          <button type="submit" className="register-button" id="create-account" disabled={loading}>
+            {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
 
