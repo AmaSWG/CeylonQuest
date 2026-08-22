@@ -24,7 +24,7 @@ public class RegistrationService
 
     public async Task<User> RegisterAsync(RegisterRequest request)
     {
-        var emailLower = request.Email.ToLower();
+        var emailLower = request.Email.Trim().ToLower();
 
         var exists = await _dbContext.Users.AnyAsync(u => u.Email.ToLower() == emailLower);
         if (exists)
@@ -35,11 +35,11 @@ public class RegistrationService
         var user = new User
         {
             Id = Guid.NewGuid(),
-            FirstName = request.FirstName,
-            LastName = request.LastName,
-            Email = request.Email,
-            PhoneNumber = request.PhoneNumber,
-            Nationality = request.Nationality,
+            FirstName = request.FirstName.Trim(),
+            LastName = request.LastName.Trim(),
+            Email = request.Email.Trim(),
+            PhoneNumber = request.PhoneNumber.Trim(),
+            Nationality = request.Nationality.Trim(),
             Role = UserRole.Visitor
         };
 
