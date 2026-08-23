@@ -46,7 +46,7 @@ public class AuthService
         if (result == PasswordVerificationResult.Failed) throw new UnauthorizedAccessException("Invalid credentials");
 
         // create token
-        var key = _config["Jwt:Key"] ?? "dev_secret_do_not_use_in_production_please_change";
+        var key = _config["Jwt:Key"] ?? "dev_secret_do_not_use_in_production_please_change_which_is_long_enough";
         var issuer = _config["Jwt:Issuer"] ?? "CeylonQuest";
         var audience = _config["Jwt:Audience"] ?? "CeylonQuestAudience";
         var expiryMinutes = int.TryParse(_config["Jwt:ExpiryMinutes"], out var m) ? m : 60;

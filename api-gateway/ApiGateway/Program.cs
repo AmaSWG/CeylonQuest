@@ -9,9 +9,10 @@ builder.Services.AddCors(options =>
 {
 	options.AddPolicy(FrontendPolicy, policy =>
 	{
-		policy.WithOrigins("http://localhost:5174")
+		policy.SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost" || new Uri(origin).Host == "127.0.0.1")
 			  .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-			  .AllowAnyHeader();
+			  .AllowAnyHeader()
+			  .AllowCredentials();
 	});
 });
 

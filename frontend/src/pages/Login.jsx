@@ -47,12 +47,13 @@ function Login({ onLoginSuccess, onBack }) {
       if (resp.ok) {
         const body = await resp.json().catch(() => ({}))
         const token = body.accessToken || body.token || null
+        const role  = body.role || 'Visitor'
         if (token) {
           localStorage.setItem('authToken', token)
-          setToast('You have been signed in successfully.')
-          setTimeout(() => {
-            if (onLoginSuccess) onLoginSuccess()
-          }, 1800)
+          localStorage.setItem('userRole',  role)
+          if (onLoginSuccess) {
+            onLoginSuccess(role)
+          }
         } else {
           setError('Login succeeded but no token was received.')
         }
@@ -154,10 +155,10 @@ function Login({ onLoginSuccess, onBack }) {
           <button
             type="submit"
             className="login-submit-btn"
-            id="sign-in"
+            id="login-button"
             disabled={loading}
           >
-            {loading ? 'Signing in…' : 'Sign In'}
+            {loading ? 'Logging in…' : 'Login'}
           </button>
 
         </form>

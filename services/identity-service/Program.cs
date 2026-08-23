@@ -77,6 +77,7 @@ else
 builder.Services.AddScoped<RegistrationService>();
 builder.Services.AddScoped<ProviderApplicationService>();
 builder.Services.AddScoped<ProviderActivationService>();
+builder.Services.AddScoped<UserProfileService>();
 
 // Kafka: consumes provider.approved from Provider/Catalog Service (Identity Service does not publish it).
 builder.Services.AddKafka(builder.Configuration);
