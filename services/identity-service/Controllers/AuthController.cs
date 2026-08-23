@@ -12,11 +12,16 @@ public class AuthController : ControllerBase
 {
     private readonly RegistrationService _registrationService;
     private readonly AuthService _authService;
+    private readonly ProviderActivationService _providerActivationService;
 
-    public AuthController(RegistrationService registrationService, AuthService authService)
+    public AuthController(
+        RegistrationService registrationService,
+        AuthService authService,
+        ProviderActivationService providerActivationService)
     {
         _registrationService = registrationService;
         _authService = authService;
+        _providerActivationService = providerActivationService;
     }
 
     [HttpPost("register")]
@@ -61,5 +66,25 @@ public class AuthController : ControllerBase
     {
         // Stateless tokens: backend does not track sessions. Client should clear stored token.
         return Ok(new { message = "Logged out" });
+    }
+
+    [HttpPost("provider/activate")]
+    public async Task<IActionResult> ActivateProviderAccount(ProviderActivateRequest request)
+    {
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        try
+        {
+            await _providerActivationService.ActivateAsync(request);
+            return Ok(new { message = "Account activated successfully. You can now log in." });
+        }
+        catch (ExpiredOtpException)
+        {
+            return BadRequest(new { message = "OTP has expired. Please request a new one." });
+        }
+        catch (InvalidOtpException)
+        {
+            return Unauthorized(new { message = "Invalid OTP or email address." });
+        }
     }
 }

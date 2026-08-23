@@ -1,6 +1,10 @@
 import '../styles/Registration.css'
 import { useState, useEffect } from 'react'
 
+// Mirrors IdentityService.DTOs.RegisterRequest password rules.
+const PASSWORD_REQUIREMENTS = 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.'
+const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z\s]).{8,}$/
+
 function SuccessToast({ message, onClose }) {
   useEffect(() => {
     const timer = setTimeout(onClose, 5000)
@@ -19,6 +23,17 @@ function SuccessToast({ message, onClose }) {
   )
 }
 
+function validateRegistration(data) {
+  if (!data.firstName) return 'First name is required.'
+  if (!data.lastName) return 'Last name is required.'
+  if (!data.email) return 'Email is required.'
+  if (!data.phoneNumber) return 'Phone number is required.'
+  if (!data.nationality) return 'Nationality is required.'
+  if (!PASSWORD_PATTERN.test(data.password)) return PASSWORD_REQUIREMENTS
+  if (data.password !== data.confirmPassword) return 'Passwords do not match.'
+  return null
+}
+
 function Registration({ onApplyAsProvider, onLogin }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -28,7 +43,6 @@ function Registration({ onApplyAsProvider, onLogin }) {
     event.preventDefault()
     setError(null)
     setToast(null)
-    setLoading(true)
 
     const form = event.target
     const data = {
@@ -42,6 +56,14 @@ function Registration({ onApplyAsProvider, onLogin }) {
       registrationType: 'Visitor'
     }
 
+    const validationError = validateRegistration(data)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
+    setLoading(true)
+
     try {
       const resp = await fetch('/api/auth/register', {
         method: 'POST',
@@ -53,20 +75,24 @@ function Registration({ onApplyAsProvider, onLogin }) {
         const body = await resp.json().catch(() => ({}))
         setToast(body.message || 'Your account has been created successfully.')
         form.reset()
+        // Give the user a moment to see the success message before redirecting to login.
+        setTimeout(() => { onLogin && onLogin() }, 1800)
       } else if (resp.status === 409) {
         setError('Email already in use.')
       } else if (resp.status === 400) {
         const body = await resp.json().catch(() => ({}))
-        setError(body.message || 'Validation error. Check your input.')
+        const firstFieldError = body.errors && Object.values(body.errors).flat()[0]
+        setError(firstFieldError || body.message || body.title || 'Validation error. Check your input.')
       } else {
         setError('Server error. Please try again later.')
       }
-    } catch (ex) {
+    } catch {
       setError('Network error. Please check your connection.')
     } finally {
       setLoading(false)
     }
   }
+
 
   return (
     <div className="registration-page">
@@ -161,7 +187,7 @@ function Registration({ onApplyAsProvider, onLogin }) {
                 minLength="8"
                 required
               />
-              <small>Password must contain at least 8 characters.</small>
+              <small>Must be 8+ characters with an uppercase letter, a lowercase letter, a number, and a special character.</small>
             </div>
           </div>
 

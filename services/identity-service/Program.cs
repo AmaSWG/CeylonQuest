@@ -1,6 +1,7 @@
 using IdentityService.Data;
 using IdentityService.Services;
 using Microsoft.EntityFrameworkCore;
+using Shared.Kafka;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -75,6 +76,16 @@ else
 
 builder.Services.AddScoped<RegistrationService>();
 builder.Services.AddScoped<ProviderApplicationService>();
+builder.Services.AddScoped<ProviderActivationService>();
+
+// Kafka: consumes provider.approved from Provider/Catalog Service (Identity Service does not publish it).
+builder.Services.AddKafka(builder.Configuration);
+builder.Services.AddScoped<OtpService>();
+builder.Services.AddScoped<ProviderAccountActivationService>();
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddHostedService<ProviderApprovedConsumer>();
+}
 
 var app = builder.Build();
 

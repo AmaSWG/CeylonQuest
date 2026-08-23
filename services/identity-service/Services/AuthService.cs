@@ -39,6 +39,9 @@ public class AuthService
             throw new UnauthorizedAccessException("Provider applicants must use the provider login flow");
         }
 
+        if (!user.IsActive)
+            throw new UnauthorizedAccessException("Account is not active");
+
         var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, req.Password);
         if (result == PasswordVerificationResult.Failed) throw new UnauthorizedAccessException("Invalid credentials");
 

@@ -172,4 +172,34 @@ public class AuthIntegrationTests
         var logoutRes = await client.PostAsync("/api/auth/logout", null);
         Assert.True(logoutRes.IsSuccessStatusCode);
     }
+
+    [Fact]
+    public async Task InactiveProviderAccount_CannotLogin()
+    {
+        var client = CreateClientWithInMemoryDb(db =>
+        {
+            var hasher = new PasswordHasher<User>();
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "provider_pending@example.com",
+                FirstName = "Provider",
+                LastName = "Pending",
+                PhoneNumber = "123",
+                Nationality = "LK",
+                Role = UserRole.Provider,
+                IsActive = false,
+                RequiresPasswordChange = true,
+                OtpCode = "123456",
+                OtpExpiresAt = DateTime.UtcNow.AddMinutes(15)
+            };
+            user.PasswordHash = hasher.HashPassword(user, "Password123!");
+            db.Users.Add(user);
+            db.SaveChanges();
+        });
+
+        var req = new { Email = "provider_pending@example.com", Password = "Password123!" };
+        var res = await client.PostAsync("/api/auth/login", new StringContent(JsonSerializer.Serialize(req), Encoding.UTF8, "application/json"));
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, res.StatusCode);
+    }
 }
