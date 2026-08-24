@@ -25,22 +25,16 @@ public class AuthService
 
     public async Task<LoginResponse> AuthenticateAsync(LoginRequest req)
     {
-        var emailLower = req.Email.ToLower();
+        var emailLower = req.Email.Trim().ToLower();
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == emailLower);
         // Generic failure for not found or wrong password
         if (user == null) throw new UnauthorizedAccessException("Invalid credentials");
 
-        // If there's a provider application for this email (pending or approved), disallow password login here.
-        var hasProviderApp = await _db.ProviderApplications
-            .AnyAsync(p => p.Email.ToLower() == emailLower && p.Status != IdentityService.Models.ProviderApplicationStatus.Rejected);
-        if (hasProviderApp)
-        {
-            // Providers must use the separate provider login (OTP) flow. Deny standard password login.
-            throw new UnauthorizedAccessException("Provider applicants must use the provider login flow");
-        }
-
         if (!user.IsActive)
             throw new UnauthorizedAccessException("Account is not active");
+
+        if (user.RequiresPasswordChange)
+            throw new UnauthorizedAccessException("Account requires activation before login");
 
         var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, req.Password);
         if (result == PasswordVerificationResult.Failed) throw new UnauthorizedAccessException("Invalid credentials");

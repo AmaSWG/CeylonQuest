@@ -12,6 +12,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<ProviderApplication> ProviderApplications => Set<ProviderApplication>();
+    public DbSet<ProviderTimeSlot> ProviderTimeSlots => Set<ProviderTimeSlot>();
+    public DbSet<ProviderServicePrice> ProviderServicePrices => Set<ProviderServicePrice>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

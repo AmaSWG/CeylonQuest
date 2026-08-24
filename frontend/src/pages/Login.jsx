@@ -58,7 +58,8 @@ function Login({ onLoginSuccess, onBack }) {
           setError('Login succeeded but no token was received.')
         }
       } else if (resp.status === 401) {
-        setError('Incorrect email or password. Please try again.')
+        const body = await resp.json().catch(() => ({}))
+        setError(body.message || 'Incorrect email or password. Please try again.')
       } else if (resp.status === 400) {
         const body = await resp.json().catch(() => ({}))
         setError(body.message || 'Validation error. Check your input.')
