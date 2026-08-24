@@ -16,102 +16,6 @@ function formatCurrency(amount) {
   return new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', maximumFractionDigits: 0 }).format(amount || 0)
 }
 
-// ── Initial Mock Data for Bookings & Notifications (Synced with LocalStorage) ──
-
-const DEFAULT_BOOKINGS = [
-  {
-    id: 'BK-1048',
-    visitorName: 'Sophie Turner',
-    visitorEmail: 'sophie.t@example.com',
-    visitorPhone: '+44 7911 123456',
-    activityName: 'Yala Leopard & Elephant Safari',
-    date: '2026-09-02',
-    timeSlot: '06:00 AM - 10:00 AM',
-    guests: 2,
-    totalAmount: 18000,
-    status: 'Pending',
-    paymentStatus: 'Paid Online',
-    specialRequests: 'Window seats preferred, vegetarian snacks requested.'
-  },
-  {
-    id: 'BK-1047',
-    visitorName: 'David Miller',
-    visitorEmail: 'david.m@example.com',
-    visitorPhone: '+1 202 555 0192',
-    activityName: 'Ella Rock Sunrise Guided Hike',
-    date: '2026-08-28',
-    timeSlot: '05:30 AM - 09:30 AM',
-    guests: 4,
-    totalAmount: 24000,
-    status: 'Confirmed',
-    paymentStatus: 'Paid Online',
-    specialRequests: 'English speaking guide required.'
-  },
-  {
-    id: 'BK-1042',
-    visitorName: 'Amara Fernando',
-    visitorEmail: 'amara.f@example.lk',
-    visitorPhone: '+94 77 123 4567',
-    activityName: 'Mirissa Whale Watching Cruise',
-    date: '2026-08-22',
-    timeSlot: '06:30 AM - 11:00 AM',
-    guests: 3,
-    totalAmount: 28500,
-    status: 'Completed',
-    paymentStatus: 'Paid Online',
-    specialRequests: 'Life jackets for 1 child included.'
-  },
-  {
-    id: 'BK-1039',
-    visitorName: 'Liam Johnson',
-    visitorEmail: 'liam.j@example.com',
-    visitorPhone: '+61 412 345 678',
-    activityName: 'Sigiriya Cultural Village Tour & Lunch',
-    date: '2026-08-19',
-    timeSlot: '10:00 AM - 02:00 PM',
-    guests: 2,
-    totalAmount: 12000,
-    status: 'Completed',
-    paymentStatus: 'Pay on Arrival',
-    specialRequests: 'Traditional Sri Lankan rice & curry request.'
-  }
-]
-
-const DEFAULT_NOTIFICATIONS = [
-  {
-    id: 'notif-1',
-    category: 'booking',
-    title: 'New Booking Reservation (#BK-1048)',
-    desc: 'Sophie Turner reserved 2 seats for Yala Leopard & Elephant Safari on 02 Sep 2026.',
-    time: '25 mins ago',
-    read: false
-  },
-  {
-    id: 'notif-2',
-    category: 'verification',
-    title: 'Business Profile Verified',
-    desc: 'Your provider documents and business registration have been approved by the CeylonQuest team.',
-    time: '2 hours ago',
-    read: false
-  },
-  {
-    id: 'notif-3',
-    category: 'provider',
-    title: 'Peak Season Reminder',
-    desc: 'Visitor traffic is projected to increase this upcoming weekend. Ensure your activity pricing and details are up to date.',
-    time: '1 day ago',
-    read: true
-  },
-  {
-    id: 'notif-4',
-    category: 'booking',
-    title: 'Booking Confirmed (#BK-1047)',
-    desc: 'David Miller confirmed booking for Ella Rock Sunrise Guided Hike.',
-    time: '2 days ago',
-    read: true
-  }
-]
-
 // ── Shared UI Components ──────────────────────────────────────────────────────
 
 function Toast({ message, title = 'Success', onClose }) {
@@ -1476,17 +1380,17 @@ function ProviderDashboard({ onLogout }) {
   const [bookings, setBookings] = useState(() => {
     try {
       const saved = localStorage.getItem('ceylonquest_provider_bookings')
-      return saved ? JSON.parse(saved) : DEFAULT_BOOKINGS
+      return saved ? JSON.parse(saved) : []
     } catch {
-      return DEFAULT_BOOKINGS
+      return []
     }
   })
   const [notifications, setNotifications] = useState(() => {
     try {
       const saved = localStorage.getItem('ceylonquest_provider_notifications')
-      return saved ? JSON.parse(saved) : DEFAULT_NOTIFICATIONS
+      return saved ? JSON.parse(saved) : []
     } catch {
-      return DEFAULT_NOTIFICATIONS
+      return []
     }
   })
 
