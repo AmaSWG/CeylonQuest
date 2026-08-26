@@ -109,6 +109,65 @@ public class AuthServiceTests
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(response.AccessToken);
         Assert.Equal("Provider", jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value);
+        Assert.Equal("Provider", jwt.Claims.FirstOrDefault(c => c.Type == "role")?.Value);
+    }
+
+    [Fact]
+    public async Task AuthenticateAsync_ValidAdminCredentials_ReturnsTokenAndAdminRoleAndClaims()
+    {
+        using var db = CreateDbContext();
+        var config = CreateConfiguration();
+        var service = new AuthService(db, config);
+
+        SeedUser(db, "admin@ceylonquest.com", "AdminPassword123!", UserRole.Admin);
+
+        var req = new LoginRequest { Email = "admin@ceylonquest.com", Password = "AdminPassword123!" };
+        var response = await service.AuthenticateAsync(req);
+
+        Assert.NotNull(response);
+        Assert.Equal("Admin", response.Role);
+        Assert.False(string.IsNullOrWhiteSpace(response.AccessToken));
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(response.AccessToken);
+        Assert.Equal("Admin", jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value);
+        Assert.Equal("Admin", jwt.Claims.FirstOrDefault(c => c.Type == "role")?.Value);
+        Assert.Equal("admin@ceylonquest.com", jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value);
+    }
+
+    [Fact]
+    public void AdminController_HasAuthorizeAttributeWithAdminRole()
+    {
+        var type = typeof(IdentityService.Controllers.AdminController);
+        var authAttr = (Microsoft.AspNetCore.Authorization.AuthorizeAttribute?)Attribute.GetCustomAttribute(type, typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute));
+
+        Assert.NotNull(authAttr);
+        Assert.Equal("Admin", authAttr.Roles);
+    }
+
+    [Theory]
+    [InlineData(UserRole.Visitor, "Visitor")]
+    [InlineData(UserRole.Provider, "Provider")]
+    [InlineData(UserRole.Admin, "Admin")]
+    public async Task AuthenticateAsync_AllRoles_GeneratesCorrectRoleClaimsInJwt(UserRole role, string expectedRoleString)
+    {
+        using var db = CreateDbContext();
+        var config = CreateConfiguration();
+        var service = new AuthService(db, config);
+
+        var email = $"{expectedRoleString.ToLower()}@test.com";
+        SeedUser(db, email, "Password123!", role);
+
+        var req = new LoginRequest { Email = email, Password = "Password123!" };
+        var response = await service.AuthenticateAsync(req);
+
+        Assert.NotNull(response);
+        Assert.Equal(expectedRoleString, response.Role);
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(response.AccessToken);
+        Assert.Equal(expectedRoleString, jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value);
+        Assert.Equal(expectedRoleString, jwt.Claims.FirstOrDefault(c => c.Type == "role")?.Value);
     }
 
     [Fact]
