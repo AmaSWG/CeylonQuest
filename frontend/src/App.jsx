@@ -5,6 +5,7 @@ import ProviderApplication from './pages/ProviderApplication'
 import Login from './pages/Login'
 import VisitorDashboard from './pages/VisitorDashboard'
 import ProviderDashboard from './pages/ProviderDashboard'
+import AdminDashboard from './pages/AdminDashboard'
 
 function App() {
   const storedRole = localStorage.getItem('userRole')
@@ -13,7 +14,7 @@ function App() {
   const initialPage = () => {
     if (hasToken && storedRole === 'Visitor')  return 'visitor-dashboard'
     if (hasToken && storedRole === 'Provider') return 'provider-dashboard'
-    if (hasToken && storedRole === 'Admin')    return 'visitor-dashboard'
+    if (hasToken && storedRole === 'Admin')    return 'admin-dashboard'
     return 'registration'
   }
 
@@ -23,7 +24,7 @@ function App() {
     if (role === 'Provider') {
       setPage('provider-dashboard')
     } else if (role === 'Admin') {
-      setPage('visitor-dashboard')
+      setPage('admin-dashboard')
     } else {
       // Visitor (and any unknown role) go to visitor dashboard
       setPage('visitor-dashboard')
@@ -55,6 +56,10 @@ function App() {
 
   if (page === 'provider-dashboard') {
     return <ProviderDashboard onLogout={handleLogout} />
+  }
+
+  if (page === 'admin-dashboard') {
+    return <AdminDashboard onLogout={handleLogout} />
   }
 
   return (

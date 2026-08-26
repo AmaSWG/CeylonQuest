@@ -20,6 +20,8 @@ function LoginSuccessToast({ message, onClose }) {
 }
 
 function Login({ onLoginSuccess, onBack }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
@@ -29,12 +31,23 @@ function Login({ onLoginSuccess, onBack }) {
     e.preventDefault()
     setError(null)
     setToast(null)
+
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) {
+      setError('Please enter your email address.')
+      return
+    }
+
+    if (!password) {
+      setError('Please enter your password.')
+      return
+    }
+
     setLoading(true)
 
-    const form = e.target
     const data = {
-      email:    form.email.value.trim(),
-      password: form.password.value
+      email:    trimmedEmail,
+      password: password
     }
 
     try {
@@ -60,9 +73,10 @@ function Login({ onLoginSuccess, onBack }) {
       } else if (resp.status === 401) {
         const body = await resp.json().catch(() => ({}))
         setError(body.message || 'Incorrect email or password. Please try again.')
-      } else if (resp.status === 400) {
+      } else if (resp.status === 400 || resp.status === 422) {
         const body = await resp.json().catch(() => ({}))
-        setError(body.message || 'Validation error. Check your input.')
+        const first = body.errors && Object.values(body.errors).flat()[0]
+        setError(first || body.message || body.title || 'Validation error. Please check your email and password.')
       } else {
         setError('Server error. Please try again later.')
       }
@@ -104,6 +118,8 @@ function Login({ onLoginSuccess, onBack }) {
                 name="email"
                 placeholder="Enter your email address"
                 autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
@@ -129,6 +145,8 @@ function Login({ onLoginSuccess, onBack }) {
                 name="password"
                 placeholder="Enter your password"
                 autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
               />
               <button

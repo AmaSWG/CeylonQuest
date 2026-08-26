@@ -46,7 +46,9 @@ builder.Services.AddAuthentication(options =>
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtIssuer,
             ValidAudience = jwtAudience,
-            IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(signingKeyBytes)
+            IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(signingKeyBytes),
+            RoleClaimType = System.Security.Claims.ClaimTypes.Role,
+            NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier
         };
     });
 
@@ -156,11 +158,22 @@ if (!app.Environment.IsEnvironment("Testing"))
             var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
             logger.LogError(exSql, "CREATE TABLE fallback failed");
         }
+        // Seed Default Admin Account if not already present
+        try
+        {
+            var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
+            DbSeeder.SeedAdminUserAsync(db, builder.Configuration, logger).GetAwaiter().GetResult();
+        }
+        catch (Exception exSeed)
+        {
+            var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
+            logger.LogError(exSeed, "Admin seeding failed");
+        }
     }
     catch (Exception ex)
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
-        logger.LogError(ex, "Failed to apply migrations on startup");
+        logger.LogError(ex, "Failed to apply migrations or seeds on startup");
     }
 }
 
