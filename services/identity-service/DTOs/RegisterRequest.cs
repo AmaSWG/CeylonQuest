@@ -8,8 +8,8 @@ public class RegisterRequest
     public const string PasswordRequirementsMessage =
         "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.";
 
+    public const string PasswordPattern = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z\s]).{8,}$";
     private const string NotBlankPattern = @"^(?!\s*$).+";
-    private const string PasswordPattern = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z\s]).{8,}$";
 
     [Required(ErrorMessage = "First name is required.")]
     [RegularExpression(NotBlankPattern, ErrorMessage = "First name cannot be blank.")]

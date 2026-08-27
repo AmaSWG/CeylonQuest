@@ -13,15 +13,18 @@ public class AuthController : ControllerBase
     private readonly RegistrationService _registrationService;
     private readonly AuthService _authService;
     private readonly ProviderActivationService _providerActivationService;
+    private readonly PasswordResetService _passwordResetService;
 
     public AuthController(
         RegistrationService registrationService,
         AuthService authService,
-        ProviderActivationService providerActivationService)
+        ProviderActivationService providerActivationService,
+        PasswordResetService passwordResetService)
     {
         _registrationService = registrationService;
         _authService = authService;
         _providerActivationService = providerActivationService;
+        _passwordResetService = passwordResetService;
     }
 
     [HttpPost("register")]
@@ -86,5 +89,70 @@ public class AuthController : ControllerBase
         {
             return Unauthorized(new { message = "Invalid OTP or email address." });
         }
+    }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
+    {
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        try
+        {
+            await _passwordResetService.InitiateForgotPasswordAsync(request.Email);
+        }
+        catch (Exception)
+        {
+            // Do not expose internal errors
+        }
+
+        // Generic response for security (same whether email exists or not)
+        return Ok(new
+        {
+            message = "If an account exists with this email address, you will receive a password reset link. Please check your email."
+        });
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
+    {
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        try
+        {
+            var (success, errorMessage) = await _passwordResetService.ResetPasswordAsync(request);
+
+            if (!success)
+            {
+                return BadRequest(new { message = errorMessage ?? "Unable to reset password. Please try again." });
+            }
+
+            return Ok(new { message = "Password reset successfully. You can now log in with your new password." });
+        }
+        catch (Exception)
+        {
+            // Don't expose internal errors
+            return BadRequest(new { message = "Password reset link is invalid or has expired. Please request a new password reset." });
+        }
+    }
+
+    /// <summary>
+    /// [DEVELOPMENT ONLY] For testing in Swagger - demonstrates how to get a token.
+    /// In development mode only, the forgot-password endpoint returns the actual token.
+    /// </summary>
+    [HttpGet("debug/test-token-info")]
+    public IActionResult GetTestTokenInfo()
+    {
+        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+        
+        if (environment == "Production")
+        {
+            return BadRequest(new { message = "This endpoint is only available in development." });
+        }
+
+        return Ok(new 
+        { 
+            message = "In development mode, the POST /api/auth/forgot-password endpoint returns the actual reset token in the response. This token can then be used with POST /api/auth/reset-password.",
+            note = "In production, tokens are sent via email only and never exposed in API responses."
+        });
     }
 }

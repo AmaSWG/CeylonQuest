@@ -10,7 +10,7 @@ namespace IdentityService.Data;
 
 public static class DbSeeder
 {
-    public const string DefaultAdminEmail = "admin@ceylonquest.com";
+    public const string DefaultAdminEmail = "adminceylonquest@gmail.com";
     public const string DefaultAdminPassword = "AdminPassword123!";
 
     public static async Task SeedAdminUserAsync(

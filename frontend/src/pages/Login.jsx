@@ -19,7 +19,7 @@ function LoginSuccessToast({ message, onClose }) {
   )
 }
 
-function Login({ onLoginSuccess, onBack }) {
+function Login({ onLoginSuccess, onBack, onForgotPassword }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -128,7 +128,12 @@ function Login({ onLoginSuccess, onBack }) {
           <div className="login-field">
             <div className="login-label-row">
               <label htmlFor="login-password">Password</label>
-              <button type="button" className="login-forgot-btn" tabIndex={0}>
+              <button 
+                type="button" 
+                className="login-forgot-btn"
+                onClick={() => onForgotPassword && onForgotPassword()}
+                tabIndex={0}
+              >
                 Forgot password?
               </button>
             </div>

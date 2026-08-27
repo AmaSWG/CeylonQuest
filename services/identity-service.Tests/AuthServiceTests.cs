@@ -119,9 +119,9 @@ public class AuthServiceTests
         var config = CreateConfiguration();
         var service = new AuthService(db, config);
 
-        SeedUser(db, "admin@ceylonquest.com", "AdminPassword123!", UserRole.Admin);
+        SeedUser(db, "adminceylonquest@gmail.com", "AdminPassword123!", UserRole.Admin);
 
-        var req = new LoginRequest { Email = "admin@ceylonquest.com", Password = "AdminPassword123!" };
+        var req = new LoginRequest { Email = "adminceylonquest@gmail.com", Password = "AdminPassword123!" };
         var response = await service.AuthenticateAsync(req);
 
         Assert.NotNull(response);
@@ -132,7 +132,7 @@ public class AuthServiceTests
         var jwt = handler.ReadJwtToken(response.AccessToken);
         Assert.Equal("Admin", jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value);
         Assert.Equal("Admin", jwt.Claims.FirstOrDefault(c => c.Type == "role")?.Value);
-        Assert.Equal("admin@ceylonquest.com", jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value);
+        Assert.Equal("adminceylonquest@gmail.com", jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value);
     }
 
     [Fact]

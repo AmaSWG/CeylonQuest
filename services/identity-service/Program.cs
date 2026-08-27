@@ -80,6 +80,9 @@ builder.Services.AddScoped<RegistrationService>();
 builder.Services.AddScoped<ProviderApplicationService>();
 builder.Services.AddScoped<ProviderActivationService>();
 builder.Services.AddScoped<UserProfileService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<PasswordResetTokenService>();
+builder.Services.AddScoped<PasswordResetService>();
 
 // Kafka: consumes provider.approved from Provider/Catalog Service (Identity Service does not publish it).
 builder.Services.AddKafka(builder.Configuration);
