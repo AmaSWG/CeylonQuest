@@ -48,6 +48,7 @@ public class AdminProviderApplicationResponse
     public string Description { get; set; } = string.Empty;
     public string? LegalDocumentFileName { get; set; }
     public string Status { get; set; } = string.Empty;
+    public string? RejectionReason { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 

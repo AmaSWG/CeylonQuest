@@ -19,7 +19,7 @@ function ProviderSuccessToast({ message, onClose }) {
   )
 }
 
-function ProviderApplication({ onBack }) {
+function ProviderApplication({ onBack, onCheckStatus }) {
   const [fileName, setFileName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -308,7 +308,7 @@ function ProviderApplication({ onBack }) {
           </button>
         </form>
 
-        <p className="provider-app-back">
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap', marginTop: '20px' }}>
           <button
             type="button"
             className="provider-app-back__btn"
@@ -317,7 +317,18 @@ function ProviderApplication({ onBack }) {
           >
             ← Back to Registration
           </button>
-        </p>
+          {onCheckStatus && (
+            <button
+              type="button"
+              className="provider-app-back__btn"
+              onClick={onCheckStatus}
+              id="goto-check-status-btn"
+              style={{ color: '#123b5d', fontWeight: '700' }}
+            >
+              Track Application Status →
+            </button>
+          )}
+        </div>
 
       </div>
     </div>

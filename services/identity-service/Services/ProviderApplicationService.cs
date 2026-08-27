@@ -58,4 +58,60 @@ public class ProviderApplicationService
             .Take(limit)
             .ToListAsync();
     }
+
+    public async Task<ProviderApplicationStatusResponse?> GetStatusByEmailAsync(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return null;
+        }
+
+        var emailLower = email.Trim().ToLower();
+
+        var app = await _db.ProviderApplications
+            .Where(p => p.Email.ToLower() == emailLower)
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        // Also check if an active or approved provider account already exists in Users table
+        var providerUser = await _db.Users
+            .Where(u => u.Email.ToLower() == emailLower && u.Role == UserRole.Provider)
+            .FirstOrDefaultAsync();
+
+        if (app == null && providerUser == null)
+        {
+            return null;
+        }
+
+        // If user is already an active/registered provider or application status is Approved (1)
+        var isApproved = (app != null && app.Status == ProviderApplicationStatus.Approved) || providerUser != null;
+        var isRejected = app != null && app.Status == ProviderApplicationStatus.Rejected && providerUser == null;
+        var isPending = app != null && app.Status == ProviderApplicationStatus.Pending && providerUser == null;
+
+        var statusString = isApproved ? "Approved" : (isRejected ? "Rejected" : "Pending");
+
+        var message = statusString switch
+        {
+            "Approved" => "Congratulations! Your provider application has been approved. Please check your email for your account activation code or log in to your provider portal.",
+            "Rejected" => "Your provider application was not approved.",
+            _ => "Your application has been received and is currently under review by the CeylonQuest team."
+        };
+
+        var businessName = app?.BusinessName;
+        if (string.IsNullOrWhiteSpace(businessName) && providerUser != null)
+        {
+            businessName = $"{providerUser.FirstName} {providerUser.LastName}".Trim();
+        }
+
+        return new ProviderApplicationStatusResponse
+        {
+            Email = app?.Email ?? providerUser!.Email,
+            BusinessName = string.IsNullOrWhiteSpace(businessName) ? "Provider Account" : businessName,
+            ServiceType = app?.ServiceType ?? "Tourism Service Provider",
+            Status = statusString,
+            RejectionReason = isRejected ? app?.RejectionReason : null,
+            SubmittedAt = app?.CreatedAt ?? providerUser!.CreatedAt,
+            Message = message
+        };
+    }
 }

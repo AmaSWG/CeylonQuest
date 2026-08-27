@@ -27,7 +27,7 @@ public class ProviderApplicationsController : ControllerBase
         try
         {
             var app = await _service.CreateAsync(request);
-            return CreatedAtAction(nameof(GetById), new { id = app.Id }, new { message = "Application submitted", applicationId = app.Id });
+            return StatusCode(201, new { message = "Application submitted", applicationId = app.Id });
         }
         catch (DuplicateApplicationException ex)
         {
@@ -35,30 +35,39 @@ public class ProviderApplicationsController : ControllerBase
         }
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(Guid id)
+    [HttpGet("status")]
+    [HttpGet("/api/provider-applications/status")]
+    public async Task<IActionResult> GetStatus([FromQuery] string? email)
     {
-        // Minimal implementation to satisfy CreatedAtAction link
-        return NotFound();
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return BadRequest(new { message = "Email address is required." });
+        }
+
+        var status = await _service.GetStatusByEmailAsync(email);
+        if (status == null)
+        {
+            return NotFound(new { message = "No provider application found for this email address." });
+        }
+
+        return Ok(status);
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
+    [HttpPost("status")]
+    [HttpPost("/api/provider-applications/status")]
+    public async Task<IActionResult> PostStatus([FromBody] ProviderApplicationStatusRequest request)
     {
-        var list = await _service.GetAllAsync(100);
-        return Ok(list.Select(x => new {
-            x.Id,
-            x.FirstName,
-            x.LastName,
-            x.Email,
-            x.PhoneNumber,
-            x.BusinessName,
-            x.ServiceType,
-            x.Location,
-            x.Description,
-            x.LegalDocumentFileName,
-            x.Status,
-            x.CreatedAt
-        }));
+        if (request == null || string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new { message = "Email address is required." });
+        }
+
+        var status = await _service.GetStatusByEmailAsync(request.Email);
+        if (status == null)
+        {
+            return NotFound(new { message = "No provider application found for this email address." });
+        }
+
+        return Ok(status);
     }
 }

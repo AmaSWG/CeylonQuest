@@ -20,6 +20,8 @@ public class ProviderApplication
 
     public ProviderApplicationStatus Status { get; set; } = ProviderApplicationStatus.Pending;
 
+    public string? RejectionReason { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 

@@ -1,0 +1,657 @@
+/* =====================================================
+   ProviderApplicationStatus.css — CeylonQuest
+   Prefix: pas-
+   ===================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+.pas-page {
+  min-height: 100vh;
+  background: linear-gradient(145deg, #091a2b 0%, #102e4a 50%, #163d63 100%);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #1a2530;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 48px 20px 80px;
+  box-sizing: border-box;
+}
+
+.pas-container {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+/* ── Header ── */
+.pas-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.pas-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  text-decoration: none;
+}
+
+.pas-logo__brand {
+  font-size: 24px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+}
+
+.pas-logo__badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  background: rgba(230, 168, 34, 0.2);
+  color: #e6a822;
+  border: 1px solid rgba(230, 168, 34, 0.4);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.pas-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 10px;
+  letter-spacing: -0.5px;
+}
+
+.pas-subtitle {
+  font-size: 15px;
+  color: #a3b8cc;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Card ── */
+.pas-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 32px 36px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.pas-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #123b5d, #e6a822, #0d7a5f);
+}
+
+/* ── Form ── */
+.pas-form {
+  margin-bottom: 8px;
+}
+
+.pas-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pas-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c3e50;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pas-input-wrapper {
+  display: flex;
+  gap: 10px;
+  position: relative;
+}
+
+.pas-input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.pas-input {
+  flex: 1;
+  height: 48px;
+  padding: 0 16px 0 42px;
+  font-size: 15px;
+  border: 1.5px solid #d8e2ec;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #123b5d;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.pas-input:focus {
+  outline: none;
+  border-color: #123b5d;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(18, 59, 93, 0.12);
+}
+
+.pas-submit-btn {
+  height: 48px;
+  padding: 0 24px;
+  background: #123b5d;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pas-submit-btn:hover:not(:disabled) {
+  background: #0e2e4a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(18, 59, 93, 0.25);
+}
+
+.pas-submit-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ── Error Box ── */
+.pas-error-box {
+  margin-top: 24px;
+  padding: 18px 20px;
+  background: #fff5f5;
+  border: 1.5px solid #fed7d7;
+  border-radius: 12px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.pas-error-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.pas-error-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #9b2c2c;
+  margin: 0 0 4px;
+}
+
+.pas-error-msg {
+  font-size: 13.5px;
+  color: #742a2a;
+  margin: 0 0 10px;
+  line-height: 1.45;
+}
+
+.pas-error-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.pas-link-btn {
+  background: none;
+  border: none;
+  color: #123b5d;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.pas-link-btn:hover {
+  color: #e6a822;
+}
+
+/* ── Loading Spinner ── */
+.pas-loading-state {
+  margin-top: 32px;
+  text-align: center;
+  padding: 24px;
+  color: #64748b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.pas-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: pas-spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+.pas-spinner--large {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+  border-color: #d8e2ec;
+  border-top-color: #123b5d;
+}
+
+.pas-btn-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@keyframes pas-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Results Container ── */
+.pas-results {
+  margin-top: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Status Outcome Banner ── */
+.pas-status-banner {
+  padding: 22px 24px;
+  border-radius: 14px;
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.pas-status-banner--pending {
+  background: #fffbeb;
+  border: 1.5px solid #fde68a;
+}
+
+.pas-status-banner--approved {
+  background: #f0fdf4;
+  border: 1.5px solid #bbf7d0;
+}
+
+.pas-status-banner--rejected {
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+}
+
+.pas-status-banner__icon {
+  font-size: 32px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.pas-status-banner__info {
+  flex: 1;
+}
+
+.pas-status-tag-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.pas-status-badge {
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
+}
+
+.pas-status-badge--pending {
+  background: #d97706;
+  color: #ffffff;
+}
+
+.pas-status-badge--approved {
+  background: #059669;
+  color: #ffffff;
+}
+
+.pas-status-badge--rejected {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.pas-status-date {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.pas-status-headline {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0 0 6px;
+  color: #0f172a;
+}
+
+.pas-status-msg {
+  font-size: 14px;
+  color: #334155;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Section Heading ── */
+.pas-section-heading {
+  font-size: 14px;
+  font-weight: 700;
+  color: #123b5d;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin: 0 0 14px;
+}
+
+/* ── Pending Verification Progress ── */
+.pas-pending-guide {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px 22px;
+}
+
+.pas-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pas-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  opacity: 0.55;
+}
+
+.pas-step--done {
+  opacity: 1;
+}
+
+.pas-step--done .pas-step__bullet {
+  background: #059669;
+  color: #fff;
+}
+
+.pas-step--active {
+  opacity: 1;
+}
+
+.pas-step--active .pas-step__bullet {
+  background: #d97706;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.2);
+}
+
+.pas-step__bullet {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pas-step__content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pas-step__content strong {
+  font-size: 13.5px;
+  color: #1e293b;
+}
+
+.pas-step__content span {
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+/* ── Approved Guide ── */
+.pas-approved-guide {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pas-approved-callout {
+  background: #ecfdf5;
+  border: 1.5px solid #a7f3d0;
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.pas-callout-icon {
+  font-size: 26px;
+  flex-shrink: 0;
+}
+
+.pas-approved-callout strong {
+  display: block;
+  font-size: 14px;
+  color: #065f46;
+  margin-bottom: 4px;
+}
+
+.pas-approved-callout p {
+  font-size: 13.5px;
+  color: #047857;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Rejected Reason Box ── */
+.pas-rejected-guide {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pas-rejection-box {
+  background: #fff5f5;
+  border: 1.5px solid #fecaca;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.pas-rejection-box__header {
+  background: #fee2e2;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #991b1b;
+  font-size: 13px;
+  font-weight: 700;
+  border-bottom: 1px solid #fecaca;
+}
+
+.pas-rejection-box__body {
+  padding: 16px;
+}
+
+.pas-rejection-reason-text {
+  font-size: 14px;
+  color: #7f1d1d;
+  margin: 0;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+.pas-rejection-help {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+/* ── Application Summary Card ── */
+.pas-details-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px 22px;
+}
+
+.pas-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 20px;
+}
+
+.pas-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pas-detail-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+}
+
+.pas-detail-val {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* ── Actions ── */
+.pas-action-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.pas-btn-primary {
+  height: 44px;
+  padding: 0 22px;
+  background: linear-gradient(135deg, #123b5d 0%, #1e5282 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pas-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(18, 59, 93, 0.3);
+}
+
+.pas-reset-wrap {
+  text-align: center;
+  padding-top: 4px;
+}
+
+.pas-btn-secondary {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pas-btn-secondary:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+/* ── Footer Nav ── */
+.pas-footer-nav {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.pas-footer-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pas-footer-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .pas-card {
+    padding: 24px 20px;
+  }
+
+  .pas-title {
+    font-size: 26px;
+  }
+
+  .pas-input-wrapper {
+    flex-direction: column;
+  }
+
+  .pas-submit-btn {
+    width: 100%;
+  }
+
+  .pas-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pas-status-banner {
+    flex-direction: column;
+    gap: 12px;
+  }
+}

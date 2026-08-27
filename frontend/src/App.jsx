@@ -2,6 +2,7 @@ import { useState } from 'react'
 import './App.css'
 import Registration from './pages/Registration'
 import ProviderApplication from './pages/ProviderApplication'
+import ProviderApplicationStatus from './pages/ProviderApplicationStatus'
 import Login from './pages/Login'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
@@ -22,6 +23,12 @@ function App() {
     }
     if (path.includes('forgot-password') || params.get('page') === 'forgot-password') {
       return 'forgot-password'
+    }
+    if (path.includes('provider-status') || path.includes('application-status') || params.get('page') === 'provider-status' || params.get('page') === 'application-status') {
+      return 'provider-status'
+    }
+    if (path.includes('provider-application') || params.get('page') === 'provider-application') {
+      return 'provider-application'
     }
     if (path.includes('login') || params.get('page') === 'login') {
       return 'login'
@@ -52,7 +59,22 @@ function App() {
   }
 
   if (page === 'provider-application') {
-    return <ProviderApplication onBack={() => setPage('registration')} />
+    return (
+      <ProviderApplication
+        onBack={() => setPage('registration')}
+        onCheckStatus={() => setPage('provider-status')}
+      />
+    )
+  }
+
+  if (page === 'provider-status') {
+    return (
+      <ProviderApplicationStatus
+        onBack={() => setPage('registration')}
+        onApply={() => setPage('provider-application')}
+        onLogin={() => setPage('login')}
+      />
+    )
   }
 
   if (page === 'login') {
@@ -104,6 +126,7 @@ function App() {
   return (
     <Registration
       onApplyAsProvider={() => setPage('provider-application')}
+      onCheckStatus={() => setPage('provider-status')}
       onLogin={() => setPage('login')}
     />
   )

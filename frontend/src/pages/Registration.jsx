@@ -34,7 +34,7 @@ function validateRegistration(data) {
   return null
 }
 
-function Registration({ onApplyAsProvider, onLogin }) {
+function Registration({ onApplyAsProvider, onCheckStatus, onLogin }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
@@ -238,6 +238,19 @@ function Registration({ onApplyAsProvider, onLogin }) {
             >
               Apply as a Service Provider
             </button>
+            {onCheckStatus && (
+              <p style={{ marginTop: '12px', fontSize: '13px', color: '#64748b' }}>
+                Already applied?{' '}
+                <a
+                  href="#"
+                  id="check-provider-status-link"
+                  style={{ color: '#123b5d', fontWeight: '700', textDecoration: 'underline' }}
+                  onClick={(e) => { e.preventDefault(); onCheckStatus(); }}
+                >
+                  Check Application Status →
+                </a>
+              </p>
+            )}
             <p className="provider-section__note">
               Applications are reviewed and approved by our admin team.
             </p>

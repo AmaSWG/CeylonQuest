@@ -137,6 +137,7 @@ public class AdminController : ControllerBase
                 Description           = a.Description,
                 LegalDocumentFileName = a.LegalDocumentFileName,
                 Status                = a.Status.ToString(),
+                RejectionReason       = a.RejectionReason,
                 CreatedAt             = a.CreatedAt
             })
             .ToListAsync();

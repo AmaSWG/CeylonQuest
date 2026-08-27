@@ -152,9 +152,15 @@ if (!app.Environment.IsEnvironment("Testing"))
                 `Description` longtext NOT NULL,
                 `LegalDocumentFileName` longtext NULL,
                 `Status` int NOT NULL,
+                `RejectionReason` longtext NULL,
                 `CreatedAt` datetime(6) NOT NULL,
                 PRIMARY KEY (`Id`)
             ) CHARACTER SET = utf8mb4;");
+                try
+                {
+                    db.Database.ExecuteSqlRaw(@"ALTER TABLE `ProviderApplications` ADD COLUMN `RejectionReason` longtext NULL;");
+                }
+                catch { /* column may already exist */ }
             }
         }
         catch (Exception exSql)
