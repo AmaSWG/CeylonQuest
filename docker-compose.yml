@@ -33,6 +33,20 @@ services:
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-
+      
+    
+  identity-service:
+    container_name: ceylonquest-identity-service
+    build:
+      context: .
+      dockerfile: services/identity-service/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Kafka__BootstrapServers: kafka:29092
+    depends_on:
+      - kafka
+      
 volumes:
   kafka-data:
