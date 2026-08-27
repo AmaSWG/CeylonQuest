@@ -57,9 +57,9 @@ public class AuthController : ControllerBase
             var resp = await _authService.AuthenticateAsync(req);
             return Ok(resp);
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException ex)
         {
-            return Unauthorized(new { message = "Invalid credentials" });
+            return Unauthorized(new { message = ex.Message });
         }
     }
 

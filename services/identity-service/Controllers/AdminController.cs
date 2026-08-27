@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using IdentityService.Data;
 using IdentityService.DTOs;
 using IdentityService.Models;
+using IdentityService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -16,10 +17,12 @@ namespace IdentityService.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
+    private readonly AdminReportService _reportService;
 
-    public AdminController(ApplicationDbContext db)
+    public AdminController(ApplicationDbContext db, AdminReportService reportService)
     {
         _db = db;
+        _reportService = reportService;
     }
 
     // GET /api/admin/stats
@@ -206,5 +209,28 @@ Verification Authority:   CeylonQuest Tourism Accreditation Board
         if (!downloadName.Contains('.')) downloadName += ".txt";
 
         return File(contentBytes, "text/plain; charset=utf-8", downloadName);
+    }
+
+    // GET /api/admin/reports
+    [HttpGet("reports")]
+    public async Task<IActionResult> GetReport(
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] string? role,
+        [FromQuery] string? applicationStatus)
+    {
+        if (dateFrom.HasValue && dateTo.HasValue && dateFrom.Value > dateTo.Value)
+            return BadRequest(new { message = "dateFrom must be before or equal to dateTo." });
+
+        var filters = new ReportQueryParams
+        {
+            DateFrom          = dateFrom,
+            DateTo            = dateTo,
+            Role              = role,
+            ApplicationStatus = applicationStatus
+        };
+
+        var report = await _reportService.GetReportAsync(filters);
+        return Ok(report);
     }
 }

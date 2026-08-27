@@ -1414,6 +1414,244 @@ function AdminAccountTab({ token, onLogout, showToast }) {
   )
 }
 
+// ── 7. Reports Tab ───────────────────────────────────────────────────────────
+
+function ReportsTab({ token, onLogout }) {
+  const emptyFilters = { dateFrom: '', dateTo: '', role: '', applicationStatus: '' }
+  const [filters, setFilters] = useState(emptyFilters)
+  const [appliedFilters, setAppliedFilters] = useState({})
+  const [report, setReport] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  const buildQuery = (f) => {
+    const params = new URLSearchParams()
+    if (f.dateFrom)           params.append('dateFrom', f.dateFrom)
+    if (f.dateTo)             params.append('dateTo',   f.dateTo)
+    if (f.role)               params.append('role',     f.role)
+    if (f.applicationStatus)  params.append('applicationStatus', f.applicationStatus)
+    return params.toString()
+  }
+
+  const fetchReport = useCallback(async (activeFilters) => {
+    if (!token) return
+    setLoading(true)
+    setError(null)
+    try {
+      const qs = buildQuery(activeFilters)
+      const resp = await fetch(`/api/admin/reports${qs ? '?' + qs : ''}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (resp.ok) {
+        setReport(await resp.json())
+      } else if (resp.status === 401) {
+        onLogout && onLogout()
+      } else {
+        const body = await resp.json().catch(() => ({}))
+        setError(body.message || 'Failed to load report.')
+      }
+    } catch {
+      setError('Network error — could not load report.')
+    } finally {
+      setLoading(false)
+    }
+  }, [token, onLogout])
+
+  // Load report on first render with empty filters
+  useEffect(() => { fetchReport({}) }, [fetchReport])
+
+  const handleApply = (e) => {
+    e.preventDefault()
+    setAppliedFilters(filters)
+    fetchReport(filters)
+  }
+
+  const handleClear = () => {
+    setFilters(emptyFilters)
+    setAppliedFilters({})
+    fetchReport({})
+  }
+
+  const r = report?.registrations
+  const a = report?.applications
+  const af = report?.appliedFilters ?? {}
+
+  return (
+    <div className="ad-report">
+      <div className="ad-section-header">
+        <div>
+          <h1 className="ad-section-title">📈 Registration &amp; Verification Report</h1>
+          <p className="ad-section-sub">
+            Dynamic report aggregated from live database data.
+            {report && <span className="ad-report__generated"> Generated at {formatDateTime(report.generatedAt)}</span>}
+          </p>
+        </div>
+      </div>
+
+      {/* ── Filter Bar ── */}
+      <form className="ad-report__filters" onSubmit={handleApply} id="ad-report-filter-form">
+        <div className="ad-report__filter-row">
+          <label className="ad-report__filter-label" htmlFor="ad-report-dateFrom">Date From</label>
+          <input
+            id="ad-report-dateFrom"
+            type="date"
+            className="ad-report__filter-input"
+            value={filters.dateFrom}
+            onChange={e => setFilters(f => ({ ...f, dateFrom: e.target.value }))}
+          />
+        </div>
+        <div className="ad-report__filter-row">
+          <label className="ad-report__filter-label" htmlFor="ad-report-dateTo">Date To</label>
+          <input
+            id="ad-report-dateTo"
+            type="date"
+            className="ad-report__filter-input"
+            value={filters.dateTo}
+            onChange={e => setFilters(f => ({ ...f, dateTo: e.target.value }))}
+          />
+        </div>
+        <div className="ad-report__filter-row">
+          <label className="ad-report__filter-label" htmlFor="ad-report-role">User Role</label>
+          <select
+            id="ad-report-role"
+            className="ad-report__filter-select"
+            value={filters.role}
+            onChange={e => setFilters(f => ({ ...f, role: e.target.value }))}
+          >
+            <option value="">All Roles</option>
+            <option value="Visitor">Visitor</option>
+            <option value="Provider">Provider</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+        <div className="ad-report__filter-row">
+          <label className="ad-report__filter-label" htmlFor="ad-report-status">App Status</label>
+          <select
+            id="ad-report-status"
+            className="ad-report__filter-select"
+            value={filters.applicationStatus}
+            onChange={e => setFilters(f => ({ ...f, applicationStatus: e.target.value }))}
+          >
+            <option value="">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+        </div>
+        <div className="ad-report__filter-actions">
+          <button type="submit" className="ad-report__apply-btn" id="ad-report-apply-btn">Apply Filters</button>
+          <button type="button" className="ad-report__clear-btn" id="ad-report-clear-btn" onClick={handleClear}>Clear</button>
+        </div>
+      </form>
+
+      {/* ── Active filter badges ── */}
+      {(af.dateFrom || af.dateTo || af.role || af.applicationStatus) && (
+        <div className="ad-report__active-filters">
+          <span className="ad-report__filter-badge-label">Active filters:</span>
+          {af.dateFrom && <span className="ad-report__filter-badge">From: {af.dateFrom}</span>}
+          {af.dateTo   && <span className="ad-report__filter-badge">To: {af.dateTo}</span>}
+          {af.role     && <span className="ad-report__filter-badge">Role: {af.role}</span>}
+          {af.applicationStatus && <span className="ad-report__filter-badge">Status: {af.applicationStatus}</span>}
+        </div>
+      )}
+
+      {loading && <LoadingState label="Generating report…" />}
+      {error   && <div className="ad-report__error">{error}</div>}
+
+      {!loading && !error && report && (
+        <>
+          {/* ── Registration Summary ── */}
+          <section className="ad-report__section">
+            <h2 className="ad-report__section-title">👥 User Registrations</h2>
+            <div className="ad-report__cards">
+              <div className="ad-report__card ad-report__card--total">
+                <span className="ad-report__card-value">{r?.totalUsers ?? 0}</span>
+                <span className="ad-report__card-label">Total Users</span>
+              </div>
+              <div className="ad-report__card ad-report__card--visitor">
+                <span className="ad-report__card-value">{r?.totalVisitors ?? 0}</span>
+                <span className="ad-report__card-label">Visitors</span>
+              </div>
+              <div className="ad-report__card ad-report__card--provider">
+                <span className="ad-report__card-value">{r?.totalProviders ?? 0}</span>
+                <span className="ad-report__card-label">Providers</span>
+              </div>
+              <div className="ad-report__card ad-report__card--admin">
+                <span className="ad-report__card-value">{r?.totalAdmins ?? 0}</span>
+                <span className="ad-report__card-label">Admins</span>
+              </div>
+              <div className="ad-report__card ad-report__card--active">
+                <span className="ad-report__card-value">{r?.activeUsers ?? 0}</span>
+                <span className="ad-report__card-label">Active</span>
+              </div>
+              <div className="ad-report__card ad-report__card--inactive">
+                <span className="ad-report__card-value">{r?.inactiveUsers ?? 0}</span>
+                <span className="ad-report__card-label">Inactive</span>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Application Summary ── */}
+          <section className="ad-report__section">
+            <h2 className="ad-report__section-title">📋 Provider Applications</h2>
+            <div className="ad-report__cards">
+              <div className="ad-report__card ad-report__card--total">
+                <span className="ad-report__card-value">{a?.totalApplications ?? 0}</span>
+                <span className="ad-report__card-label">Total</span>
+              </div>
+              <div className="ad-report__card ad-report__card--pending">
+                <span className="ad-report__card-value">{a?.pendingApplications ?? 0}</span>
+                <span className="ad-report__card-label">Pending</span>
+              </div>
+              <div className="ad-report__card ad-report__card--approved">
+                <span className="ad-report__card-value">{a?.approvedApplications ?? 0}</span>
+                <span className="ad-report__card-label">Approved</span>
+              </div>
+              <div className="ad-report__card ad-report__card--rejected">
+                <span className="ad-report__card-value">{a?.rejectedApplications ?? 0}</span>
+                <span className="ad-report__card-label">Rejected</span>
+              </div>
+            </div>
+
+            {/* ── Service Type Breakdown ── */}
+            {a?.byServiceType?.length > 0 && (
+              <div className="ad-report__breakdown">
+                <h3 className="ad-report__breakdown-title">Applications by Service Type</h3>
+                <table className="ad-report__table" id="ad-report-service-type-table">
+                  <thead>
+                    <tr>
+                      <th>Service Type</th>
+                      <th>Applications</th>
+                      <th>Share</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {a.byServiceType.map(row => (
+                      <tr key={row.serviceType}>
+                        <td>{row.serviceType}</td>
+                        <td>{row.count}</td>
+                        <td>
+                          <div className="ad-report__share-bar">
+                            <div
+                              className="ad-report__share-fill"
+                              style={{ width: `${Math.round((row.count / a.totalApplications) * 100)}%` }}
+                            />
+                            <span>{Math.round((row.count / a.totalApplications) * 100)}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Root Admin Dashboard Component ────────────────────────────────────────────
 
 function AdminDashboard({ onLogout }) {
@@ -1539,13 +1777,14 @@ function AdminDashboard({ onLogout }) {
   const unreadNotifCount = notifications.filter(n => !n.read).length
 
   const navItems = [
-    { key: 'overview', icon: '📊', label: 'Dashboard Overview' },
-    { key: 'applications', icon: '📋', label: 'Provider Applications', badge: pendingAppsCount > 0 ? pendingAppsCount : null },
-    { key: 'users', icon: '👥', label: 'User Management' },
-    { key: 'providers', icon: '🏔️', label: 'Provider Management' },
-    { key: 'bookings', icon: '📅', label: 'Bookings Overview' },
+    { key: 'overview',      icon: '📊', label: 'Dashboard Overview' },
+    { key: 'applications',  icon: '📋', label: 'Provider Applications', badge: pendingAppsCount > 0 ? pendingAppsCount : null },
+    { key: 'users',         icon: '👥', label: 'User Management' },
+    { key: 'providers',     icon: '🏔️', label: 'Provider Management' },
+    { key: 'bookings',      icon: '📅', label: 'Bookings Overview' },
+    { key: 'reports',       icon: '📈', label: 'Reports' },
     { key: 'notifications', icon: '🔔', label: 'Notifications', badge: unreadNotifCount > 0 ? unreadNotifCount : null },
-    { key: 'account', icon: '👤', label: 'Admin Account' }
+    { key: 'account',       icon: '👤', label: 'Admin Account' }
   ]
 
   return (
@@ -1627,6 +1866,13 @@ function AdminDashboard({ onLogout }) {
         {activeTab === 'bookings' && (
           <BookingsOverviewTab
             bookings={bookings}
+          />
+        )}
+
+        {activeTab === 'reports' && (
+          <ReportsTab
+            token={token}
+            onLogout={handleLogout}
           />
         )}
 
