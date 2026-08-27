@@ -24,9 +24,15 @@ public class ProviderApplicationsController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var app = await _service.CreateAsync(request);
-
-        return CreatedAtAction(nameof(GetById), new { id = app.Id }, new { message = "Application submitted", applicationId = app.Id });
+        try
+        {
+            var app = await _service.CreateAsync(request);
+            return CreatedAtAction(nameof(GetById), new { id = app.Id }, new { message = "Application submitted", applicationId = app.Id });
+        }
+        catch (DuplicateApplicationException ex)
+        {
+            return Conflict(new { message = ex.Message ?? "An application with this email already exists." });
+        }
     }
 
     [HttpGet("{id}")]
