@@ -37,30 +37,15 @@ function ProviderApplication({ onBack, onCheckStatus }) {
     setLoading(true)
 
     const form = event.target
+    // Build FormData directly — this includes the real file bytes
     const fd = new FormData(form)
 
-    const payload = {
-      firstName:            fd.get('firstName'),
-      lastName:             fd.get('lastName'),
-      email:                fd.get('email'),
-      phoneNumber:          fd.get('phoneNumber'),
-      password:             fd.get('password'),
-      confirmPassword:      fd.get('confirmPassword'),
-      businessName:         fd.get('businessName'),
-      serviceType:          fd.get('serviceType'),
-      location:             fd.get('location'),
-      description:          fd.get('description'),
-      legalDocumentFileName: (() => {
-        const f = fd.get('legalDocument')
-        return f && f.name ? f.name : ''
-      })()
-    }
-
     try {
-      const resp = await fetch('http://localhost:5000/api/provider-applications', {
+      // Send as multipart/form-data (do NOT set Content-Type manually;
+      // the browser sets it automatically with the correct boundary)
+      const resp = await fetch('/api/provider-applications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: fd
       })
 
       if (resp.status === 201) {

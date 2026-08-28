@@ -17,16 +17,20 @@ public class ProviderApplicationsController : ControllerBase
 
     [HttpPost("/api/provider-applications")]
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] ProviderApplicationRequest request)
+    [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB max
+    public async Task<IActionResult> Create([FromForm] ProviderApplicationRequest request)
     {
         if (!ModelState.IsValid)
         {
             return ValidationProblem(ModelState);
         }
 
+        // Resolve the uploads directory relative to the app root
+        var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "documents");
+
         try
         {
-            var app = await _service.CreateAsync(request);
+            var app = await _service.CreateAsync(request, uploadsDir);
             return StatusCode(201, new { message = "Application submitted", applicationId = app.Id });
         }
         catch (DuplicateApplicationException ex)

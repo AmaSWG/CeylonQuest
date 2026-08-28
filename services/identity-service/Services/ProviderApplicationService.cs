@@ -19,7 +19,7 @@ public class ProviderApplicationService
         _db = db;
     }
 
-    public async Task<ProviderApplication> CreateAsync(ProviderApplicationRequest request)
+    public async Task<ProviderApplication> CreateAsync(ProviderApplicationRequest request, string? uploadsDir = null)
     {
         var emailLower = (request.Email ?? string.Empty).Trim().ToLower();
 
@@ -29,9 +29,28 @@ public class ProviderApplicationService
             throw new DuplicateApplicationException("An application with this email already exists.");
         }
 
+        var appId = Guid.NewGuid();
+
+        // Save the uploaded file to disk (if one was provided)
+        string? savedFileName = null;
+        if (request.LegalDocument is { Length: > 0 } file && !string.IsNullOrWhiteSpace(uploadsDir))
+        {
+            Directory.CreateDirectory(uploadsDir);
+
+            // Sanitise the original filename and prefix with the application ID to avoid collisions
+            var safeOriginal = Path.GetFileName(file.FileName)
+                                   .Replace(" ", "_")
+                                   .Replace("..", "");
+            savedFileName = $"{appId}_{safeOriginal}";
+            var filePath = Path.Combine(uploadsDir, savedFileName);
+
+            await using var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+            await file.CopyToAsync(stream);
+        }
+
         var app = new ProviderApplication
         {
-            Id = Guid.NewGuid(),
+            Id = appId,
             FirstName = request.FirstName?.Trim() ?? string.Empty,
             LastName = request.LastName?.Trim() ?? string.Empty,
             Email = request.Email?.Trim() ?? string.Empty,
@@ -40,7 +59,7 @@ public class ProviderApplicationService
             ServiceType = request.ServiceType?.Trim() ?? string.Empty,
             Location = request.Location?.Trim() ?? string.Empty,
             Description = request.Description?.Trim() ?? string.Empty,
-            LegalDocumentFileName = request.LegalDocumentFileName?.Trim(),
+            LegalDocumentFileName = savedFileName,
             Status = ProviderApplicationStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };

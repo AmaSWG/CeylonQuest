@@ -155,61 +155,46 @@ public class AdminController : ControllerBase
             return NotFound(new { message = "Provider application not found." });
         }
 
-        var fileName = string.IsNullOrWhiteSpace(application.LegalDocumentFileName)
-            ? $"{application.BusinessName.Replace(" ", "_")}_registration_doc.txt"
-            : application.LegalDocumentFileName;
+        // storedFileName is the name on disk (e.g. "guid_original.pdf")
+        var storedFileName = application.LegalDocumentFileName;
 
-        // Check if an uploaded physical file exists in uploads folder
-        var uploadsDir = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "uploads", "documents");
-        var filePath = System.IO.Path.Combine(uploadsDir, fileName);
-
-        if (System.IO.File.Exists(filePath))
+        if (string.IsNullOrWhiteSpace(storedFileName))
         {
-            var bytes = await System.IO.File.ReadAllBytesAsync(filePath);
-            var contentType = fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) ? "application/pdf"
-                            : fileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png"
-                            : fileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ? "image/jpeg"
-                            : "application/octet-stream";
-            return File(bytes, contentType, fileName);
+            return NotFound(new { message = "No document was submitted with this application." });
         }
 
-        // Generate formatted verification document with registered application details
-        var docContent = $@"================================================================================
-CEYLONQUEST TOURISM PLATFORM — PROVIDER REGISTRATION DOCUMENT
-================================================================================
+        var uploadsDir = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "uploads", "documents");
+        var filePath   = System.IO.Path.Combine(uploadsDir, storedFileName);
 
-Application Reference ID: {application.Id}
-Submission Date:          {application.CreatedAt:yyyy-MM-dd HH:mm:ss} UTC
-Application Status:       {application.Status}
+        if (!System.IO.File.Exists(filePath))
+        {
+            return NotFound(new { message = "Document file not found on server." });
+        }
 
-BUSINESS PROFILE:
------------------
-Business Name:            {application.BusinessName}
-Service Category:         {application.ServiceType}
-Operating Location:       {application.Location}
+        var bytes = await System.IO.File.ReadAllBytesAsync(filePath);
 
-APPLICANT INFORMATION:
-----------------------
-Owner / Representative:   {application.FirstName} {application.LastName}
-Official Email:           {application.Email}
-Contact Phone:            {application.PhoneNumber}
+        // Determine content type from extension
+        var ext = System.IO.Path.GetExtension(storedFileName).ToLowerInvariant();
+        var contentType = ext switch
+        {
+            ".pdf"  => "application/pdf",
+            ".png"  => "image/png",
+            ".jpg"  => "image/jpeg",
+            ".jpeg" => "image/jpeg",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".doc"  => "application/msword",
+            _       => "application/octet-stream"
+        };
 
-BUSINESS DESCRIPTION & DECLARATION:
------------------------------------
-{application.Description}
+        // Strip the leading {guid}_ prefix so the admin sees the original clean filename
+        var downloadName = storedFileName;
+        var underscoreIdx = storedFileName.IndexOf('_');
+        if (underscoreIdx > 0 && Guid.TryParse(storedFileName[..underscoreIdx], out _))
+        {
+            downloadName = storedFileName[(underscoreIdx + 1)..];
+        }
 
-ATTACHED DOCUMENT METADATA:
----------------------------
-File Reference:           {application.LegalDocumentFileName ?? "Standard Business Verification Record"}
-Verification Authority:   CeylonQuest Tourism Accreditation Board
-================================================================================
-";
-
-        var contentBytes = System.Text.Encoding.UTF8.GetBytes(docContent);
-        var downloadName = fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) ? fileName.Replace(".pdf", ".txt") : fileName;
-        if (!downloadName.Contains('.')) downloadName += ".txt";
-
-        return File(contentBytes, "text/plain; charset=utf-8", downloadName);
+        return File(bytes, contentType, downloadName);
     }
 
     // GET /api/admin/reports
