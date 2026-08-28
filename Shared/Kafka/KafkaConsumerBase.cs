@@ -5,9 +5,6 @@ using Microsoft.Extensions.Options;
 
 namespace Shared.Kafka;
 
-// Reusable Kafka consumer base class.
-// Derived services subscribe to topics and handle messages.
-
 public abstract class KafkaConsumerBase : BackgroundService
 {
     private readonly KafkaSettings _settings;
@@ -19,13 +16,9 @@ public abstract class KafkaConsumerBase : BackgroundService
         _logger = logger;
     }
 
-    // Kafka consumer group id for this service.
     protected abstract string GroupId { get; }
-
-    // Topics this consumer should subscribe to.
     protected abstract IReadOnlyList<string> Topics { get; }
 
-    // Handles a single consumed message.
     protected abstract Task HandleMessageAsync(
         string topic,
         string? key,
@@ -34,7 +27,6 @@ public abstract class KafkaConsumerBase : BackgroundService
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Run on a background thread so host startup is not blocked by the consume loop.
         return Task.Run(() => ConsumeLoopAsync(stoppingToken), stoppingToken);
     }
 
@@ -48,19 +40,26 @@ public abstract class KafkaConsumerBase : BackgroundService
 
         var config = new ConsumerConfig
         {
-            BootstrapServers = settings.bootstrapServers,
+            BootstrapServers = bootstrapServers,
             GroupId = GroupId,
             AutoOffsetReset = AutoOffsetReset.Earliest,
         };
-		
-		// Apply SASL/SSL only when configured (Confluent Cloud)
-		if (!string.IsNullOrEmpty(settings.SecurityProtocol))
-		{
-			config.SecurityProtocol = Enum.Parse<SecurityProtocol>(settings.SecurityProtocol, ignoreCase: true);
-			config.SaslMechanism    = Enum.Parse<SaslMechanism>(settings.SaslMechanism!, ignoreCase: true);
-			config.SaslUsername     = settings.SaslUsername;
-			config.SaslPassword     = settings.SaslPassword;
-		}
+
+        // Apply SASL/SSL only when configured
+        if (!string.IsNullOrWhiteSpace(_settings.SecurityProtocol) &&
+            Enum.TryParse<SecurityProtocol>(_settings.SecurityProtocol.Replace("_", ""), true, out var secProtocol))
+        {
+            config.SecurityProtocol = secProtocol;
+
+            if (!string.IsNullOrWhiteSpace(_settings.SaslMechanism) &&
+                Enum.TryParse<SaslMechanism>(_settings.SaslMechanism, true, out var saslMech))
+            {
+                config.SaslMechanism = saslMech;
+            }
+
+            config.SaslUsername = _settings.SaslUsername ?? _settings.ApiKey;
+            config.SaslPassword = _settings.SaslPassword ?? _settings.ApiSecret;
+        }
 
         while (!stoppingToken.IsCancellationRequested)
         {
