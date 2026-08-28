@@ -46,19 +46,27 @@ public abstract class KafkaConsumerBase : BackgroundService
         };
 
         // Apply SASL/SSL only when configured
-        if (!string.IsNullOrWhiteSpace(_settings.SecurityProtocol) &&
-            Enum.TryParse<SecurityProtocol>(_settings.SecurityProtocol.Replace("_", ""), true, out var secProtocol))
+        if (!string.IsNullOrWhiteSpace(_settings.SecurityProtocol))
         {
-            config.SecurityProtocol = secProtocol;
+            
+            var normalizedProtocol = _settings.SecurityProtocol.Replace("_", "").Replace("-", "");
 
-            if (!string.IsNullOrWhiteSpace(_settings.SaslMechanism) &&
-                Enum.TryParse<SaslMechanism>(_settings.SaslMechanism, true, out var saslMech))
+            if (Enum.TryParse<SecurityProtocol>(normalizedProtocol, true, out var secProtocol))
             {
-                config.SaslMechanism = saslMech;
-            }
+                config.SecurityProtocol = secProtocol;
 
-            config.SaslUsername = _settings.SaslUsername ?? _settings.ApiKey;
-            config.SaslPassword = _settings.SaslPassword ?? _settings.ApiSecret;
+                if (!string.IsNullOrWhiteSpace(_settings.SaslMechanism))
+                {
+                    var normalizedMechanism = _settings.SaslMechanism.Replace("_", "").Replace("-", "");
+                    if (Enum.TryParse<SaslMechanism>(normalizedMechanism, true, out var saslMech))
+                    {
+                        config.SaslMechanism = saslMech;
+                    }
+                }
+
+                config.SaslUsername = _settings.SaslUsername ?? _settings.ApiKey;
+                config.SaslPassword = _settings.SaslPassword ?? _settings.ApiSecret;
+            }
         }
 
         while (!stoppingToken.IsCancellationRequested)
