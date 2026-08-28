@@ -45,20 +45,21 @@ public abstract class KafkaConsumerBase : BackgroundService
             AutoOffsetReset = AutoOffsetReset.Earliest,
         };
 
-        // Apply SASL/SSL only when configured
+        // Parse SecurityProtocol robustly without breaking enum name formats (e.g. "SaslSsl", "SASL_SSL")
         if (!string.IsNullOrWhiteSpace(_settings.SecurityProtocol))
         {
-            
-            var normalizedProtocol = _settings.SecurityProtocol.Replace("_", "").Replace("-", "");
+            var rawProtocol = _settings.SecurityProtocol.Replace("-", "_");
 
-            if (Enum.TryParse<SecurityProtocol>(normalizedProtocol, true, out var secProtocol))
+            if (Enum.TryParse<SecurityProtocol>(rawProtocol, true, out var secProtocol) ||
+                Enum.TryParse<SecurityProtocol>(_settings.SecurityProtocol.Replace("_", ""), true, out secProtocol))
             {
                 config.SecurityProtocol = secProtocol;
 
                 if (!string.IsNullOrWhiteSpace(_settings.SaslMechanism))
                 {
-                    var normalizedMechanism = _settings.SaslMechanism.Replace("_", "").Replace("-", "");
-                    if (Enum.TryParse<SaslMechanism>(normalizedMechanism, true, out var saslMech))
+                    var rawMechanism = _settings.SaslMechanism.Replace("-", "_");
+                    if (Enum.TryParse<SaslMechanism>(rawMechanism, true, out var saslMech) ||
+                        Enum.TryParse<SaslMechanism>(_settings.SaslMechanism.Replace("_", ""), true, out saslMech))
                     {
                         config.SaslMechanism = saslMech;
                     }
@@ -67,20 +68,32 @@ public abstract class KafkaConsumerBase : BackgroundService
                 config.SaslUsername = _settings.SaslUsername ?? _settings.ApiKey;
                 config.SaslPassword = _settings.SaslPassword ?? _settings.ApiSecret;
             }
+            else
+            {
+                _logger.LogWarning("Failed to parse SecurityProtocol '{SecurityProtocol}'. Defaulting to Plaintext.", _settings.SecurityProtocol);
+            }
         }
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                using var consumer = new ConsumerBuilder<string, string>(config).Build();
+                using var consumer = new ConsumerBuilder<string, string>(config)
+                    .SetErrorHandler((_, error) =>
+                    {
+                        _logger.LogError("Kafka Consumer Error [{Code}]: {Reason} (IsFatal: {IsFatal})", 
+                            error.Code, error.Reason, error.IsFatal);
+                    })
+                    .Build();
+
                 consumer.Subscribe(Topics);
 
                 _logger.LogInformation(
-                    "Kafka consumer group {GroupId} listening for [{Topics}] on {BootstrapServers}",
+                    "Kafka consumer group {GroupId} listening for [{Topics}] on {BootstrapServers} (SecurityProtocol: {SecurityProtocol})",
                     GroupId,
                     string.Join(", ", Topics),
-                    bootstrapServers);
+                    bootstrapServers,
+                    config.SecurityProtocol?.ToString() ?? "Plaintext");
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
