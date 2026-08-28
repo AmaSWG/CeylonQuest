@@ -13,4 +13,11 @@ public class KafkaSettings
 
     // Delay before reconnecting when the consumer loop fails.
     public int RetryDelaySeconds { get; set; } = 5;
+	
+	// Confluent Cloud SASL/SSL Authentication
+	public string? SecurityProtocol { get; set; }   // "SASL_SSL" for Confluent Cloud
+    public string? SaslMechanism { get; set; }       // "PLAIN" for Confluent Cloud
+    public string? SaslUsername { get; set; }        // API Key
+    public string? SaslPassword { get; set; }        // API Secret
+	
 }

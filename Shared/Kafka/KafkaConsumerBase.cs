@@ -48,11 +48,19 @@ public abstract class KafkaConsumerBase : BackgroundService
 
         var config = new ConsumerConfig
         {
-            BootstrapServers = bootstrapServers,
+            BootstrapServers = settings.bootstrapServers,
             GroupId = GroupId,
             AutoOffsetReset = AutoOffsetReset.Earliest,
-            EnableAutoCommit = true
         };
+		
+		// Apply SASL/SSL only when configured (Confluent Cloud)
+		if (!string.IsNullOrEmpty(settings.SecurityProtocol))
+		{
+			config.SecurityProtocol = Enum.Parse<SecurityProtocol>(settings.SecurityProtocol, ignoreCase: true);
+			config.SaslMechanism    = Enum.Parse<SaslMechanism>(settings.SaslMechanism!, ignoreCase: true);
+			config.SaslUsername     = settings.SaslUsername;
+			config.SaslPassword     = settings.SaslPassword;
+		}
 
         while (!stoppingToken.IsCancellationRequested)
         {
