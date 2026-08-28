@@ -93,30 +93,42 @@
 /* Row with label + forgot link side by side */
 .login-label-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   margin-bottom: 7px;
 }
 
 .login-label-row label {
   margin-bottom: 0;
+  color: #123b5d;
+  font-size: 13.5px;
+  font-weight: 600;
 }
 
 .login-forgot-btn {
-  background: none;
+  background: transparent;
   border: none;
   padding: 0;
   color: #168aad;
   font-size: 12.5px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: color 0.2s ease;
+  line-height: 1;
+  text-decoration: none;
+  outline: none;
+  transition: color 0.18s ease;
 }
 
 .login-forgot-btn:hover {
   color: #123b5d;
   text-decoration: underline;
+}
+
+.login-forgot-btn:focus-visible {
+  outline: 2px solid #168aad;
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 /* ── Input wrapper (icon + input + optional toggle) ── */

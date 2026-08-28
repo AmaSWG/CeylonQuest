@@ -77,7 +77,6 @@ else
 }
 
 builder.Services.AddScoped<RegistrationService>();
-builder.Services.AddScoped<ProviderApplicationService>();
 builder.Services.AddScoped<ProviderActivationService>();
 builder.Services.AddScoped<UserProfileService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -106,7 +105,7 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Apply pending EF Core migrations at startup (ensures ProviderApplications table exists)
+// Apply pending EF Core migrations at startup
 if (!app.Environment.IsEnvironment("Testing"))
 {
     using (var scope = app.Services.CreateScope())
@@ -134,40 +133,22 @@ if (!app.Environment.IsEnvironment("Testing"))
             var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
             logger.LogWarning(ex, "Skipping migrations because they could not be applied or were disabled.");
         }
-        // Fallback: ensure ProviderApplications table exists (in case migrations weren't detected/applied)
+
+        // Drop the legacy ProviderApplications table from MySQL if it exists
         try
         {
-            var providerName2 = db.Database.ProviderName ?? string.Empty;
-            if (!providerName2.Contains("InMemory", StringComparison.OrdinalIgnoreCase))
+            var providerName = db.Database.ProviderName ?? string.Empty;
+            if (!providerName.Contains("InMemory", StringComparison.OrdinalIgnoreCase))
             {
-                db.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `ProviderApplications` (
-                `Id` char(36) NOT NULL,
-                `FirstName` longtext NOT NULL,
-                `LastName` longtext NOT NULL,
-                `Email` varchar(255) NOT NULL,
-                `PhoneNumber` longtext NOT NULL,
-                `BusinessName` longtext NOT NULL,
-                `ServiceType` longtext NOT NULL,
-                `Location` longtext NOT NULL,
-                `Description` longtext NOT NULL,
-                `LegalDocumentFileName` longtext NULL,
-                `Status` int NOT NULL,
-                `RejectionReason` longtext NULL,
-                `CreatedAt` datetime(6) NOT NULL,
-                PRIMARY KEY (`Id`)
-            ) CHARACTER SET = utf8mb4;");
-                try
-                {
-                    db.Database.ExecuteSqlRaw(@"ALTER TABLE `ProviderApplications` ADD COLUMN `RejectionReason` longtext NULL;");
-                }
-                catch { /* column may already exist */ }
+                db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS `ProviderApplications`;");
             }
         }
-        catch (Exception exSql)
+        catch (Exception exDrop)
         {
             var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
-            logger.LogError(exSql, "CREATE TABLE fallback failed");
+            logger.LogWarning(exDrop, "Could not drop legacy ProviderApplications table.");
         }
+
         // Seed Default Admin Account if not already present
         try
         {

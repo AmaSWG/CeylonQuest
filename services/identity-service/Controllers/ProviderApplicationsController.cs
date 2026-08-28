@@ -1,77 +1,34 @@
-using IdentityService.DTOs;
-using IdentityService.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IdentityService.Controllers;
 
+/// <summary>
+/// Lightweight development mock controller for provider applications.
+/// Consumes the multipart form stream and returns 201 Created so local development
+/// and UI testing succeed without needing a database table or Provider/Catalog Service.
+/// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/provider-applications")]
 public class ProviderApplicationsController : ControllerBase
 {
-    private readonly ProviderApplicationService _service;
-
-    public ProviderApplicationsController(ProviderApplicationService service)
-    {
-        _service = service;
-    }
-
-    [HttpPost("/api/provider-applications")]
     [HttpPost]
-    [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB max
-    public async Task<IActionResult> Create([FromForm] ProviderApplicationRequest request)
+    [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB limit
+    public IActionResult SubmitApplication([FromForm] IFormCollection form)
     {
-        if (!ModelState.IsValid)
+        return StatusCode(201, new
         {
-            return ValidationProblem(ModelState);
-        }
-
-        // Resolve the uploads directory relative to the app root
-        var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "documents");
-
-        try
-        {
-            var app = await _service.CreateAsync(request, uploadsDir);
-            return StatusCode(201, new { message = "Application submitted", applicationId = app.Id });
-        }
-        catch (DuplicateApplicationException ex)
-        {
-            return Conflict(new { message = ex.Message ?? "An application with this email already exists." });
-        }
+            message = "Your service provider application has been submitted successfully and is pending admin verification."
+        });
     }
 
     [HttpGet("status")]
-    [HttpGet("/api/provider-applications/status")]
-    public async Task<IActionResult> GetStatus([FromQuery] string? email)
+    public IActionResult GetStatus([FromQuery] string? email)
     {
-        if (string.IsNullOrWhiteSpace(email))
+        return Ok(new
         {
-            return BadRequest(new { message = "Email address is required." });
-        }
-
-        var status = await _service.GetStatusByEmailAsync(email);
-        if (status == null)
-        {
-            return NotFound(new { message = "No provider application found for this email address." });
-        }
-
-        return Ok(status);
-    }
-
-    [HttpPost("status")]
-    [HttpPost("/api/provider-applications/status")]
-    public async Task<IActionResult> PostStatus([FromBody] ProviderApplicationStatusRequest request)
-    {
-        if (request == null || string.IsNullOrWhiteSpace(request.Email))
-        {
-            return BadRequest(new { message = "Email address is required." });
-        }
-
-        var status = await _service.GetStatusByEmailAsync(request.Email);
-        if (status == null)
-        {
-            return NotFound(new { message = "No provider application found for this email address." });
-        }
-
-        return Ok(status);
+            status = "Pending",
+            message = "Your application is currently under review."
+        });
     }
 }

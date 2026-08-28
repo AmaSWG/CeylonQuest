@@ -16,7 +16,7 @@ function formatDate(iso) {
   }
 }
 
-function ProviderApplicationStatus({ onBack, onApply, onLogin }) {
+function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
@@ -230,21 +230,31 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin }) {
                       <strong>What happens next?</strong>
                       <p>
                         An activation OTP (One-Time Password) was dispatched to <strong>{result.email}</strong>.
-                        Use it along with your chosen password to activate your CeylonQuest provider portal.
+                        Use your OTP to complete your personal contact profile and activate your provider portal.
                       </p>
                     </div>
                   </div>
-                  {onLogin && (
-                    <div className="pas-action-row">
+                  <div className="pas-action-row" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    {onActivate && (
                       <button
                         type="button"
                         className="pas-btn-primary"
+                        id="pas-enter-otp-btn"
+                        onClick={onActivate}
+                      >
+                        🔑 Enter OTP &amp; Complete Profile →
+                      </button>
+                    )}
+                    {onLogin && (
+                      <button
+                        type="button"
+                        className="pas-btn-secondary"
                         onClick={onLogin}
                       >
-                        Proceed to Login &amp; Activation →
+                        Sign In →
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
 

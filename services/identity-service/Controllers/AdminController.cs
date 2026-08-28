@@ -34,10 +34,6 @@ public class AdminController : ControllerBase
         var totalProviders = await _db.Users.CountAsync(u => u.Role == UserRole.Provider);
         var totalAdmins = await _db.Users.CountAsync(u => u.Role == UserRole.Admin);
 
-        var pendingApps = await _db.ProviderApplications.CountAsync(a => a.Status == ProviderApplicationStatus.Pending);
-        var approvedApps = await _db.ProviderApplications.CountAsync(a => a.Status == ProviderApplicationStatus.Approved);
-        var rejectedApps = await _db.ProviderApplications.CountAsync(a => a.Status == ProviderApplicationStatus.Rejected);
-
         var totalServices = await _db.ProviderServicePrices.CountAsync();
 
         var stats = new AdminStatsResponse
@@ -46,9 +42,9 @@ public class AdminController : ControllerBase
             TotalVisitors        = totalVisitors,
             TotalProviders       = totalProviders,
             TotalAdmins          = totalAdmins,
-            PendingApplications  = pendingApps,
-            ApprovedApplications = approvedApps,
-            RejectedApplications = rejectedApps,
+            PendingApplications  = 0,
+            ApprovedApplications = 0,
+            RejectedApplications = 0,
             TotalServices        = totalServices
         };
 
@@ -113,88 +109,17 @@ public class AdminController : ControllerBase
 
     // GET /api/admin/provider-applications
     [HttpGet("provider-applications")]
-    public async Task<IActionResult> GetProviderApplications([FromQuery] string? status)
+    public IActionResult GetProviderApplications([FromQuery] string? status)
     {
-        var query = _db.ProviderApplications.AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<ProviderApplicationStatus>(status, true, out var parsedStatus))
-        {
-            query = query.Where(a => a.Status == parsedStatus);
-        }
-
-        var applications = await query
-            .OrderByDescending(a => a.CreatedAt)
-            .Select(a => new AdminProviderApplicationResponse
-            {
-                Id                    = a.Id,
-                FirstName             = a.FirstName,
-                LastName              = a.LastName,
-                Email                 = a.Email,
-                PhoneNumber           = a.PhoneNumber,
-                BusinessName          = a.BusinessName,
-                ServiceType           = a.ServiceType,
-                Location              = a.Location,
-                Description           = a.Description,
-                LegalDocumentFileName = a.LegalDocumentFileName,
-                Status                = a.Status.ToString(),
-                RejectionReason       = a.RejectionReason,
-                CreatedAt             = a.CreatedAt
-            })
-            .ToListAsync();
-
-        return Ok(applications);
+        // Provider applications are managed by the Provider/Catalog Service
+        return Ok(new List<AdminProviderApplicationResponse>());
     }
 
     // GET /api/admin/provider-applications/{id:guid}/document
     [HttpGet("provider-applications/{id:guid}/document")]
-    public async Task<IActionResult> DownloadApplicationDocument(Guid id)
+    public IActionResult DownloadApplicationDocument(Guid id)
     {
-        var application = await _db.ProviderApplications.FirstOrDefaultAsync(a => a.Id == id);
-        if (application is null)
-        {
-            return NotFound(new { message = "Provider application not found." });
-        }
-
-        // storedFileName is the name on disk (e.g. "guid_original.pdf")
-        var storedFileName = application.LegalDocumentFileName;
-
-        if (string.IsNullOrWhiteSpace(storedFileName))
-        {
-            return NotFound(new { message = "No document was submitted with this application." });
-        }
-
-        var uploadsDir = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "uploads", "documents");
-        var filePath   = System.IO.Path.Combine(uploadsDir, storedFileName);
-
-        if (!System.IO.File.Exists(filePath))
-        {
-            return NotFound(new { message = "Document file not found on server." });
-        }
-
-        var bytes = await System.IO.File.ReadAllBytesAsync(filePath);
-
-        // Determine content type from extension
-        var ext = System.IO.Path.GetExtension(storedFileName).ToLowerInvariant();
-        var contentType = ext switch
-        {
-            ".pdf"  => "application/pdf",
-            ".png"  => "image/png",
-            ".jpg"  => "image/jpeg",
-            ".jpeg" => "image/jpeg",
-            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            ".doc"  => "application/msword",
-            _       => "application/octet-stream"
-        };
-
-        // Strip the leading {guid}_ prefix so the admin sees the original clean filename
-        var downloadName = storedFileName;
-        var underscoreIdx = storedFileName.IndexOf('_');
-        if (underscoreIdx > 0 && Guid.TryParse(storedFileName[..underscoreIdx], out _))
-        {
-            downloadName = storedFileName[(underscoreIdx + 1)..];
-        }
-
-        return File(bytes, contentType, downloadName);
+        return NotFound(new { message = "Provider applications and documents are managed by the Provider/Catalog Service." });
     }
 
     // GET /api/admin/reports

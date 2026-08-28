@@ -12,7 +12,6 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
-    public DbSet<ProviderApplication> ProviderApplications => Set<ProviderApplication>();
     public DbSet<ProviderTimeSlot> ProviderTimeSlots => Set<ProviderTimeSlot>();
     public DbSet<ProviderServicePrice> ProviderServicePrices => Set<ProviderServicePrice>();
 

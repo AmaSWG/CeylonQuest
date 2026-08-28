@@ -53,30 +53,6 @@ public class AdminReportServiceTests
         db.SaveChanges();
     }
 
-    private static void SeedApplication(
-        ApplicationDbContext db,
-        string email,
-        ProviderApplicationStatus status  = ProviderApplicationStatus.Pending,
-        string serviceType                = "Tour Guide",
-        DateTime? createdAt               = null)
-    {
-        db.ProviderApplications.Add(new ProviderApplication
-        {
-            Id           = Guid.NewGuid(),
-            FirstName    = "App",
-            LastName     = "Applicant",
-            Email        = email,
-            PhoneNumber  = "0771234567",
-            BusinessName = "Test Business",
-            ServiceType  = serviceType,
-            Location     = "Colombo",
-            Description  = "Test",
-            Status       = status,
-            CreatedAt    = createdAt ?? DateTime.UtcNow
-        });
-        db.SaveChanges();
-    }
-
     // ══════════════════════════════════════════════════════════════════════════
     // Registration Summary Tests
     // ══════════════════════════════════════════════════════════════════════════
@@ -194,85 +170,6 @@ public class AdminReportServiceTests
         Assert.Equal(0, report.Registrations.InactiveUsers);
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // Application Summary Tests
-    // ══════════════════════════════════════════════════════════════════════════
-
-    [Fact]
-    public async Task GetReportAsync_NoFilters_ReturnsCorrectApplicationTotals()
-    {
-        using var db = CreateDbContext();
-        var svc = CreateService(db);
-
-        SeedApplication(db, "app1@test.com", ProviderApplicationStatus.Pending);
-        SeedApplication(db, "app2@test.com", ProviderApplicationStatus.Pending);
-        SeedApplication(db, "app3@test.com", ProviderApplicationStatus.Approved);
-        SeedApplication(db, "app4@test.com", ProviderApplicationStatus.Rejected);
-
-        var report = await svc.GetReportAsync(new ReportQueryParams());
-
-        Assert.Equal(4, report.Applications.TotalApplications);
-        Assert.Equal(2, report.Applications.PendingApplications);
-        Assert.Equal(1, report.Applications.ApprovedApplications);
-        Assert.Equal(1, report.Applications.RejectedApplications);
-    }
-
-    [Fact]
-    public async Task GetReportAsync_ApplicationStatusFilter_ReturnsOnlyMatchingStatus()
-    {
-        using var db = CreateDbContext();
-        var svc = CreateService(db);
-
-        SeedApplication(db, "pend1@test.com", ProviderApplicationStatus.Pending);
-        SeedApplication(db, "pend2@test.com", ProviderApplicationStatus.Pending);
-        SeedApplication(db, "appr@test.com",  ProviderApplicationStatus.Approved);
-
-        var report = await svc.GetReportAsync(new ReportQueryParams { ApplicationStatus = "Pending" });
-
-        Assert.Equal(2, report.Applications.TotalApplications);
-        Assert.Equal(2, report.Applications.PendingApplications);
-        Assert.Equal(0, report.Applications.ApprovedApplications);
-    }
-
-    [Fact]
-    public async Task GetReportAsync_ApplicationDateFilter_ExcludesOutOfRangeApplications()
-    {
-        using var db = CreateDbContext();
-        var svc = CreateService(db);
-
-        var old    = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var recent = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        SeedApplication(db, "old@test.com",    createdAt: old);
-        SeedApplication(db, "recent@test.com", createdAt: recent);
-
-        var report = await svc.GetReportAsync(new ReportQueryParams
-        {
-            DateFrom = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc)
-        });
-
-        Assert.Equal(1, report.Applications.TotalApplications);
-    }
-
-    [Fact]
-    public async Task GetReportAsync_ServiceTypeBreakdown_GroupsCorrectly()
-    {
-        using var db = CreateDbContext();
-        var svc = CreateService(db);
-
-        SeedApplication(db, "a1@test.com", serviceType: "Tour Guide");
-        SeedApplication(db, "a2@test.com", serviceType: "Tour Guide");
-        SeedApplication(db, "a3@test.com", serviceType: "Hotel");
-        SeedApplication(db, "a4@test.com", serviceType: "Safari");
-
-        var report = await svc.GetReportAsync(new ReportQueryParams());
-
-        Assert.Equal(3, report.Applications.ByServiceType.Count);
-        // Tour Guide should be first (highest count)
-        Assert.Equal("Tour Guide", report.Applications.ByServiceType[0].ServiceType);
-        Assert.Equal(2, report.Applications.ByServiceType[0].Count);
-    }
-
     [Fact]
     public async Task GetReportAsync_GeneratedAt_IsRecentUtcTimestamp()
     {
@@ -296,15 +193,13 @@ public class AdminReportServiceTests
         {
             DateFrom          = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             DateTo            = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc),
-            Role              = "Visitor",
-            ApplicationStatus = "Pending"
+            Role              = "Visitor"
         };
 
         var report = await svc.GetReportAsync(filters);
 
-        Assert.Equal(filters.DateFrom,          report.AppliedFilters.DateFrom);
-        Assert.Equal(filters.DateTo,            report.AppliedFilters.DateTo);
-        Assert.Equal(filters.Role,              report.AppliedFilters.Role);
-        Assert.Equal(filters.ApplicationStatus, report.AppliedFilters.ApplicationStatus);
+        Assert.Equal(filters.DateFrom, report.AppliedFilters.DateFrom);
+        Assert.Equal(filters.DateTo,   report.AppliedFilters.DateTo);
+        Assert.Equal(filters.Role,     report.AppliedFilters.Role);
     }
 }

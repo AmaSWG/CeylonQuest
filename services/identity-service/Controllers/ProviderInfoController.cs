@@ -34,12 +34,6 @@ public class ProviderInfoController : ControllerBase
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == providerId.Value);
         if (user is null) return NotFound(new { message = "Provider not found." });
 
-        // Look up the most recent application for this provider's email.
-        var application = await _db.ProviderApplications
-            .Where(a => a.Email.ToLower() == user.Email.ToLower())
-            .OrderByDescending(a => a.CreatedAt)
-            .FirstOrDefaultAsync();
-
         var response = new ProviderInfoResponse
         {
             UserId             = user.Id,
@@ -47,11 +41,11 @@ public class ProviderInfoController : ControllerBase
             LastName           = user.LastName,
             Email              = user.Email,
             PhoneNumber        = user.PhoneNumber,
-            BusinessName       = application?.BusinessName ?? string.Empty,
-            ServiceType        = application?.ServiceType  ?? string.Empty,
-            Location           = application?.Location     ?? string.Empty,
-            Description        = application?.Description  ?? string.Empty,
-            VerificationStatus = application != null && application.Status == ProviderApplicationStatus.Approved ? "Verified" : (application?.Status.ToString() ?? "Verified"),
+            BusinessName       = $"{user.FirstName} {user.LastName}".Trim(),
+            ServiceType        = "Service Provider",
+            Location           = user.Nationality,
+            Description        = string.Empty,
+            VerificationStatus = user.IsActive ? "Verified" : "Pending",
             MemberSince        = user.CreatedAt
         };
 
@@ -70,37 +64,6 @@ public class ProviderInfoController : ControllerBase
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == providerId.Value);
         if (user is null) return NotFound(new { message = "Provider not found." });
 
-        var application = await _db.ProviderApplications
-            .Where(a => a.Email.ToLower() == user.Email.ToLower())
-            .OrderByDescending(a => a.CreatedAt)
-            .FirstOrDefaultAsync();
-
-        if (application is null)
-        {
-            application = new ProviderApplication
-            {
-                Id           = Guid.NewGuid(),
-                FirstName    = user.FirstName,
-                LastName     = user.LastName,
-                Email        = user.Email,
-                PhoneNumber  = user.PhoneNumber,
-                BusinessName = request.BusinessName.Trim(),
-                ServiceType  = request.ServiceType.Trim(),
-                Location     = request.Location.Trim(),
-                Description  = request.Description.Trim(),
-                Status       = ProviderApplicationStatus.Approved,
-                CreatedAt    = DateTime.UtcNow
-            };
-            _db.ProviderApplications.Add(application);
-        }
-        else
-        {
-            application.BusinessName = request.BusinessName.Trim();
-            application.ServiceType  = request.ServiceType.Trim();
-            application.Location     = request.Location.Trim();
-            application.Description  = request.Description.Trim();
-        }
-
         await _db.SaveChangesAsync();
 
         var response = new ProviderInfoResponse
@@ -110,11 +73,11 @@ public class ProviderInfoController : ControllerBase
             LastName           = user.LastName,
             Email              = user.Email,
             PhoneNumber        = user.PhoneNumber,
-            BusinessName       = application.BusinessName,
-            ServiceType        = application.ServiceType,
-            Location           = application.Location,
-            Description        = application.Description,
-            VerificationStatus = "Verified",
+            BusinessName       = request.BusinessName?.Trim() ?? $"{user.FirstName} {user.LastName}".Trim(),
+            ServiceType        = request.ServiceType?.Trim() ?? "Service Provider",
+            Location           = request.Location?.Trim() ?? user.Nationality,
+            Description        = request.Description?.Trim() ?? string.Empty,
+            VerificationStatus = user.IsActive ? "Verified" : "Pending",
             MemberSince        = user.CreatedAt
         };
 

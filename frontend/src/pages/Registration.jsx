@@ -34,7 +34,7 @@ function validateRegistration(data) {
   return null
 }
 
-function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome }) {
+function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome, onActivateProvider }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
@@ -264,6 +264,19 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome }) {
                   onClick={(e) => { e.preventDefault(); onCheckStatus(); }}
                 >
                   Check Application Status →
+                </a>
+              </p>
+            )}
+            {onActivateProvider && (
+              <p style={{ marginTop: '6px', fontSize: '13px', color: '#64748b' }}>
+                Approved Provider?{' '}
+                <a
+                  href="#"
+                  id="activate-provider-link"
+                  style={{ color: '#b8860b', fontWeight: '700', textDecoration: 'underline' }}
+                  onClick={(e) => { e.preventDefault(); onActivateProvider(); }}
+                >
+                  Activate Account with OTP →
                 </a>
               </p>
             )}

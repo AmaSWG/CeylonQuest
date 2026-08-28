@@ -1,5 +1,5 @@
-import '../styles/Login.css'
 import { useState, useEffect } from 'react'
+import '../styles/Login.css'
 
 function LoginSuccessToast({ message, onClose }) {
   useEffect(() => {
@@ -8,7 +8,7 @@ function LoginSuccessToast({ message, onClose }) {
   }, [onClose])
 
   return (
-    <div className="login-toast login-toast--success" role="alert" aria-live="polite">
+    <div className="login-toast login-toast--success" role="alert">
       <div className="login-toast__icon">✓</div>
       <div className="login-toast__body">
         <p className="login-toast__title">Welcome back!</p>
@@ -19,7 +19,7 @@ function LoginSuccessToast({ message, onClose }) {
   )
 }
 
-function Login({ onLoginSuccess, onBack, onForgotPassword, onHome }) {
+function Login({ onLoginSuccess, onBack, onForgotPassword, onHome, onActivateProvider }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -30,57 +30,37 @@ function Login({ onLoginSuccess, onBack, onForgotPassword, onHome }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
-    setToast(null)
-
-    const trimmedEmail = email.trim()
-    if (!trimmedEmail) {
-      setError('Please enter your email address.')
-      return
-    }
-
-    if (!password) {
-      setError('Please enter your password.')
-      return
-    }
-
     setLoading(true)
-
-    const data = {
-      email:    trimmedEmail,
-      password: password
-    }
 
     try {
       const resp = await fetch('/api/auth/login', {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(data)
+        body: JSON.stringify({ email, password })
       })
 
       if (resp.ok) {
-        const body = await resp.json().catch(() => ({}))
-        const token = body.accessToken || body.token || null
-        const role  = body.role || 'Visitor'
-        if (token) {
-          localStorage.setItem('authToken', token)
-          localStorage.setItem('userRole',  role)
-          if (onLoginSuccess) {
-            onLoginSuccess(role)
-          }
-        } else {
-          setError('Login succeeded but no token was received.')
-        }
+        const data = await resp.json()
+        const token = data.accessToken || data.token
+        const role  = data.role
+
+        if (token) localStorage.setItem('authToken', token)
+        if (role)  localStorage.setItem('userRole', role)
+
+        setToast('Login successful! Redirecting...')
+        setTimeout(() => {
+          onLoginSuccess && onLoginSuccess(role)
+        }, 800)
       } else if (resp.status === 401) {
-        const body = await resp.json().catch(() => ({}))
-        setError(body.message || 'Incorrect email or password. Please try again.')
-      } else if (resp.status === 400 || resp.status === 422) {
-        const body = await resp.json().catch(() => ({}))
-        const first = body.errors && Object.values(body.errors).flat()[0]
-        setError(first || body.message || body.title || 'Validation error. Please check your email and password.')
+        const data = await resp.json().catch(() => ({}))
+        setError(data.message || 'Invalid email or password.')
+      } else if (resp.status === 400) {
+        const data = await resp.json().catch(() => ({}))
+        setError(data.message || 'Please check your login details.')
       } else {
-        setError('Server error. Please try again later.')
+        setError('Login failed. Please try again later.')
       }
-    } catch (ex) {
+    } catch {
       setError('Network error. Please check your connection.')
     } finally {
       setLoading(false)
@@ -115,9 +95,13 @@ function Login({ onLoginSuccess, onBack, onForgotPassword, onHome }) {
           <p>Sign in to continue your journey through Sri Lanka.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="login-form" noValidate>
+        <form onSubmit={handleSubmit} className="login-form">
 
-          {error && <div className="login-error">{error}</div>}
+          {error && (
+            <div className="login-error" role="alert">
+              {error}
+            </div>
+          )}
 
           <div className="login-field">
             <label htmlFor="login-email">Email Address</label>
@@ -132,7 +116,7 @@ function Login({ onLoginSuccess, onBack, onForgotPassword, onHome }) {
                 type="email"
                 id="login-email"
                 name="email"
-                placeholder="Enter your email address"
+                placeholder="Enter your email"
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -144,8 +128,8 @@ function Login({ onLoginSuccess, onBack, onForgotPassword, onHome }) {
           <div className="login-field">
             <div className="login-label-row">
               <label htmlFor="login-password">Password</label>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="login-forgot-btn"
                 onClick={() => onForgotPassword && onForgotPassword()}
                 tabIndex={0}
@@ -214,6 +198,21 @@ function Login({ onLoginSuccess, onBack, onForgotPassword, onHome }) {
           </button>
         </p>
 
+        {onActivateProvider && (
+          <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px dashed #e2e8f0', textAlign: 'center' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+              Approved Service Provider?{' '}
+              <button
+                type="button"
+                onClick={onActivateProvider}
+                id="login-activate-provider-btn"
+                style={{ background: 'none', border: 'none', color: '#123b5d', fontWeight: '700', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+              >
+                Activate Account with OTP →
+              </button>
+            </p>
+          </div>
+        )}
 
       </div>
     </div>

@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage'
 import Registration from './pages/Registration'
 import ProviderApplication from './pages/ProviderApplication'
 import ProviderApplicationStatus from './pages/ProviderApplicationStatus'
+import ProviderActivation from './pages/ProviderActivation'
 import Login from './pages/Login'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
@@ -24,6 +25,9 @@ function App() {
     }
     if (path.includes('forgot-password') || params.get('page') === 'forgot-password') {
       return 'forgot-password'
+    }
+    if (path.includes('provider-activate') || path.includes('provider-activation') || params.get('page') === 'provider-activate') {
+      return 'provider-activate'
     }
     if (path.includes('provider-status') || path.includes('application-status') || params.get('page') === 'provider-status' || params.get('page') === 'application-status') {
       return 'provider-status'
@@ -64,6 +68,7 @@ function App() {
       <ProviderApplication
         onBack={() => setPage('registration')}
         onCheckStatus={() => setPage('provider-status')}
+        onActivate={() => setPage('provider-activate')}
       />
     )
   }
@@ -74,6 +79,17 @@ function App() {
         onBack={() => setPage('registration')}
         onApply={() => setPage('provider-application')}
         onLogin={() => setPage('login')}
+        onActivate={() => setPage('provider-activate')}
+      />
+    )
+  }
+
+  if (page === 'provider-activate') {
+    return (
+      <ProviderActivation
+        onLogin={() => setPage('login')}
+        onBack={() => setPage('registration')}
+        onStatusCheck={() => setPage('provider-status')}
       />
     )
   }
@@ -85,6 +101,7 @@ function App() {
         onBack={() => setPage('registration')}
         onForgotPassword={() => setPage('forgot-password')}
         onHome={() => setPage('home')}
+        onActivateProvider={() => setPage('provider-activate')}
       />
     )
   }
@@ -138,6 +155,7 @@ function App() {
     <Registration
       onApplyAsProvider={() => setPage('provider-application')}
       onCheckStatus={() => setPage('provider-status')}
+      onActivateProvider={() => setPage('provider-activate')}
       onLogin={() => setPage('login')}
       onHome={() => setPage('home')}
     />

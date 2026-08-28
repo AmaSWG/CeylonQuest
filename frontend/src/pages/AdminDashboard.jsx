@@ -349,16 +349,26 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
 
             <div className="ad-fields">
               <div className="ad-field">
-                <span className="ad-field__label">Applicant Name</span>
-                <span className="ad-field__value">👤 {selectedApp.firstName} {selectedApp.lastName}</span>
+                <span className="ad-field__label">Business / Contact</span>
+                <span className="ad-field__value">🏢 {selectedApp.businessName || 'Business Application'}</span>
               </div>
               <div className="ad-field">
                 <span className="ad-field__label">Contact Email</span>
                 <span className="ad-field__value">✉️ {selectedApp.email}</span>
               </div>
               <div className="ad-field">
+                <span className="ad-field__label">Applicant Personal Details</span>
+                <span className="ad-field__value">
+                  👤 {(selectedApp.firstName || selectedApp.lastName) 
+                    ? `${selectedApp.firstName || ''} ${selectedApp.lastName || ''}`.trim() 
+                    : 'To be completed by Provider via OTP activation'}
+                </span>
+              </div>
+              <div className="ad-field">
                 <span className="ad-field__label">Contact Phone</span>
-                <span className="ad-field__value">📞 {selectedApp.phoneNumber}</span>
+                <span className="ad-field__value">
+                  📞 {selectedApp.phoneNumber || 'Completed upon OTP activation'}
+                </span>
               </div>
               <div className="ad-field">
                 <span className="ad-field__label">Service Category</span>
@@ -468,8 +478,10 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
                     <tr key={app.id}>
                       <td style={{ fontWeight: 700, color: '#123b5d' }}>{app.businessName}</td>
                       <td>
-                        <div>{app.firstName} {app.lastName}</div>
-                        <div style={{ fontSize: '11.5px', color: '#888' }}>{app.email}</div>
+                        <div style={{ fontWeight: 600, color: '#334155' }}>
+                          {(app.firstName || app.lastName) ? `${app.firstName || ''} ${app.lastName || ''}`.trim() : 'Business Contact'}
+                        </div>
+                        <div style={{ fontSize: '11.5px', color: '#64748b' }}>{app.email}</div>
                       </td>
                       <td>{app.serviceType}</td>
                       <td>{app.location}</td>

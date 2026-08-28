@@ -137,85 +137,8 @@ public class AdminReportService
         var conn = _db.Database.GetDbConnection();
         await EnsureOpenAsync(conn);
 
+        // Provider applications are managed by Provider/Catalog Service
         var summary = new ApplicationSummary();
-
-        // Build WHERE clauses for applications.
-        var whereClauses = new List<string>();
-        var parameters   = new List<(string Name, object? Value)>();
-
-        if (f.DateFrom.HasValue)
-        {
-            whereClauses.Add("CreatedAt >= @dateFrom");
-            parameters.Add(("@dateFrom", f.DateFrom.Value.Date));
-        }
-
-        if (f.DateTo.HasValue)
-        {
-            whereClauses.Add("CreatedAt < @dateTo");
-            parameters.Add(("@dateTo", f.DateTo.Value.Date.AddDays(1)));
-        }
-
-        if (!string.IsNullOrWhiteSpace(f.ApplicationStatus) &&
-            Enum.TryParse<ProviderApplicationStatus>(f.ApplicationStatus, true, out var parsedStatus))
-        {
-            whereClauses.Add("Status = @status");
-            parameters.Add(("@status", (int)parsedStatus));
-        }
-
-        var where = whereClauses.Count > 0 ? " WHERE " + string.Join(" AND ", whereClauses) : string.Empty;
-
-        // ── Status breakdown ────────────────────────────────────────────────
-        var sql = $@"
-            SELECT
-                COUNT(*) AS Total,
-                SUM(CASE WHEN Status = 0 THEN 1 ELSE 0 END) AS Pending,
-                SUM(CASE WHEN Status = 1 THEN 1 ELSE 0 END) AS Approved,
-                SUM(CASE WHEN Status = 2 THEN 1 ELSE 0 END) AS Rejected
-            FROM ProviderApplications{where}";
-
-        using (var cmd = conn.CreateCommand())
-        {
-            cmd.CommandText = sql;
-            AddParameters(cmd, parameters);
-
-            using var reader = await cmd.ExecuteReaderAsync();
-            if (await reader.ReadAsync())
-            {
-                summary.TotalApplications    = reader.IsDBNull(0) ? 0 : Convert.ToInt32(reader[0]);
-                summary.PendingApplications  = reader.IsDBNull(1) ? 0 : Convert.ToInt32(reader[1]);
-                summary.ApprovedApplications = reader.IsDBNull(2) ? 0 : Convert.ToInt32(reader[2]);
-                summary.RejectedApplications = reader.IsDBNull(3) ? 0 : Convert.ToInt32(reader[3]);
-            }
-        }
-
-        // ── Service type breakdown ──────────────────────────────────────────
-        var sqlByType = $@"
-            SELECT ServiceType, COUNT(*) AS Cnt
-            FROM ProviderApplications{where}
-            GROUP BY ServiceType
-            ORDER BY Cnt DESC";
-
-        using (var cmd2 = conn.CreateCommand())
-        {
-            cmd2.CommandText = sqlByType;
-            AddParameters(cmd2, parameters);
-
-            using var r2 = await cmd2.ExecuteReaderAsync();
-            while (await r2.ReadAsync())
-            {
-                summary.ByServiceType.Add(new ServiceTypeBreakdown
-                {
-                    ServiceType = r2.IsDBNull(0) ? "Unknown" : r2.GetString(0),
-                    Count       = r2.IsDBNull(1) ? 0 : Convert.ToInt32(r2[1])
-                });
-            }
-        }
-
-        _logger.LogInformation(
-            "AdminReportService: Application summary — Total={Total}, Pending={P}, Approved={A}, Rejected={R}",
-            summary.TotalApplications, summary.PendingApplications,
-            summary.ApprovedApplications, summary.RejectedApplications);
-
         return summary;
     }
 
@@ -250,34 +173,10 @@ public class AdminReportService
         };
     }
 
-    private async Task<ApplicationSummary> GetApplicationSummaryLinqAsync(ReportQueryParams f)
+    private Task<ApplicationSummary> GetApplicationSummaryLinqAsync(ReportQueryParams f)
     {
-        var query = _db.ProviderApplications.AsQueryable();
-
-        if (f.DateFrom.HasValue)
-            query = query.Where(a => a.CreatedAt >= f.DateFrom.Value.Date);
-
-        if (f.DateTo.HasValue)
-            query = query.Where(a => a.CreatedAt < f.DateTo.Value.Date.AddDays(1));
-
-        if (!string.IsNullOrWhiteSpace(f.ApplicationStatus) &&
-            Enum.TryParse<ProviderApplicationStatus>(f.ApplicationStatus, true, out var parsedStatus))
-            query = query.Where(a => a.Status == parsedStatus);
-
-        var apps = await query.ToListAsync();
-
-        return new ApplicationSummary
-        {
-            TotalApplications    = apps.Count,
-            PendingApplications  = apps.Count(a => a.Status == ProviderApplicationStatus.Pending),
-            ApprovedApplications = apps.Count(a => a.Status == ProviderApplicationStatus.Approved),
-            RejectedApplications = apps.Count(a => a.Status == ProviderApplicationStatus.Rejected),
-            ByServiceType = apps
-                .GroupBy(a => a.ServiceType)
-                .Select(g => new ServiceTypeBreakdown { ServiceType = g.Key, Count = g.Count() })
-                .OrderByDescending(x => x.Count)
-                .ToList()
-        };
+        // Provider applications are managed by Provider/Catalog Service
+        return Task.FromResult(new ApplicationSummary());
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
