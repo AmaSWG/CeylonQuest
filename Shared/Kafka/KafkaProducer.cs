@@ -18,23 +18,39 @@ public sealed class KafkaProducer : IKafkaProducer, IDisposable
     private readonly string _bootstrapServers;
 
     public KafkaProducer(IOptions<KafkaSettings> options, ILogger<KafkaProducer> logger)
-    {
-        _logger = logger;
-
-        var settings = options.Value;
-        _bootstrapServers = string.IsNullOrWhiteSpace(settings.BootstrapServers)
-            ? "localhost:9092"
-            : settings.BootstrapServers;
-
-        var config = new ProducerConfig
-        {
-            BootstrapServers = _bootstrapServers,
-            MessageTimeoutMs = settings.MessageTimeoutMs > 0 ? settings.MessageTimeoutMs : 5000
-        };
-
-        _producer = new ProducerBuilder<string, string>(config).Build();
-        _logger.LogInformation("Shared Kafka producer configured for {BootstrapServers}", _bootstrapServers);
-    }
+	{
+		_logger = logger;
+		var settings = options.Value;
+		_bootstrapServers = string.IsNullOrWhiteSpace(settings.BootstrapServers)
+			? "localhost:9092"
+			: settings.BootstrapServers;
+		var config = new ProducerConfig
+		{
+			BootstrapServers = _bootstrapServers,
+			MessageTimeoutMs = settings.MessageTimeoutMs > 0 ? settings.MessageTimeoutMs : 5000
+		};
+		
+		if (!string.IsNullOrWhiteSpace(settings.SecurityProtocol))
+		{
+			var normalizedProtocol = settings.SecurityProtocol.Replace("_", "").Replace("-", "");
+			if (Enum.TryParse<SecurityProtocol>(normalizedProtocol, true, out var secProtocol))
+			{
+				config.SecurityProtocol = secProtocol;
+				if (!string.IsNullOrWhiteSpace(settings.SaslMechanism))
+				{
+					var normalizedMechanism = settings.SaslMechanism.Replace("_", "").Replace("-", "");
+					if (Enum.TryParse<SaslMechanism>(normalizedMechanism, true, out var saslMech))
+					{
+						config.SaslMechanism = saslMech;
+					}
+				}
+				config.SaslUsername = settings.SaslUsername ?? settings.ApiKey;
+				config.SaslPassword = settings.SaslPassword ?? settings.ApiSecret;
+			}
+		}
+		_producer = new ProducerBuilder<string, string>(config).Build();
+		_logger.LogInformation("Shared Kafka producer configured for {BootstrapServers}", _bootstrapServers);
+	}
 
     public Task PublishAsync<T>(string topic, string? key, T message, CancellationToken cancellationToken = default)
     {
