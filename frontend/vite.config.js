@@ -7,10 +7,14 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        // DEV SHORTCUT: proxying directly to the Identity Service,
+        // bypassing the API Gateway (localhost:5000).
+        // Switch back to 'http://localhost:5000' when testing with the gateway.
+        target: 'http://localhost:5278',
         changeOrigin: true,
         secure: false,
       },
     },
   },
 })
+

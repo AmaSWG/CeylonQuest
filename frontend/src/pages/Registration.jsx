@@ -34,7 +34,7 @@ function validateRegistration(data) {
   return null
 }
 
-function Registration({ onApplyAsProvider, onCheckStatus, onLogin }) {
+function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
@@ -99,6 +99,22 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin }) {
       {toast && <SuccessToast message={toast} onClose={() => setToast(null)} />}
 
       <div className="registration-card">
+
+        {onHome && (
+          <button
+            type="button"
+            className="reg-home-btn"
+            id="registration-home-btn"
+            onClick={onHome}
+            aria-label="Go back to home page"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+            Home
+          </button>
+        )}
 
         <div className="registration-header">
           <h1>CeylonQuest</h1>

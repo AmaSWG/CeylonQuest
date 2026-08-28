@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import './App.css'
+import HomePage from './pages/HomePage'
 import Registration from './pages/Registration'
 import ProviderApplication from './pages/ProviderApplication'
 import ProviderApplicationStatus from './pages/ProviderApplicationStatus'
@@ -36,7 +37,7 @@ function App() {
     if (hasToken && storedRole === 'Visitor')  return 'visitor-dashboard'
     if (hasToken && storedRole === 'Provider') return 'provider-dashboard'
     if (hasToken && storedRole === 'Admin')    return 'admin-dashboard'
-    return 'registration'
+    return 'home'
   }
 
   const [page, setPage] = useState(initialPage)
@@ -55,7 +56,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('authToken')
     localStorage.removeItem('userRole')
-    setPage('registration')
+    setPage('home')
   }
 
   if (page === 'provider-application') {
@@ -83,6 +84,7 @@ function App() {
         onLoginSuccess={handleLoginSuccess}
         onBack={() => setPage('registration')}
         onForgotPassword={() => setPage('forgot-password')}
+        onHome={() => setPage('home')}
       />
     )
   }
@@ -123,11 +125,21 @@ function App() {
     return <AdminDashboard onLogout={handleLogout} />
   }
 
+  if (page === 'home') {
+    return (
+      <HomePage
+        onLogin={() => setPage('login')}
+        onRegister={() => setPage('registration')}
+      />
+    )
+  }
+
   return (
     <Registration
       onApplyAsProvider={() => setPage('provider-application')}
       onCheckStatus={() => setPage('provider-status')}
       onLogin={() => setPage('login')}
+      onHome={() => setPage('home')}
     />
   )
 }

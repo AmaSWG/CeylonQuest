@@ -12,6 +12,6 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.30" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\identity-service\IdentityService.csproj" />
+    <ProjectReference Include="..\IdentityService.csproj" />
   </ItemGroup>
 </Project>
