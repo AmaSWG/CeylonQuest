@@ -23,7 +23,6 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
   const [error, setError] = useState(null)
   const [searchedEmail, setSearchedEmail] = useState('')
 
-  // Check URL query parameters for prefilled email
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const qEmail = params.get('email')
@@ -93,10 +92,9 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
     <div className="pas-page">
       <div className="pas-container">
 
-        {/* ── Brand Header ── */}
         <div className="pas-header">
           <div className="pas-logo" onClick={onBack} style={{ cursor: 'pointer' }}>
-            <span className="pas-logo__brand">CeylonQuest</span>
+            <img src="/dashboard-logo.png" alt="CeylonQuest" className="pas-logo__img" />
             <span className="pas-logo__badge">Provider Verification</span>
           </div>
           <h1 className="pas-title">Track Application Status</h1>
@@ -105,7 +103,6 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
           </p>
         </div>
 
-        {/* ── Lookup Form Card ── */}
         <div className="pas-card">
           <form className="pas-form" onSubmit={handleSubmit} id="pas-search-form">
             <div className="pas-input-group">
@@ -113,7 +110,7 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
                 Official Applicant Email Address
               </label>
               <div className="pas-input-wrapper">
-                <span className="pas-input-icon">✉️</span>
+                <span className="pas-input-icon"></span>
                 <input
                   id="pas-email"
                   type="email"
@@ -143,10 +140,9 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
             </div>
           </form>
 
-          {/* ── Error Message ── */}
           {error && !loading && (
             <div className="pas-error-box" role="alert">
-              <div className="pas-error-icon">⚠️</div>
+              <div className="pas-error-icon"></div>
               <div className="pas-error-content">
                 <p className="pas-error-title">Application Not Found</p>
                 <p className="pas-error-msg">{error}</p>
@@ -161,7 +157,6 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
             </div>
           )}
 
-          {/* ── Loading State ── */}
           {loading && (
             <div className="pas-loading-state">
               <div className="pas-spinner pas-spinner--large" />
@@ -169,16 +164,14 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
             </div>
           )}
 
-          {/* ── Results View ── */}
           {result && !loading && (
             <div className="pas-results" id="pas-results-section">
               
-              {/* Status Outcome Banner */}
               <div className={`pas-status-banner pas-status-banner--${statusNormalized}`}>
                 <div className="pas-status-banner__icon">
-                  {isPending && '⏳'}
-                  {isApproved && '✅'}
-                  {isRejected && '❌'}
+                  {isPending && ''}
+                  {isApproved && ''}
+                  {isRejected && ''}
                 </div>
                 <div className="pas-status-banner__info">
                   <div className="pas-status-tag-row">
@@ -196,13 +189,12 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
                 </div>
               </div>
 
-              {/* Specific Outcome Details */}
               {isPending && (
                 <div className="pas-pending-guide">
                   <h3 className="pas-section-heading">Verification Progress</h3>
                   <div className="pas-steps">
                     <div className="pas-step pas-step--done">
-                      <div className="pas-step__bullet">✓</div>
+                      <div className="pas-step__bullet"></div>
                       <div className="pas-step__content">
                         <strong>Application Received</strong>
                         <span>Your documents &amp; business profile were recorded.</span>
@@ -229,7 +221,7 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
               {isApproved && (
                 <div className="pas-approved-guide">
                   <div className="pas-approved-callout">
-                    <span className="pas-callout-icon">🎉</span>
+                    <span className="pas-callout-icon"></span>
                     <div>
                       <strong>What happens next?</strong>
                       <p>
@@ -246,7 +238,7 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
                         id="pas-enter-otp-btn"
                         onClick={onActivate}
                       >
-                        🔑 Enter OTP &amp; Complete Profile →
+                        Enter OTP &amp; Complete Profile →
                       </button>
                     )}
                     {onLogin && (
@@ -266,7 +258,7 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
                 <div className="pas-rejected-guide">
                   <div className="pas-rejection-box">
                     <div className="pas-rejection-box__header">
-                      <span className="pas-rejection-box__icon">📋</span>
+                      <span className="pas-rejection-box__icon"></span>
                       <strong>Reason for Decision</strong>
                     </div>
                     <div className="pas-rejection-box__body">
@@ -292,37 +284,35 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
                 </div>
               )}
 
-              {/* Application Summary Card */}
               <div className="pas-details-card">
                 <h3 className="pas-section-heading">Application Summary</h3>
                 <div className="pas-details-grid">
                   <div className="pas-detail-item">
                     <span className="pas-detail-label">Business Name</span>
-                    <span className="pas-detail-val">🏢 {result.businessName || '—'}</span>
+                    <span className="pas-detail-val"> {result.businessName || '—'}</span>
                   </div>
                   <div className="pas-detail-item">
                     <span className="pas-detail-label">Service Category</span>
-                    <span className="pas-detail-val">🏷️ {result.serviceType || '—'}</span>
+                    <span className="pas-detail-val"> {result.serviceType || '—'}</span>
                   </div>
                   <div className="pas-detail-item">
                     <span className="pas-detail-label">Applicant Email</span>
-                    <span className="pas-detail-val">✉️ {result.email}</span>
+                    <span className="pas-detail-val"> {result.email}</span>
                   </div>
                   <div className="pas-detail-item">
                     <span className="pas-detail-label">Submission Date</span>
-                    <span className="pas-detail-val">📅 {formatDate(result.submittedAt)}</span>
+                    <span className="pas-detail-val"> {formatDate(result.submittedAt)}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Check Another Button */}
               <div className="pas-reset-wrap">
                 <button
                   type="button"
                   className="pas-btn-secondary"
                   onClick={handleResetSearch}
                 >
-                  🔍 Check Another Application
+                   Check Another Application
                 </button>
               </div>
 
@@ -331,7 +321,6 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
 
         </div>
 
-        {/* ── Footer Navigation Links ── */}
         <div className="pas-footer-nav">
           {onBack && (
             <button type="button" className="pas-footer-btn" onClick={onBack}>

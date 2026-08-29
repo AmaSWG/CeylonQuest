@@ -6,8 +6,6 @@ using Microsoft.Extensions.Logging;
 
 namespace IdentityService.Services;
 
-// Applies the Identity-side effects of an approved provider application.
-// Does not touch provider application/catalog data - that is owned by Provider/Catalog Service.
 public class ProviderAccountActivationService
 {
     private readonly ApplicationDbContext _db;
@@ -31,7 +29,6 @@ public class ProviderAccountActivationService
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == emailLower, cancellationToken);
         if (user is null)
         {
-            // First time this email is seen by Identity Service: create the account record.
             user = new User
             {
                 Id = Guid.NewGuid(),
@@ -55,7 +52,6 @@ public class ProviderAccountActivationService
         user.OtpCode = _otpService.GenerateCode();
         user.OtpExpiresAt = DateTime.UtcNow.AddMinutes(OtpService.DefaultExpiryMinutes);
         user.RequiresPasswordChange = true;
-        // Inactive until OTP verification + password setup completes.
         user.IsActive = false;
 
         await _db.SaveChangesAsync(cancellationToken);

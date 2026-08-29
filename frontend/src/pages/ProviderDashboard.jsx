@@ -1,10 +1,45 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import '../styles/ProviderDashboard.css'
+import {
+  DashboardIcon,
+  StorefrontIcon,
+  KitesurfingIcon,
+  CalendarMonthIcon,
+  NotificationsActiveIcon,
+  PermIdentityIcon,
+  LogoutIcon,
+  AddIcon,
+  CreateIcon,
+  DeleteSweepIcon,
+  MonetizationOnIcon,
+  AlarmIcon,
+  GroupIcon,
+  ManageSearchIcon,
+  VerifiedUserIcon,
+  CheckCircleIcon,
+  CancelIcon,
+  SettingsIcon,
+  EmailIcon,
+  LocalPhoneIcon,
+  MyLocationIcon,
+  PhotoCameraIcon,
+  BadgeIcon
+} from '../components/Icons'
+import ConfirmModal from '../components/ConfirmModal'
 
 // ── Helpers & Formatting ──────────────────────────────────────────────────────
 
 function initials(first, last) {
   return `${(first || '').charAt(0)}${(last || '').charAt(0)}`.toUpperCase() || '?'
+}
+
+function formatAvatarUrl(url) {
+  if (!url) return null
+  if (url.startsWith('/uploads/avatars/')) {
+    const fileName = url.split('/').pop()
+    return `/api/users/avatar/${fileName}`
+  }
+  return url
 }
 
 function formatDate(iso) {
@@ -26,12 +61,12 @@ function Toast({ message, title = 'Success', onClose }) {
 
   return (
     <div className="pd-toast" role="alert" aria-live="polite">
-      <div className="pd-toast__icon">✓</div>
+      <div className="pd-toast__icon"></div>
       <div className="pd-toast__body">
         <p className="pd-toast__title">{title}</p>
         <p className="pd-toast__msg">{message}</p>
       </div>
-      <button className="pd-toast__close" onClick={onClose} aria-label="Close">✕</button>
+      <button className="pd-toast__close" onClick={onClose} aria-label="Close"></button>
     </div>
   )
 }
@@ -57,7 +92,7 @@ function Modal({ title, onClose, wide = false, children }) {
       <div className={`pd-modal ${wide ? 'pd-modal--wide' : ''}`} role="dialog" aria-modal="true">
         <div className="pd-modal__header">
           <h2 className="pd-modal__title">{title}</h2>
-          <button className="pd-modal__close" onClick={onClose} aria-label="Close modal">✕</button>
+          <button className="pd-modal__close" onClick={onClose} aria-label="Close modal"></button>
         </div>
         <div className="pd-modal__body">{children}</div>
       </div>
@@ -92,7 +127,7 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
       {/* Verification Status Banner */}
       <div className="pd-verification-banner">
         <div className="pd-verification-banner__left">
-          <div className="pd-verification-badge-icon">🛡️</div>
+          <div className="pd-verification-badge-icon"><VerifiedUserIcon size={24} /></div>
           <div>
             <h2 className="pd-verification-banner__title">Verification Status: Verified & Approved Partner</h2>
             <p className="pd-verification-banner__desc">
@@ -101,14 +136,14 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
           </div>
         </div>
         <button className="pd-quick-btn pd-quick-btn--secondary" onClick={() => onNavigate('business')}>
-          View Business Profile
+          <StorefrontIcon size={16} /> View Business Profile
         </button>
       </div>
 
       {/* Metric Cards */}
       <div className="pd-metrics-grid">
         <div className="pd-metric-card">
-          <div className="pd-metric-icon pd-metric-icon--gold">🛡️</div>
+          <div className="pd-metric-icon pd-metric-icon--gold"><VerifiedUserIcon size={24} /></div>
           <div className="pd-metric-info">
             <div className="pd-metric-title">Verification</div>
             <div className="pd-metric-value" style={{ fontSize: '18px', color: '#4f8a45' }}>Verified</div>
@@ -117,7 +152,7 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
         </div>
 
         <div className="pd-metric-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('services')}>
-          <div className="pd-metric-icon pd-metric-icon--teal">🏄</div>
+          <div className="pd-metric-icon pd-metric-icon--teal"><KitesurfingIcon size={24} /></div>
           <div className="pd-metric-info">
             <div className="pd-metric-title">Activities & Services</div>
             <div className="pd-metric-value">{activeServices.length} Active</div>
@@ -126,7 +161,7 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
         </div>
 
         <div className="pd-metric-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('bookings')}>
-          <div className="pd-metric-icon pd-metric-icon--blue">📅</div>
+          <div className="pd-metric-icon pd-metric-icon--blue"><CalendarMonthIcon size={24} /></div>
           <div className="pd-metric-info">
             <div className="pd-metric-title">Total Bookings</div>
             <div className="pd-metric-value">{bookings.length}</div>
@@ -135,7 +170,7 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
         </div>
 
         <div className="pd-metric-card">
-          <div className="pd-metric-icon pd-metric-icon--green">💰</div>
+          <div className="pd-metric-icon pd-metric-icon--green"><MonetizationOnIcon size={24} /></div>
           <div className="pd-metric-info">
             <div className="pd-metric-title">Estimated Earnings</div>
             <div className="pd-metric-value" style={{ fontSize: '18px' }}>{formatCurrency(totalRevenue)}</div>
@@ -147,16 +182,16 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
       {/* Quick Actions Bar */}
       <div className="pd-quick-actions">
         <button className="pd-quick-btn pd-quick-btn--primary" onClick={() => onNavigate('services')}>
-          ➕ Add New Activity / Service
+          <AddIcon size={16} /> Add New Activity / Service
         </button>
         <button className="pd-quick-btn pd-quick-btn--secondary" onClick={() => onNavigate('business')}>
-          🏢 Edit Business Profile
+          <CreateIcon size={16} /> Edit Business Profile
         </button>
         <button className="pd-quick-btn pd-quick-btn--secondary" onClick={() => onNavigate('bookings')}>
-          📅 Manage Bookings ({pendingBookings.length} action required)
+          <CalendarMonthIcon size={16} /> Manage Bookings ({pendingBookings.length} action required)
         </button>
         <button className="pd-quick-btn pd-quick-btn--secondary" onClick={() => onNavigate('account')}>
-          👤 Account Settings
+          <SettingsIcon size={16} /> Account Settings
         </button>
       </div>
 
@@ -180,11 +215,11 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
               </div>
               <div className="pd-field pd-field--full">
                 <span className="pd-field__label">Operating Location</span>
-                <span className="pd-field__value">📍 {providerInfo?.location || 'Sri Lanka'}</span>
+                <span className="pd-field__value"><MyLocationIcon size={15} style={{ marginRight: 6 }} /> {providerInfo?.location || 'Sri Lanka'}</span>
               </div>
               <div className="pd-field pd-field--full">
                 <span className="pd-field__label">Business Contact</span>
-                <span className="pd-field__value">📞 {providerInfo?.phoneNumber || '—'}</span>
+                <span className="pd-field__value"><LocalPhoneIcon size={15} style={{ marginRight: 6 }} /> {providerInfo?.phoneNumber || '—'}</span>
               </div>
             </div>
 
@@ -250,7 +285,9 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {recentNotifs.map(n => (
                   <div key={n.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '10px 0', borderBottom: '1px solid #f3eee4' }}>
-                    <span style={{ fontSize: '16px' }}>{n.category === 'booking' ? '📅' : n.category === 'verification' ? '🛡️' : '📢'}</span>
+                    <span style={{ fontSize: '16px', display: 'flex', alignItems: 'center', color: '#168aad' }}>
+                      {n.category === 'booking' ? <CalendarMonthIcon size={16} /> : n.category === 'verification' ? <VerifiedUserIcon size={16} /> : <NotificationsActiveIcon size={16} />}
+                    </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: '13px', color: '#123b5d' }}>{n.title}</div>
                       <div style={{ fontSize: '12px', color: '#777' }}>{n.desc}</div>
@@ -361,12 +398,12 @@ function BusinessProfileTab({ token, onLogout, providerInfo, onUpdateSuccess, sh
         <div className="pd-card__body">
           <div className="pd-section-header">
             <h2>Verification Status</h2>
-            <span className="pd-badge pd-badge--active">🛡️ Verified & Approved</span>
+            <span className="pd-badge pd-badge--active"> Verified & Approved</span>
           </div>
 
           <div style={{ background: '#faf8f3', border: '1px solid #ede8dc', borderRadius: '12px', padding: '18px 20px', marginTop: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
-              <span style={{ fontSize: '20px' }}>✓</span>
+              <span style={{ fontSize: '20px' }}></span>
               <div>
                 <strong style={{ color: '#123b5d', fontSize: '14px' }}>Official Partner Accreditation</strong>
                 <p style={{ margin: 0, color: '#666', fontSize: '12.5px' }}>Verified by CeylonQuest Quality & Safety Assurance Team.</p>
@@ -393,7 +430,7 @@ function BusinessProfileTab({ token, onLogout, providerInfo, onUpdateSuccess, sh
             <h2>Business Information</h2>
             {!editing && (
               <button className="pd-edit-btn" onClick={handleEdit} id="edit-business-btn">
-                ✏️ Edit Business Info
+                 Edit Business Info
               </button>
             )}
           </div>
@@ -410,7 +447,7 @@ function BusinessProfileTab({ token, onLogout, providerInfo, onUpdateSuccess, sh
               </div>
               <div className="pd-field pd-field--full">
                 <span className="pd-field__label">Operating Location / Base</span>
-                <span className="pd-field__value">📍 {providerInfo?.location || '—'}</span>
+                <span className="pd-field__value"> {providerInfo?.location || '—'}</span>
               </div>
               <div className="pd-field pd-field--full">
                 <span className="pd-field__label">Business & Service Description</span>
@@ -418,11 +455,11 @@ function BusinessProfileTab({ token, onLogout, providerInfo, onUpdateSuccess, sh
               </div>
               <div className="pd-field">
                 <span className="pd-field__label">Contact Phone</span>
-                <span className="pd-field__value">📞 {providerInfo?.phoneNumber || '—'}</span>
+                <span className="pd-field__value"> {providerInfo?.phoneNumber || '—'}</span>
               </div>
               <div className="pd-field">
                 <span className="pd-field__label">Official Contact Email</span>
-                <span className="pd-field__value">✉️ {providerInfo?.email || '—'}</span>
+                <span className="pd-field__value"> {providerInfo?.email || '—'}</span>
               </div>
             </div>
           ) : (
@@ -657,7 +694,7 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
           <p>Add, edit, deactivate, or remove tourism activities and services you offer to visitors.</p>
         </div>
         <button className="pd-quick-btn pd-quick-btn--primary" onClick={openAdd} id="add-activity-btn">
-          ➕ Add New Activity / Service
+          <AddIcon size={16} /> Add New Activity / Service
         </button>
       </div>
 
@@ -748,7 +785,7 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
       {/* Filter and Search Bar */}
       <div className="pd-filter-bar">
         <div className="pd-search-wrap">
-          <span className="pd-search-icon">🔍</span>
+          <span className="pd-search-icon"></span>
           <input
             type="text"
             className="pd-search-input"
@@ -776,7 +813,7 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
         <div className="pd-card__body" style={{ padding: 0 }}>
           {filtered.length === 0 ? (
             <div className="pd-empty">
-              <div className="pd-empty__icon">🏄</div>
+              <div className="pd-empty__icon"></div>
               <p className="pd-empty__title">No activities found</p>
               <p className="pd-empty__msg">
                 {search || filterStatus !== 'all' ? 'Try adjusting your search query or filter.' : 'Click "Add New Activity" to publish your first service offering.'}
@@ -885,31 +922,31 @@ function BookingsTab({ bookings, onUpdateBookingStatus }) {
             <div className="pd-fields">
               <div className="pd-field">
                 <span className="pd-field__label">Visitor Name</span>
-                <span className="pd-field__value">👤 {selectedBooking.visitorName}</span>
+                <span className="pd-field__value"> {selectedBooking.visitorName}</span>
               </div>
               <div className="pd-field">
                 <span className="pd-field__label">Email Address</span>
-                <span className="pd-field__value">✉️ {selectedBooking.visitorEmail}</span>
+                <span className="pd-field__value"> {selectedBooking.visitorEmail}</span>
               </div>
               <div className="pd-field">
                 <span className="pd-field__label">Contact Phone</span>
-                <span className="pd-field__value">📞 {selectedBooking.visitorPhone}</span>
+                <span className="pd-field__value"> {selectedBooking.visitorPhone}</span>
               </div>
               <div className="pd-field">
                 <span className="pd-field__label">Scheduled Date</span>
-                <span className="pd-field__value">📅 {formatDate(selectedBooking.date)}</span>
+                <span className="pd-field__value"> {formatDate(selectedBooking.date)}</span>
               </div>
               <div className="pd-field">
                 <span className="pd-field__label">Time Slot</span>
-                <span className="pd-field__value">🕐 {selectedBooking.timeSlot}</span>
+                <span className="pd-field__value"> {selectedBooking.timeSlot}</span>
               </div>
               <div className="pd-field">
                 <span className="pd-field__label">Party Size / Guests</span>
-                <span className="pd-field__value">👥 {selectedBooking.guests} People</span>
+                <span className="pd-field__value"> {selectedBooking.guests} People</span>
               </div>
               <div className="pd-field">
                 <span className="pd-field__label">Payment Status</span>
-                <span className="pd-field__value" style={{ color: '#4f8a45', fontWeight: 600 }}>💳 {selectedBooking.paymentStatus}</span>
+                <span className="pd-field__value" style={{ color: '#4f8a45', fontWeight: 600 }}> {selectedBooking.paymentStatus}</span>
               </div>
               <div className="pd-field">
                 <span className="pd-field__label">Total Amount</span>
@@ -928,17 +965,17 @@ function BookingsTab({ bookings, onUpdateBookingStatus }) {
               <div style={{ display: 'flex', gap: '8px' }}>
                 {selectedBooking.status === 'Pending' && (
                   <button className="pd-quick-btn pd-quick-btn--primary" onClick={() => handleStatusChange(selectedBooking.id, 'Confirmed')}>
-                    ✓ Confirm Booking
+                    <CheckCircleIcon size={16} /> Confirm Booking
                   </button>
                 )}
                 {selectedBooking.status === 'Confirmed' && (
                   <button className="pd-quick-btn pd-quick-btn--primary" onClick={() => handleStatusChange(selectedBooking.id, 'Completed')}>
-                    ★ Mark Completed
+                    <CheckCircleIcon size={16} /> Mark Completed
                   </button>
                 )}
                 {selectedBooking.status !== 'Cancelled' && (
                   <button className="pd-quick-btn pd-quick-btn--secondary" style={{ color: '#e74c3c', borderColor: '#e74c3c' }} onClick={() => handleStatusChange(selectedBooking.id, 'Cancelled')}>
-                    ✕ Cancel Reservation
+                    <CancelIcon size={16} /> Cancel Reservation
                   </button>
                 )}
               </div>
@@ -950,7 +987,7 @@ function BookingsTab({ bookings, onUpdateBookingStatus }) {
       {/* Filter and Search Bar */}
       <div className="pd-filter-bar">
         <div className="pd-search-wrap">
-          <span className="pd-search-icon">🔍</span>
+          <span className="pd-search-icon"><ManageSearchIcon size={18} /></span>
           <input
             type="text"
             className="pd-search-input"
@@ -981,7 +1018,7 @@ function BookingsTab({ bookings, onUpdateBookingStatus }) {
         <div className="pd-card__body" style={{ padding: 0 }}>
           {filtered.length === 0 ? (
             <div className="pd-empty">
-              <div className="pd-empty__icon">📅</div>
+              <div className="pd-empty__icon"><CalendarMonthIcon size={32} /></div>
               <p className="pd-empty__title">No bookings found</p>
               <p className="pd-empty__msg">No reservation records match the active search and status filter.</p>
             </div>
@@ -1061,12 +1098,12 @@ function NotificationsTab({ notifications, onMarkAllRead, onToggleRead, onClearA
         <div style={{ display: 'flex', gap: '8px' }}>
           {unreadCount > 0 && (
             <button className="pd-quick-btn pd-quick-btn--secondary" onClick={onMarkAllRead}>
-              ✓ Mark All Read
+              <CheckCircleIcon size={16} /> Mark All Read
             </button>
           )}
           {notifications.length > 0 && (
             <button className="pd-quick-btn pd-quick-btn--secondary" onClick={onClearAll}>
-              Clear All
+              <DeleteSweepIcon size={16} /> Clear All
             </button>
           )}
         </div>
@@ -1077,13 +1114,13 @@ function NotificationsTab({ notifications, onMarkAllRead, onToggleRead, onClearA
           All ({notifications.length})
         </button>
         <button className={`pd-filter-pill ${filter === 'booking' ? 'active' : ''}`} onClick={() => setFilter('booking')}>
-          📅 Bookings ({notifications.filter(n => n.category === 'booking').length})
+          <CalendarMonthIcon size={14} style={{ marginRight: 6 }} /> Bookings ({notifications.filter(n => n.category === 'booking').length})
         </button>
         <button className={`pd-filter-pill ${filter === 'verification' ? 'active' : ''}`} onClick={() => setFilter('verification')}>
-          🛡️ Verification ({notifications.filter(n => n.category === 'verification').length})
+          <VerifiedUserIcon size={14} style={{ marginRight: 6 }} /> Verification ({notifications.filter(n => n.category === 'verification').length})
         </button>
         <button className={`pd-filter-pill ${filter === 'provider' ? 'active' : ''}`} onClick={() => setFilter('provider')}>
-          📢 Updates ({notifications.filter(n => n.category === 'provider').length})
+          <NotificationsActiveIcon size={14} style={{ marginRight: 6 }} /> Updates ({notifications.filter(n => n.category === 'provider').length})
         </button>
       </div>
 
@@ -1091,7 +1128,7 @@ function NotificationsTab({ notifications, onMarkAllRead, onToggleRead, onClearA
         <div className="pd-card">
           <div className="pd-card__body">
             <div className="pd-empty">
-              <div className="pd-empty__icon">🔔</div>
+              <div className="pd-empty__icon"><NotificationsActiveIcon size={32} /></div>
               <p className="pd-empty__title">No notifications</p>
               <p className="pd-empty__msg">You have caught up with all notifications in this category.</p>
             </div>
@@ -1109,10 +1146,17 @@ function NotificationsTab({ notifications, onMarkAllRead, onToggleRead, onClearA
               <div
                 className="pd-notif-icon"
                 style={{
-                  background: n.category === 'booking' ? 'rgba(22, 138, 173, 0.15)' : n.category === 'verification' ? 'rgba(79, 138, 69, 0.15)' : 'rgba(214, 168, 95, 0.2)'
+                  background: n.category === 'booking' ? 'rgba(22, 138, 173, 0.15)' : n.category === 'verification' ? 'rgba(79, 138, 69, 0.15)' : 'rgba(214, 168, 95, 0.2)',
+                  color: n.category === 'booking' ? '#168aad' : n.category === 'verification' ? '#4f8a45' : '#b8860b'
                 }}
               >
-                {n.category === 'booking' ? '📅' : n.category === 'verification' ? '🛡️' : '📢'}
+                {n.category === 'booking' ? (
+                  <CalendarMonthIcon size={20} />
+                ) : n.category === 'verification' ? (
+                  <VerifiedUserIcon size={20} />
+                ) : (
+                  <NotificationsActiveIcon size={20} />
+                )}
               </div>
               <div className="pd-notif-content">
                 <h3 className="pd-notif-title">{n.title}</h3>
@@ -1130,7 +1174,7 @@ function NotificationsTab({ notifications, onMarkAllRead, onToggleRead, onClearA
 
 // ── 6. Account Profile Tab ────────────────────────────────────────────────────
 
-function AccountTab({ token, onLogout, showToast }) {
+function AccountTab({ token, onLogout, showToast, onProfileUpdate }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -1138,17 +1182,34 @@ function AccountTab({ token, onLogout, showToast }) {
   const [formData, setFormData] = useState({})
   const [saveLoading, setSaveLoading] = useState(false)
   const [saveError, setSaveError] = useState(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarError, setAvatarError] = useState(null)
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false)
+
+  const onLogoutRef = useRef(onLogout)
+  useEffect(() => { onLogoutRef.current = onLogout }, [onLogout])
+  const onProfileUpdateRef = useRef(onProfileUpdate)
+  useEffect(() => { onProfileUpdateRef.current = onProfileUpdate }, [onProfileUpdate])
 
   const fetchProfile = useCallback(async () => {
+    const activeToken = token || localStorage.getItem('authToken')
+    if (!activeToken) {
+      setLoadError('Session expired. Please log in again.')
+      setLoading(false)
+      onLogoutRef.current && onLogoutRef.current()
+      return
+    }
+
     setLoading(true)
     setLoadError(null)
     try {
       const resp = await fetch('/api/users/me', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${activeToken}` }
       })
       if (resp.ok) {
         const data = await resp.json()
         setProfile(data)
+        onProfileUpdateRef.current && onProfileUpdateRef.current(data)
         setFormData({
           firstName: data.firstName || '',
           lastName: data.lastName || '',
@@ -1156,18 +1217,21 @@ function AccountTab({ token, onLogout, showToast }) {
           nationality: data.nationality || ''
         })
       } else if (resp.status === 401) {
-        onLogout && onLogout()
+        setLoadError('Session expired or unauthorized. Please log in again.')
+        onLogoutRef.current && onLogoutRef.current()
       } else {
-        setLoadError('Failed to load profile.')
+        setLoadError('Failed to load profile. Please try again.')
       }
     } catch {
       setLoadError('Network error. Please check your connection.')
     } finally {
       setLoading(false)
     }
-  }, [token, onLogout])
+  }, [token])
 
-  useEffect(() => { fetchProfile() }, [fetchProfile])
+  useEffect(() => {
+    fetchProfile()
+  }, [fetchProfile])
 
   const handleEdit = () => {
     setSaveError(null)
@@ -1176,10 +1240,10 @@ function AccountTab({ token, onLogout, showToast }) {
 
   const handleCancel = () => {
     setFormData({
-      firstName: profile.firstName || '',
-      lastName: profile.lastName || '',
-      phoneNumber: profile.phoneNumber || '',
-      nationality: profile.nationality || ''
+      firstName: profile?.firstName || '',
+      lastName: profile?.lastName || '',
+      phoneNumber: profile?.phoneNumber || '',
+      nationality: profile?.nationality || ''
     })
     setSaveError(null)
     setEditing(false)
@@ -1194,12 +1258,13 @@ function AccountTab({ token, onLogout, showToast }) {
     setSaveError(null)
     setSaveLoading(true)
 
+    const activeToken = token || localStorage.getItem('authToken')
     try {
       const resp = await fetch('/api/users/me', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${activeToken}`
         },
         body: JSON.stringify(formData)
       })
@@ -1208,6 +1273,7 @@ function AccountTab({ token, onLogout, showToast }) {
         const body = await resp.json()
         const updated = body.profile ?? body
         setProfile(updated)
+        onProfileUpdateRef.current && onProfileUpdateRef.current(updated)
         setFormData({
           firstName: updated.firstName,
           lastName: updated.lastName,
@@ -1217,7 +1283,7 @@ function AccountTab({ token, onLogout, showToast }) {
         setEditing(false)
         showToast('Personal account profile updated successfully.')
       } else if (resp.status === 401) {
-        onLogout && onLogout()
+        onLogoutRef.current && onLogoutRef.current()
       } else if (resp.status === 400 || resp.status === 422) {
         const body = await resp.json().catch(() => ({}))
         const first = body.errors && Object.values(body.errors).flat()[0]
@@ -1232,8 +1298,99 @@ function AccountTab({ token, onLogout, showToast }) {
     }
   }
 
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setAvatarError('Please select a valid image file (JPG, PNG, WebP).')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError('Image must be smaller than 5 MB.')
+      return
+    }
+
+    setAvatarError(null)
+    setAvatarUploading(true)
+
+    const activeToken = token || localStorage.getItem('authToken')
+    try {
+      const data = new FormData()
+      data.append('file', file)
+
+      const resp = await fetch('/api/users/me/profile-picture', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${activeToken}`
+        },
+        body: data
+      })
+
+      if (resp.ok) {
+        const result = await resp.json()
+        const updated = result.profile ?? { ...profile, profilePictureUrl: result.profilePictureUrl }
+        setProfile(updated)
+        onProfileUpdateRef.current && onProfileUpdateRef.current(updated)
+        showToast('Profile picture updated successfully.')
+      } else {
+        const errBody = await resp.json().catch(() => ({}))
+        setAvatarError(errBody.message || 'Failed to upload profile picture.')
+      }
+    } catch {
+      setAvatarError('Network error while uploading photo.')
+    } finally {
+      setAvatarUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleRemoveAvatar = async () => {
+    setAvatarError(null)
+    setAvatarUploading(true)
+
+    const activeToken = token || localStorage.getItem('authToken')
+    try {
+      const resp = await fetch('/api/users/me/profile-picture', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${activeToken}`
+        }
+      })
+
+      if (resp.ok) {
+        const result = await resp.json()
+        const updated = result.profile ?? { ...profile, profilePictureUrl: null }
+        setProfile(updated)
+        onProfileUpdateRef.current && onProfileUpdateRef.current(updated)
+        setShowRemoveConfirm(false)
+        showToast('Profile picture removed.')
+      } else {
+        const errBody = await resp.json().catch(() => ({}))
+        setAvatarError(errBody.message || 'Failed to remove profile picture.')
+      }
+    } catch {
+      setAvatarError('Network error while removing photo.')
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
   return (
     <div className="pd-account-tab">
+      <ConfirmModal
+        isOpen={showRemoveConfirm}
+        title="Remove Profile Picture"
+        message="Are you sure you want to remove your profile picture?"
+        confirmText="Remove Photo"
+        cancelText="Cancel"
+        confirmVariant="danger"
+        onConfirm={handleRemoveAvatar}
+        onCancel={() => setShowRemoveConfirm(false)}
+        loading={avatarUploading}
+      />
+
       <div className="pd-page-header">
         <div className="pd-page-header__left">
           <h1>Account Settings</h1>
@@ -1244,19 +1401,72 @@ function AccountTab({ token, onLogout, showToast }) {
       <div className="pd-card">
         <div className="pd-card__body">
           {loading && <LoadingState label="Loading profile information…" />}
-          {loadError && !loading && <div className="pd-form-error">{loadError}</div>}
+          {loadError && !loading && (
+            <div className="pd-form-error" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>{loadError}</span>
+              <button
+                type="button"
+                onClick={fetchProfile}
+                style={{
+                  background: '#123b5d',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
           {!loading && profile && !editing && (
             <>
               <div className="pd-identity">
-                <div className="pd-avatar" aria-hidden="true">{initials(profile.firstName, profile.lastName)}</div>
+                <div className="pd-avatar-wrapper">
+                  <div className="pd-avatar" aria-hidden="true">
+                    {profile.profilePictureUrl ? (
+                      <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="pd-avatar__img" />
+                    ) : (
+                      initials(profile.firstName, profile.lastName)
+                    )}
+                  </div>
+                  <label className="pd-avatar-upload-btn" title="Upload / Change profile photo">
+                    <PhotoCameraIcon size={14} />
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      onChange={handleAvatarChange}
+                      disabled={avatarUploading}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
+
                 <div className="pd-identity__info">
                   <h2 className="pd-identity__name">{profile.firstName} {profile.lastName}</h2>
                   <p className="pd-identity__email">{profile.email}</p>
-                  <span className="pd-identity__badge">🏔 Provider Account</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                    <span className="pd-identity__badge"><BadgeIcon size={13} style={{ marginRight: 4 }} /> Provider Account</span>
+                    {profile.profilePictureUrl && (
+                      <button
+                        type="button"
+                        className="pd-avatar-remove-text-btn"
+                        onClick={() => setShowRemoveConfirm(true)}
+                        disabled={avatarUploading}
+                      >
+                        <DeleteSweepIcon size={13} style={{ marginRight: 4 }} /> Remove Photo
+                      </button>
+                    )}
+                  </div>
+                  {avatarUploading && <div className="pd-avatar-status">Uploading photo…</div>}
+                  {avatarError && <div className="pd-avatar-error">{avatarError}</div>}
                 </div>
                 <button className="pd-edit-btn" onClick={handleEdit} id="edit-account-profile-btn">
-                  ✏️ Edit Profile
+                  <CreateIcon size={14} style={{ marginRight: 6 }} /> Edit Profile
                 </button>
               </div>
 
@@ -1292,10 +1502,30 @@ function AccountTab({ token, onLogout, showToast }) {
           {!loading && profile && editing && (
             <form onSubmit={handleSave} className="pd-edit-form" noValidate>
               <div className="pd-identity" style={{ marginBottom: '24px' }}>
-                <div className="pd-avatar" aria-hidden="true">{initials(formData.firstName, formData.lastName)}</div>
+                <div className="pd-avatar-wrapper">
+                  <div className="pd-avatar" aria-hidden="true">
+                    {profile.profilePictureUrl ? (
+                      <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="pd-avatar__img" />
+                    ) : (
+                      initials(formData.firstName, formData.lastName)
+                    )}
+                  </div>
+                  <label className="pd-avatar-upload-btn" title="Upload / Change profile photo">
+                    <PhotoCameraIcon size={14} />
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      onChange={handleAvatarChange}
+                      disabled={avatarUploading}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
                 <div className="pd-identity__info">
                   <h2 className="pd-identity__name">{formData.firstName} {formData.lastName}</h2>
                   <p className="pd-identity__email">{profile.email}</p>
+                  {avatarUploading && <div className="pd-avatar-status">Uploading photo…</div>}
+                  {avatarError && <div className="pd-avatar-error">{avatarError}</div>}
                 </div>
               </div>
 
@@ -1479,21 +1709,39 @@ function ProviderDashboard({ onLogout }) {
     showToast('Notifications cleared.')
   }
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('authToken')
     localStorage.removeItem('userRole')
     onLogout && onLogout()
-  }
+  }, [onLogout])
+
+  const [userProfile, setUserProfile] = useState(null)
+
+  const fetchUserProfile = useCallback(async () => {
+    if (!token) return
+    try {
+      const resp = await fetch('/api/users/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (resp.ok) {
+        setUserProfile(await resp.json())
+      }
+    } catch { }
+  }, [token])
+
+  useEffect(() => {
+    fetchUserProfile()
+  }, [fetchUserProfile])
 
   const unreadNotifCount = notifications.filter(n => !n.read).length
 
   const navItems = [
-    { key: 'overview', icon: '📊', label: 'Overview' },
-    { key: 'business', icon: '🏢', label: 'Business Profile' },
-    { key: 'services', icon: '🏄', label: 'Activities & Services' },
-    { key: 'bookings', icon: '📅', label: 'Bookings' },
-    { key: 'notifications', icon: '🔔', label: 'Notifications', badge: unreadNotifCount > 0 ? unreadNotifCount : null },
-    { key: 'account', icon: '👤', label: 'Account' }
+    { key: 'overview',      icon: <DashboardIcon size={18} />,          label: 'Overview' },
+    { key: 'business',      icon: <StorefrontIcon size={18} />,         label: 'Business Profile' },
+    { key: 'services',      icon: <KitesurfingIcon size={18} />,        label: 'Activities & Services' },
+    { key: 'bookings',      icon: <CalendarMonthIcon size={18} />,       label: 'Bookings' },
+    { key: 'notifications', icon: <NotificationsActiveIcon size={18} />, label: 'Notifications', badge: unreadNotifCount > 0 ? unreadNotifCount : null },
+    { key: 'account',       icon: <PermIdentityIcon size={18} />,        label: 'Account' }
   ]
 
   return (
@@ -1503,8 +1751,8 @@ function ProviderDashboard({ onLogout }) {
       {/* ── Sidebar ── */}
       <aside className="pd-sidebar">
         <div className="pd-sidebar__brand">
-          <span className="pd-sidebar__logo">CeylonQuest</span>
-          <span className="pd-sidebar__role">🏔 Provider Hub</span>
+          <img src="/dashboard-logo.png" alt="CeylonQuest" className="pd-sidebar__logo-img" />
+          <span className="pd-sidebar__role">Provider Hub</span>
         </div>
 
         <ul className="pd-sidebar__nav">
@@ -1524,8 +1772,23 @@ function ProviderDashboard({ onLogout }) {
         </ul>
 
         <div className="pd-sidebar__footer">
+          {userProfile && (
+            <div className="pd-sidebar-user">
+              <div className="pd-sidebar-avatar">
+                {userProfile.profilePictureUrl ? (
+                  <img src={formatAvatarUrl(userProfile.profilePictureUrl)} alt="" className="pd-sidebar-avatar__img" />
+                ) : (
+                  initials(userProfile.firstName, userProfile.lastName)
+                )}
+              </div>
+              <div className="pd-sidebar-user__info">
+                <div className="pd-sidebar-user__name">{userProfile.firstName} {userProfile.lastName}</div>
+                <div className="pd-sidebar-user__email">{userProfile.email}</div>
+              </div>
+            </div>
+          )}
           <button className="pd-logout-btn" onClick={handleLogout} id="pd-logout-btn">
-            <span className="pd-nav-icon">🚪</span> Log Out
+            <span className="pd-nav-icon"><LogoutIcon size={18} /></span> Log Out
           </button>
         </div>
       </aside>
@@ -1583,6 +1846,7 @@ function ProviderDashboard({ onLogout }) {
             token={token}
             onLogout={handleLogout}
             showToast={showToast}
+            onProfileUpdate={setUserProfile}
           />
         )}
       </main>

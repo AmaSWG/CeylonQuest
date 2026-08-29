@@ -208,4 +208,34 @@ public class AdminReportServiceTests
         Assert.Equal(filters.Role,              report.AppliedFilters.Role);
         Assert.Equal(filters.ApplicationStatus, report.AppliedFilters.ApplicationStatus);
     }
+
+    [Fact]
+    public async Task GetReportAsync_VisitorRoleFilter_ReturnsOnlyRegistrationsTopic()
+    {
+        using var db = CreateDbContext();
+        var svc = CreateService(db);
+
+        SeedUser(db, "visitor@test.com", UserRole.Visitor);
+
+        var report = await svc.GetReportAsync(new ReportQueryParams { Role = "Visitor" });
+
+        Assert.NotNull(report.Registrations);
+        Assert.Null(report.Applications);
+        Assert.Equal(1, report.Registrations.TotalVisitors);
+    }
+
+    [Fact]
+    public async Task GetReportAsync_StatusFilter_ReturnsOnlyApplicationsTopic()
+    {
+        using var db = CreateDbContext();
+        var svc = CreateService(db);
+
+        SeedUser(db, "provider@test.com", UserRole.Provider);
+
+        var report = await svc.GetReportAsync(new ReportQueryParams { ApplicationStatus = "Approved" });
+
+        Assert.Null(report.Registrations);
+        Assert.NotNull(report.Applications);
+        Assert.Equal(1, report.Applications.ApprovedApplications);
+    }
 }

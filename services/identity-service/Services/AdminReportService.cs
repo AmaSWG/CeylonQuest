@@ -11,16 +11,6 @@ using Microsoft.Extensions.Logging;
 
 namespace IdentityService.Services;
 
-/// <summary>
-/// Generates the admin registration and provider verification report.
-///
-/// Strategy:
-///   - When the underlying database provider is MySQL/relational, this service executes
-///     raw parameterized ADO.NET queries via EF Core's underlying DbConnection for
-///     efficiency and direct SQL control (as required by the spec).
-///   - When the provider is InMemory (unit tests), it falls back to a LINQ/EF Core
-///     path so tests remain fast without requiring a real database.
-/// </summary>
 public class AdminReportService
 {
     private readonly ApplicationDbContext _db;
@@ -34,24 +24,30 @@ public class AdminReportService
 
     public async Task<AdminReportResponse> GetReportAsync(ReportQueryParams filters)
     {
-        // Detect whether we are running against a real relational DB or the InMemory provider.
         var providerName = _db.Database.ProviderName ?? string.Empty;
         var isInMemory = providerName.Contains("InMemory", StringComparison.OrdinalIgnoreCase);
 
-        RegistrationSummary registrations;
-        ApplicationSummary applications;
+        var hasRoleFilter = !string.IsNullOrWhiteSpace(filters.Role);
+        var hasStatusFilter = !string.IsNullOrWhiteSpace(filters.ApplicationStatus);
 
-        if (isInMemory)
+        RegistrationSummary? registrations = null;
+        ApplicationSummary? applications = null;
+
+        if (!hasStatusFilter || hasRoleFilter)
         {
-            // ── LINQ path (unit tests / InMemory) ───────────────────────────
-            registrations = await GetRegistrationSummaryLinqAsync(filters);
-            applications  = await GetApplicationSummaryLinqAsync(filters);
+            if (isInMemory)
+            {
+                registrations = await GetRegistrationSummaryLinqAsync(filters);
+            }
+            else
+            {
+                registrations = await GetRegistrationSummaryAdoAsync(filters);
+            }
         }
-        else
+
+        if (!hasRoleFilter || hasStatusFilter || string.Equals(filters.Role, "Provider", StringComparison.OrdinalIgnoreCase))
         {
-            // ── ADO.NET path (MySQL / Production & Development) ──────────────
-            registrations = await GetRegistrationSummaryAdoAsync(filters);
-            applications  = await GetApplicationSummaryAdoAsync(filters);
+            applications = await GetApplicationSummaryAsync(filters);
         }
 
         return new AdminReportResponse
@@ -63,10 +59,6 @@ public class AdminReportService
         };
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // ADO.NET path — executes raw parameterized SQL via EF Core's DbConnection
-    // ══════════════════════════════════════════════════════════════════════════
-
     private async Task<RegistrationSummary> GetRegistrationSummaryAdoAsync(ReportQueryParams f)
     {
         var conn = _db.Database.GetDbConnection();
@@ -74,7 +66,6 @@ public class AdminReportService
 
         var summary = new RegistrationSummary();
 
-        // Build WHERE clauses dynamically; parameters added in matching order.
         var whereClauses = new List<string>();
         var parameters   = new List<(string Name, object? Value)>();
 
@@ -87,7 +78,7 @@ public class AdminReportService
         if (f.DateTo.HasValue)
         {
             whereClauses.Add("CreatedAt < @dateTo");
-            parameters.Add(("@dateTo", f.DateTo.Value.Date.AddDays(1))); // inclusive end-of-day
+            parameters.Add(("@dateTo", f.DateTo.Value.Date.AddDays(1)));
         }
 
         if (!string.IsNullOrWhiteSpace(f.Role) &&
@@ -99,7 +90,6 @@ public class AdminReportService
 
         var where = whereClauses.Count > 0 ? " WHERE " + string.Join(" AND ", whereClauses) : string.Empty;
 
-        // ── Total / role breakdown ──────────────────────────────────────────
         var sql = $@"
             SELECT
                 COUNT(*) AS Total,
@@ -132,15 +122,101 @@ public class AdminReportService
         return summary;
     }
 
-    private Task<ApplicationSummary> GetApplicationSummaryAdoAsync(ReportQueryParams f)
+    private async Task<ApplicationSummary> GetApplicationSummaryAsync(ReportQueryParams f)
     {
         var summary = new ApplicationSummary();
-        return Task.FromResult(summary);
-    }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // LINQ path — used by unit tests with InMemory provider
-    // ══════════════════════════════════════════════════════════════════════════
+        var query = _db.Users.Where(u => u.Role == UserRole.Provider);
+        if (f.DateFrom.HasValue)
+            query = query.Where(u => u.CreatedAt >= f.DateFrom.Value.Date);
+        if (f.DateTo.HasValue)
+            query = query.Where(u => u.CreatedAt < f.DateTo.Value.Date.AddDays(1));
+
+        var approvedProviders = await query.ToListAsync();
+        var approvedEmails = approvedProviders.Select(u => u.Email.ToLower()).ToHashSet();
+
+        var uploadsDir = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "uploads", "documents");
+        var pendingApps = new List<(string ServiceType, DateTime SubmittedAt)>();
+
+        if (System.IO.Directory.Exists(uploadsDir))
+        {
+            var jsonFiles = System.IO.Directory.GetFiles(uploadsDir, "*_application.json");
+            foreach (var jf in jsonFiles)
+            {
+                try
+                {
+                    var text = await System.IO.File.ReadAllTextAsync(jf);
+                    using var doc = System.Text.Json.JsonDocument.Parse(text);
+                    var root = doc.RootElement;
+                    var email = root.TryGetProperty("Email", out var e) ? e.GetString() ?? "" : "";
+                    if (string.IsNullOrWhiteSpace(email)) continue;
+                    if (approvedEmails.Contains(email.Trim().ToLower())) continue;
+
+                    var subAt = root.TryGetProperty("SubmittedAt", out var dt) ? dt.GetDateTime() : System.IO.File.GetCreationTimeUtc(jf);
+                    if (f.DateFrom.HasValue && subAt < f.DateFrom.Value.Date) continue;
+                    if (f.DateTo.HasValue && subAt >= f.DateTo.Value.Date.AddDays(1)) continue;
+
+                    var sType = root.TryGetProperty("ServiceType", out var s) ? s.GetString() ?? "Tourism Services" : "Tourism Services";
+                    pendingApps.Add((sType, subAt));
+                }
+                catch { }
+            }
+        }
+
+        var statusFilter = f.ApplicationStatus?.Trim().ToLower();
+
+        if (statusFilter == "pending")
+        {
+            summary.TotalApplications = pendingApps.Count;
+            summary.PendingApplications = pendingApps.Count;
+            summary.ApprovedApplications = 0;
+            summary.RejectedApplications = 0;
+
+            summary.ByServiceType = pendingApps
+                .GroupBy(p => p.ServiceType)
+                .Select(g => new ServiceTypeBreakdown { ServiceType = g.Key, Count = g.Count() })
+                .OrderByDescending(b => b.Count)
+                .ToList();
+        }
+        else if (statusFilter == "approved")
+        {
+            summary.TotalApplications = approvedProviders.Count;
+            summary.PendingApplications = 0;
+            summary.ApprovedApplications = approvedProviders.Count;
+            summary.RejectedApplications = 0;
+
+            summary.ByServiceType = new List<ServiceTypeBreakdown>
+            {
+                new() { ServiceType = "Tourism Services", Count = approvedProviders.Count }
+            };
+        }
+        else if (statusFilter == "rejected")
+        {
+            summary.TotalApplications = 0;
+            summary.PendingApplications = 0;
+            summary.ApprovedApplications = 0;
+            summary.RejectedApplications = 0;
+            summary.ByServiceType = new List<ServiceTypeBreakdown>();
+        }
+        else
+        {
+            summary.PendingApplications = pendingApps.Count;
+            summary.ApprovedApplications = approvedProviders.Count;
+            summary.RejectedApplications = 0;
+            summary.TotalApplications = pendingApps.Count + approvedProviders.Count;
+
+            var allTypes = pendingApps.Select(p => p.ServiceType)
+                .Concat(Enumerable.Repeat("Tourism Services", approvedProviders.Count));
+
+            summary.ByServiceType = allTypes
+                .GroupBy(t => t)
+                .Select(g => new ServiceTypeBreakdown { ServiceType = g.Key, Count = g.Count() })
+                .OrderByDescending(b => b.Count)
+                .ToList();
+        }
+
+        return summary;
+    }
 
     private async Task<RegistrationSummary> GetRegistrationSummaryLinqAsync(ReportQueryParams f)
     {
@@ -168,14 +244,6 @@ public class AdminReportService
             InactiveUsers  = users.Count(u => !u.IsActive)
         };
     }
-
-    private Task<ApplicationSummary> GetApplicationSummaryLinqAsync(ReportQueryParams f)
-    {
-        var summary = new ApplicationSummary();
-        return Task.FromResult(summary);
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static async Task EnsureOpenAsync(DbConnection conn)
     {

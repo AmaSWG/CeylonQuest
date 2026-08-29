@@ -5,14 +5,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IdentityService.Services;
 
-/// <summary>
-/// Orchestrates password reset flows:
-/// 1. Forgot Password: Generate and store a reset token
-/// 2. Reset Password: Validate token and update password
-/// 
-/// Note: Email sending is not yet implemented. For development/testing,
-/// tokens can be retrieved via a debug endpoint (non-Production only).
-/// </summary>
 public class PasswordResetService
 {
     private readonly ApplicationDbContext _db;
@@ -35,11 +27,6 @@ public class PasswordResetService
         _logger = logger;
     }
 
-    /// <summary>
-    /// Initiates password reset flow for the given email.
-    /// Generates reset token, stores hash with expiry, creates reset link, and sends reset email via IEmailService.
-    /// Security: Does not expose whether the email exists (returns success with null token for non-existent emails).
-    /// </summary>
     public async Task<(bool success, string? token)> InitiateForgotPasswordAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
@@ -50,7 +37,6 @@ public class PasswordResetService
         var emailLower = email.Trim().ToLower();
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == emailLower, cancellationToken);
 
-        // Do NOT reveal whether email exists. Return success but do not send email.
         if (user == null)
         {
             _logger.LogInformation("Forgot password request for non-existent email: {Email}", emailLower);
@@ -65,12 +51,10 @@ public class PasswordResetService
                 "Password reset token created for user {UserId} ({Email})",
                 user.Id, user.Email);
 
-            // Construct reset link using configured frontend base URL
             var baseUrl = _config["Email:ResetPasswordBaseUrl"] ?? _config["AppSettings:ResetPasswordBaseUrl"] ?? "http://localhost:5173/reset-password";
             var separator = baseUrl.Contains('?') ? "&" : "?";
             var resetLink = $"{baseUrl}{separator}token={Uri.EscapeDataString(plaintextToken)}";
 
-            // Send password reset email via IEmailService
             await _emailService.SendPasswordResetEmailAsync(user.Email, resetLink, cancellationToken);
 
             return (true, plaintextToken);
@@ -82,24 +66,18 @@ public class PasswordResetService
         }
     }
 
-    /// <summary>
-    /// Validates token and resets the user's password.
-    /// </summary>
     public async Task<(bool success, string? errorMessage)> ResetPasswordAsync(ResetPasswordRequest request)
     {
-        // Validate request structure
         if (!request.IsValid(out var validationError))
         {
             return (false, validationError);
         }
 
-        // Validate password strength (should already be validated by ModelState, but double-check)
         if (!PasswordValidator.IsValid(request.NewPassword))
         {
             return (false, PasswordValidator.GetRequirementsMessage());
         }
 
-        // Validate token
         var resetToken = await _tokenService.ValidateTokenAsync(request.Token);
         if (resetToken == null)
         {
@@ -117,14 +95,11 @@ public class PasswordResetService
         {
             var user = resetToken.User;
 
-            // Hash the new password using the same hasher as elsewhere in the system
             var hasher = new PasswordHasher<IdentityService.Models.User>();
             user.PasswordHash = hasher.HashPassword(user, request.NewPassword);
 
-            // Mark token as used (prevent reuse)
             await _tokenService.MarkAsUsedAsync(resetToken);
 
-            // Save password change
             await _db.SaveChangesAsync();
 
             _logger.LogInformation(
@@ -140,18 +115,13 @@ public class PasswordResetService
         }
     }
 
-    /// <summary>
-    /// [DEVELOPMENT ONLY] Returns the plaintext token for testing.
-    /// The API controller should use this to allow manual token retrieval in development.
-    /// In production, tokens are sent via email only.
-    /// </summary>
     public string? GetDevTokenForUser(Guid userId)
     {
         if (!IsDebugEnabled())
             return null;
 
         _logger.LogInformation("Debug token retrieval requested for user {UserId}", userId);
-        return null; // Token is ephemeral and not stored; use InitiateForgotPasswordAsync instead
+        return null;
     }
 
     private bool IsDebugEnabled()
@@ -160,24 +130,16 @@ public class PasswordResetService
         return environment != "Production";
     }
 
-    /// <summary>
-    /// Helper for development: generates a fake token for testing without actual token generation.
-    /// In production, this would be replaced with actual email sending.
-    /// </summary>
     private string? GenerateDebugToken(Guid userId)
     {
         if (!IsDebugEnabled())
             return null;
 
-        // In development, log a special marker so testing can retrieve via debug endpoint
         _logger.LogInformation("DEVELOPMENT: Password reset initiated for userId {UserId}. Use debug endpoint to retrieve token.", userId);
-        return null; // Caller should use debug endpoint
+        return null;
     }
 }
 
-/// <summary>
-/// Extension methods for ResetPasswordRequest validation.
-/// </summary>
 public static class ResetPasswordRequestExtensions
 {
     public static bool IsValid(this ResetPasswordRequest request, out string? errorMessage)

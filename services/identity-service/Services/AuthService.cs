@@ -27,7 +27,6 @@ public class AuthService
     {
         var emailLower = req.Email.Trim().ToLower();
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == emailLower);
-        // Generic failure for not found or wrong password
         if (user == null) throw new UnauthorizedAccessException("Invalid credentials");
 
         if (!user.IsActive)
@@ -39,7 +38,6 @@ public class AuthService
         var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, req.Password);
         if (result == PasswordVerificationResult.Failed) throw new UnauthorizedAccessException("Invalid credentials");
 
-        // create token
         var key = _config["Jwt:Key"] ?? "dev_secret_do_not_use_in_production_please_change_which_is_long_enough";
         var issuer = _config["Jwt:Issuer"] ?? "CeylonQuest";
         var audience = _config["Jwt:Audience"] ?? "CeylonQuestAudience";
@@ -53,7 +51,6 @@ public class AuthService
             new Claim("role", user.Role.ToString())
         };
 
-        // Ensure signing key meets minimum HMAC-SHA256 length by deriving a 256-bit key.
         using var sha = System.Security.Cryptography.SHA256.Create();
         var keyBytes = sha.ComputeHash(Encoding.UTF8.GetBytes(key));
         var securityKey = new SymmetricSecurityKey(keyBytes);

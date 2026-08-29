@@ -8,9 +8,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IdentityService.Controllers;
 
-/// <summary>
-/// Returns and manages the authenticated Provider's business/service information.
-/// </summary>
 [ApiController]
 [Route("api/provider/info")]
 [Authorize(Roles = "Provider")]
@@ -23,7 +20,6 @@ public class ProviderInfoController : ControllerBase
         _db = db;
     }
 
-    // GET /api/provider/info
     [HttpGet]
     public async Task<IActionResult> GetProviderInfo()
     {
@@ -51,7 +47,6 @@ public class ProviderInfoController : ControllerBase
         return Ok(response);
     }
 
-    // PUT /api/provider/info
     [HttpPut]
     public async Task<IActionResult> UpdateProviderInfo([FromBody] UpdateProviderInfoRequest request)
     {

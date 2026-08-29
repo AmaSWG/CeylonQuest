@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using IdentityService.Data;
 using IdentityService.DTOs;
@@ -148,5 +149,63 @@ public class UserProfileServiceTests
 
         await Assert.ThrowsAsync<UserNotFoundException>(() =>
             service.UpdateProfileAsync(Guid.NewGuid(), updateRequest));
+    }
+
+    [Fact]
+    public async Task UploadProfilePictureAsync_ValidImage_SavesFileAndUpdatesProfilePictureUrl()
+    {
+        using var db = CreateDbContext();
+        var user = SeedUser(db);
+        var service = new UserProfileService(db);
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "cq_test_" + Guid.NewGuid());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var content = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }; // JPG header bytes
+            var stream = new System.IO.MemoryStream(content);
+            var file = new Microsoft.AspNetCore.Http.FormFile(stream, 0, content.Length, "file", "avatar.jpg");
+
+            var updated = await service.UploadProfilePictureAsync(user.Id, file, tempDir);
+
+            Assert.NotNull(updated.ProfilePictureUrl);
+            Assert.StartsWith("/api/users/avatar/", updated.ProfilePictureUrl);
+            Assert.EndsWith(".jpg", updated.ProfilePictureUrl);
+
+            var dbUser = await db.Users.FindAsync(user.Id);
+            Assert.Equal(updated.ProfilePictureUrl, dbUser?.ProfilePictureUrl);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task RemoveProfilePictureAsync_RemovesFileAndClearsUrl()
+    {
+        using var db = CreateDbContext();
+        var user = SeedUser(db);
+        user.ProfilePictureUrl = "/uploads/avatars/test.jpg";
+        db.SaveChanges();
+
+        var service = new UserProfileService(db);
+        var tempDir = Path.Combine(Path.GetTempPath(), "cq_test_" + Guid.NewGuid());
+        Directory.CreateDirectory(Path.Combine(tempDir, "uploads", "avatars"));
+        File.WriteAllText(Path.Combine(tempDir, "uploads", "avatars", "test.jpg"), "dummy");
+
+        try
+        {
+            var updated = await service.RemoveProfilePictureAsync(user.Id, tempDir);
+
+            Assert.Null(updated.ProfilePictureUrl);
+            var dbUser = await db.Users.FindAsync(user.Id);
+            Assert.Null(dbUser?.ProfilePictureUrl);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+        }
     }
 }

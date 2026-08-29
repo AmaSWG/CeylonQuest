@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import '../styles/Login.css'
+import { HomeIcon, EmailIcon, VisibilityIcon } from '../components/Icons'
 
 function LoginSuccessToast({ message, onClose }) {
   useEffect(() => {
@@ -9,12 +10,12 @@ function LoginSuccessToast({ message, onClose }) {
 
   return (
     <div className="login-toast login-toast--success" role="alert">
-      <div className="login-toast__icon">✓</div>
+      <div className="login-toast__icon"></div>
       <div className="login-toast__body">
         <p className="login-toast__title">Welcome back!</p>
         <p className="login-toast__msg">{message}</p>
       </div>
-      <button className="login-toast__close" onClick={onClose} aria-label="Close notification">✕</button>
+      <button className="login-toast__close" onClick={onClose} aria-label="Close notification"></button>
     </div>
   )
 }
@@ -81,24 +82,18 @@ function Login({ onLoginSuccess, onBack, onForgotPassword, onHome, onActivatePro
             onClick={onHome}
             aria-label="Go back to home page"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-              <polyline points="9 22 9 12 15 12 15 22" />
-            </svg>
+            <HomeIcon size={14} />
             Home
           </button>
         )}
 
         <div className="login-header">
-          <h1>CeylonQuest</h1>
-          <h2>Welcome Back</h2>
-          <p>Sign in to continue your journey through Sri Lanka.</p>
+          <img src="/logo.png" alt="CeylonQuest" className="login-header__logo-img" />
         </div>
 
-        <form onSubmit={handleSubmit} className="login-form">
-
+        <form className="login-form" onSubmit={handleSubmit} noValidate>
           {error && (
-            <div className="login-error" role="alert">
+            <div className="login-error-banner" role="alert">
               {error}
             </div>
           )}
@@ -107,10 +102,7 @@ function Login({ onLoginSuccess, onBack, onForgotPassword, onHome, onActivatePro
             <label htmlFor="login-email">Email Address</label>
             <div className="login-input-wrap">
               <span className="login-input-icon" aria-hidden="true">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                  <polyline points="22,6 12,13 2,6"/>
-                </svg>
+                <EmailIcon size={16} />
               </span>
               <input
                 type="email"

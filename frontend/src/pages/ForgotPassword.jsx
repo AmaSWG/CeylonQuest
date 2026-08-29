@@ -17,7 +17,6 @@ function ForgotPassword({ onBack }) {
       return
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(trimmedEmail)) {
       setError('Please enter a valid email address.')
@@ -54,14 +53,14 @@ function ForgotPassword({ onBack }) {
     <div className="forgot-password-page">
       <div className="forgot-password-card">
         <div className="forgot-password-header">
-          <h1>CeylonQuest</h1>
+          <img src="/logo.png" alt="CeylonQuest" className="forgot-password-header__logo-img" />
           <h2>Forgot Your Password?</h2>
           <p>Enter your email address and we'll send you a link to reset your password.</p>
         </div>
 
         {success ? (
           <div className="forgot-password-success">
-            <div className="success-icon">✓</div>
+            <div className="success-icon"></div>
             <h3>Check Your Email</h3>
             <p>If an account exists with this email address, you will receive a password reset link. Please check your email (including your spam folder).</p>
             <button 

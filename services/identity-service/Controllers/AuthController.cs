@@ -34,7 +34,6 @@ public class AuthController : ControllerBase
         {
             var user = await _registrationService.RegisterAsync(request);
 
-            // Return 201 Created. No sensitive data returned.
             return Created($"/api/auth/register/{user.Id}", new
             {
                 message = "Registration successful",
@@ -67,7 +66,6 @@ public class AuthController : ControllerBase
     [HttpPost("logout")]
     public IActionResult Logout()
     {
-        // Stateless tokens: backend does not track sessions. Client should clear stored token.
         return Ok(new { message = "Logged out" });
     }
 
@@ -102,10 +100,8 @@ public class AuthController : ControllerBase
         }
         catch (Exception)
         {
-            // Do not expose internal errors
         }
 
-        // Generic response for security (same whether email exists or not)
         return Ok(new
         {
             message = "If an account exists with this email address, you will receive a password reset link. Please check your email."
@@ -130,15 +126,10 @@ public class AuthController : ControllerBase
         }
         catch (Exception)
         {
-            // Don't expose internal errors
             return BadRequest(new { message = "Password reset link is invalid or has expired. Please request a new password reset." });
         }
     }
 
-    /// <summary>
-    /// [DEVELOPMENT ONLY] For testing in Swagger - demonstrates how to get a token.
-    /// In development mode only, the forgot-password endpoint returns the actual token.
-    /// </summary>
     [HttpGet("debug/test-token-info")]
     public IActionResult GetTestTokenInfo()
     {

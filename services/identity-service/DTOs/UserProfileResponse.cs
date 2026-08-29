@@ -9,5 +9,6 @@ public class UserProfileResponse
     public string PhoneNumber { get; set; } = string.Empty;
     public string Nationality { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
+    public string? ProfilePictureUrl { get; set; }
     public DateTime CreatedAt { get; set; }
 }

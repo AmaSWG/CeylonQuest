@@ -45,29 +45,14 @@
 /* ── Header ── */
 .registration-header {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
 
-.registration-header h1 {
-  margin: 0;
-  color: #123b5d;
-  font-size: 40px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-}
-
-.registration-header h2 {
-  margin: 8px 0 10px;
-  color: #123b5d;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.registration-header p {
-  margin: 0;
-  color: #666666;
-  font-size: 15px;
-  line-height: 1.6;
+.registration-header__logo-img {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 0;
 }
 
 /* ── Form fields ── */
@@ -491,7 +476,7 @@
 }
 
 .form-error::before {
-  content: "⚠";
+  content: "";
   flex-shrink: 0;
   font-size: 15px;
 }

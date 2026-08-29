@@ -1,10 +1,43 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import '../styles/AdminDashboard.css'
+import {
+  DashboardIcon,
+  DocumentScannerIcon,
+  GroupIcon,
+  WorkIcon,
+  CalendarMonthIcon,
+  BarChartIcon,
+  NotificationsActiveIcon,
+  PermIdentityIcon,
+  LogoutIcon,
+  ManageSearchIcon,
+  CheckCircleIcon,
+  CancelIcon,
+  StorefrontIcon,
+  EmailIcon,
+  LocalPhoneIcon,
+  MyLocationIcon,
+  PublicIcon,
+  PhotoCameraIcon,
+  DeleteSweepIcon,
+  BadgeIcon,
+  CreateIcon
+} from '../components/Icons'
+import ConfirmModal from '../components/ConfirmModal'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function initials(first, last) {
   return `${(first || '').charAt(0)}${(last || '').charAt(0)}`.toUpperCase() || 'A'
+}
+
+function formatAvatarUrl(url) {
+  if (!url) return null
+  if (url.startsWith('/uploads/avatars/')) {
+    const fileName = url.split('/').pop()
+    return `/api/users/avatar/${fileName}`
+  }
+  return url
 }
 
 function formatDate(iso) {
@@ -27,12 +60,12 @@ function Toast({ message, title = 'Success', onClose }) {
 
   return (
     <div className="ad-toast" role="alert" aria-live="polite">
-      <div className="ad-toast__icon">✓</div>
+      <div className="ad-toast__icon"></div>
       <div className="ad-toast__body">
         <p className="ad-toast__title">{title}</p>
         <p className="ad-toast__msg">{message}</p>
       </div>
-      <button className="ad-toast__close" onClick={onClose} aria-label="Close notification">✕</button>
+      <button className="ad-toast__close" onClick={onClose} aria-label="Close notification"></button>
     </div>
   )
 }
@@ -58,7 +91,7 @@ function Modal({ title, onClose, wide = false, children }) {
       <div className={`ad-modal ${wide ? 'ad-modal--wide' : ''}`} role="dialog" aria-modal="true">
         <div className="ad-modal__header">
           <h2 className="ad-modal__title">{title}</h2>
-          <button className="ad-modal__close" onClick={onClose} aria-label="Close modal">✕</button>
+          <button className="ad-modal__close" onClick={onClose} aria-label="Close modal"></button>
         </div>
         <div className="ad-modal__body">{children}</div>
       </div>
@@ -90,7 +123,7 @@ function OverviewTab({ stats, users = [], applications = [], bookings = [], onNa
       {/* Metrics Cards */}
       <div className="ad-metrics-grid">
         <div className="ad-metric-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('users')}>
-          <div className="ad-metric-icon ad-metric-icon--blue">👥</div>
+          <div className="ad-metric-icon ad-metric-icon--blue"><GroupIcon size={24} /></div>
           <div className="ad-metric-info">
             <div className="ad-metric-title">Total Registered Users</div>
             <div className="ad-metric-value">{stats?.totalUsers ?? users.length}</div>
@@ -99,7 +132,7 @@ function OverviewTab({ stats, users = [], applications = [], bookings = [], onNa
         </div>
 
         <div className="ad-metric-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('providers')}>
-          <div className="ad-metric-icon ad-metric-icon--teal">🏔️</div>
+          <div className="ad-metric-icon ad-metric-icon--teal"><WorkIcon size={24} /></div>
           <div className="ad-metric-info">
             <div className="ad-metric-title">Service Providers</div>
             <div className="ad-metric-value">{stats?.totalProviders ?? approvedProviders.length}</div>
@@ -108,7 +141,7 @@ function OverviewTab({ stats, users = [], applications = [], bookings = [], onNa
         </div>
 
         <div className="ad-metric-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('applications')}>
-          <div className="ad-metric-icon ad-metric-icon--gold">📋</div>
+          <div className="ad-metric-icon ad-metric-icon--gold"><DocumentScannerIcon size={24} /></div>
           <div className="ad-metric-info">
             <div className="ad-metric-title">Provider Applications</div>
             <div className="ad-metric-value">{applications.length}</div>
@@ -117,7 +150,7 @@ function OverviewTab({ stats, users = [], applications = [], bookings = [], onNa
         </div>
 
         <div className="ad-metric-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('bookings')}>
-          <div className="ad-metric-icon ad-metric-icon--green">📅</div>
+          <div className="ad-metric-icon ad-metric-icon--green"><CalendarMonthIcon size={24} /></div>
           <div className="ad-metric-info">
             <div className="ad-metric-title">Platform Bookings</div>
             <div className="ad-metric-value">{bookings.length}</div>
@@ -129,16 +162,16 @@ function OverviewTab({ stats, users = [], applications = [], bookings = [], onNa
       {/* Quick Actions */}
       <div className="ad-quick-actions">
         <button className="ad-quick-btn ad-quick-btn--primary" onClick={() => onNavigate('applications')}>
-          📋 View Provider Applications ({applications.length} total, {pendingApps.length} pending)
+          <DocumentScannerIcon size={16} /> View Provider Applications ({applications.length} total, {pendingApps.length} pending)
         </button>
         <button className="ad-quick-btn ad-quick-btn--secondary" onClick={() => onNavigate('users')}>
-          👥 Manage Users
+          <GroupIcon size={16} /> Manage Users
         </button>
         <button className="ad-quick-btn ad-quick-btn--secondary" onClick={() => onNavigate('providers')}>
-          🏔️ View Approved Providers
+          <WorkIcon size={16} /> View Approved Providers
         </button>
         <button className="ad-quick-btn ad-quick-btn--secondary" onClick={() => onNavigate('bookings')}>
-          📅 View Bookings Overview
+          <CalendarMonthIcon size={16} /> View Bookings Overview
         </button>
       </div>
 
@@ -156,7 +189,7 @@ function OverviewTab({ stats, users = [], applications = [], bookings = [], onNa
 
             {recentApps.length === 0 ? (
               <div className="ad-empty">
-                <div className="ad-empty__icon">📋</div>
+                <div className="ad-empty__icon"></div>
                 <p className="ad-empty__title">No applications received yet</p>
                 <p className="ad-empty__msg">Submitted provider registration applications will appear here for review.</p>
               </div>
@@ -203,7 +236,7 @@ function OverviewTab({ stats, users = [], applications = [], bookings = [], onNa
               const events = [
                 ...applications.slice(0, 2).map(a => ({
                   id: `app-${a.id}`,
-                  icon: '📋',
+                  icon: <DocumentScannerIcon size={16} />,
                   iconBg: 'rgba(22, 138, 173, 0.15)',
                   iconColor: '#168aad',
                   title: 'Provider Application Submitted',
@@ -212,7 +245,7 @@ function OverviewTab({ stats, users = [], applications = [], bookings = [], onNa
                 })),
                 ...users.slice(0, 2).map(u => ({
                   id: `usr-${u.id}`,
-                  icon: '👤',
+                  icon: <GroupIcon size={16} />,
                   iconBg: 'rgba(79, 138, 69, 0.15)',
                   iconColor: '#3a6b30',
                   title: 'New User Registration',
@@ -224,7 +257,7 @@ function OverviewTab({ stats, users = [], applications = [], bookings = [], onNa
               if (events.length === 0) {
                 return (
                   <div className="ad-empty" style={{ padding: '24px 16px' }}>
-                    <div className="ad-empty__icon">⚡</div>
+                    <div className="ad-empty__icon"><NotificationsActiveIcon size={28} /></div>
                     <p className="ad-empty__title">No recent activity</p>
                     <p className="ad-empty__msg">Platform registrations and provider application events will appear here.</p>
                   </div>
@@ -350,16 +383,17 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
             <div className="ad-fields">
               <div className="ad-field">
                 <span className="ad-field__label">Business / Contact</span>
-                <span className="ad-field__value">🏢 {selectedApp.businessName || 'Business Application'}</span>
+                <span className="ad-field__value"><StorefrontIcon size={15} style={{ marginRight: 6 }} /> {selectedApp.businessName || 'Business Application'}</span>
               </div>
               <div className="ad-field">
                 <span className="ad-field__label">Contact Email</span>
-                <span className="ad-field__value">✉️ {selectedApp.email}</span>
+                <span className="ad-field__value"><EmailIcon size={15} style={{ marginRight: 6 }} /> {selectedApp.email}</span>
               </div>
               <div className="ad-field">
                 <span className="ad-field__label">Applicant Personal Details</span>
                 <span className="ad-field__value">
-                  👤 {(selectedApp.firstName || selectedApp.lastName) 
+                  <PermIdentityIcon size={15} style={{ marginRight: 6 }} />
+                   {(selectedApp.firstName || selectedApp.lastName) 
                     ? `${selectedApp.firstName || ''} ${selectedApp.lastName || ''}`.trim() 
                     : 'To be completed by Provider via OTP activation'}
                 </span>
@@ -367,16 +401,17 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
               <div className="ad-field">
                 <span className="ad-field__label">Contact Phone</span>
                 <span className="ad-field__value">
-                  📞 {selectedApp.phoneNumber || 'Completed upon OTP activation'}
+                  <LocalPhoneIcon size={15} style={{ marginRight: 6 }} />
+                   {selectedApp.phoneNumber || 'Completed upon OTP activation'}
                 </span>
               </div>
               <div className="ad-field">
                 <span className="ad-field__label">Service Category</span>
-                <span className="ad-field__value">🏷️ {selectedApp.serviceType}</span>
+                <span className="ad-field__value"><WorkIcon size={15} style={{ marginRight: 6 }} /> {selectedApp.serviceType}</span>
               </div>
               <div className="ad-field pd-field--full">
                 <span className="ad-field__label">Operating Location</span>
-                <span className="ad-field__value">📍 {selectedApp.location}</span>
+                <span className="ad-field__value"><MyLocationIcon size={15} style={{ marginRight: 6 }} /> {selectedApp.location}</span>
               </div>
               <div className="ad-field pd-field--full">
                 <span className="ad-field__label">Business Description</span>
@@ -388,7 +423,7 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
                 <span className="ad-field__label">Legal & Registration Document</span>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', background: '#faf8f3', padding: '12px 14px', borderRadius: '8px', border: '1px solid #ede8dc', flexWrap: 'wrap' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px' }}>
-                    📄 <strong style={{ color: '#123b5d' }}>{selectedApp.legalDocumentFileName || 'Standard Registration Record'}</strong>
+                    <DocumentScannerIcon size={16} /> <strong style={{ color: '#123b5d' }}>{selectedApp.legalDocumentFileName || 'Standard Registration Record'}</strong>
                   </span>
                   <button
                     type="button"
@@ -397,7 +432,7 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
                     onClick={() => handleDownloadDocument(selectedApp)}
                     disabled={downloadingId === selectedApp.id}
                   >
-                    {downloadingId === selectedApp.id ? 'Downloading…' : '⬇️ Download Document'}
+                    <DocumentScannerIcon size={14} /> {downloadingId === selectedApp.id ? 'Downloading…' : 'Download Document'}
                   </button>
                 </div>
               </div>
@@ -410,7 +445,7 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
                 onClick={() => handleDownloadDocument(selectedApp)}
                 disabled={downloadingId === selectedApp.id}
               >
-                {downloadingId === selectedApp.id ? 'Downloading…' : '⬇️ Download Legal Document'}
+                <DocumentScannerIcon size={14} /> {downloadingId === selectedApp.id ? 'Downloading…' : 'Download Legal Document'}
               </button>
               <button className="ad-cancel-btn" onClick={() => setSelectedApp(null)}>
                 Close Review
@@ -423,7 +458,7 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
       {/* Filter and Search Bar */}
       <div className="ad-filter-bar">
         <div className="ad-search-wrap">
-          <span className="ad-search-icon">🔍</span>
+          <span className="ad-search-icon"><ManageSearchIcon size={18} /></span>
           <input
             type="text"
             className="ad-search-input"
@@ -454,7 +489,7 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
         <div className="ad-card__body" style={{ padding: 0 }}>
           {filtered.length === 0 ? (
             <div className="ad-empty">
-              <div className="ad-empty__icon">📋</div>
+              <div className="ad-empty__icon"><DocumentScannerIcon size={32} /></div>
               <p className="ad-empty__title">No applications found</p>
               <p className="ad-empty__msg">No application records match your filter criteria.</p>
             </div>
@@ -495,7 +530,7 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
                           disabled={downloadingId === app.id}
                           title="Download Document File"
                         >
-                          {downloadingId === app.id ? '…' : `⬇️ ${app.legalDocumentFileName || 'Download Record'}`}
+                          {downloadingId === app.id ? '…' : `⬇ ${app.legalDocumentFileName || 'Download Record'}`}
                         </button>
                       </td>
                       <td>
@@ -641,7 +676,7 @@ function UserManagementTab({ token, onLogout, users, onRefresh, showToast }) {
       {/* Filter and Search Bar */}
       <div className="ad-filter-bar">
         <div className="ad-search-wrap">
-          <span className="ad-search-icon">🔍</span>
+          <span className="ad-search-icon"><ManageSearchIcon size={18} /></span>
           <input
             type="text"
             className="ad-search-input"
@@ -672,7 +707,7 @@ function UserManagementTab({ token, onLogout, users, onRefresh, showToast }) {
         <div className="ad-card__body" style={{ padding: 0 }}>
           {filtered.length === 0 ? (
             <div className="ad-empty">
-              <div className="ad-empty__icon">👥</div>
+              <div className="ad-empty__icon"><GroupIcon size={32} /></div>
               <p className="ad-empty__title">No users found</p>
               <p className="ad-empty__msg">No registered user accounts match your search filters.</p>
             </div>
@@ -839,11 +874,11 @@ function ProviderManagementTab({ token, onLogout, users = [], applications = [],
               </div>
               <div className="ad-field">
                 <span className="ad-field__label">Operating Location</span>
-                <span className="ad-field__value">📍 {selectedProvider.location}</span>
+                <span className="ad-field__value"> {selectedProvider.location}</span>
               </div>
               <div className="ad-field">
                 <span className="ad-field__label">Phone Number</span>
-                <span className="ad-field__value">📞 {selectedProvider.phoneNumber || '—'}</span>
+                <span className="ad-field__value"> {selectedProvider.phoneNumber || '—'}</span>
               </div>
               <div className="ad-field pd-field--full">
                 <span className="ad-field__label">Business Description</span>
@@ -869,7 +904,7 @@ function ProviderManagementTab({ token, onLogout, users = [], applications = [],
       {/* Filter and Search Bar */}
       <div className="ad-filter-bar">
         <div className="ad-search-wrap">
-          <span className="ad-search-icon">🔍</span>
+          <span className="ad-search-icon"><ManageSearchIcon size={18} /></span>
           <input
             type="text"
             className="ad-search-input"
@@ -885,7 +920,7 @@ function ProviderManagementTab({ token, onLogout, users = [], applications = [],
         <div className="ad-card__body" style={{ padding: 0 }}>
           {filtered.length === 0 ? (
             <div className="ad-empty">
-              <div className="ad-empty__icon">🏔️</div>
+              <div className="ad-empty__icon"><WorkIcon size={32} /></div>
               <p className="ad-empty__title">No approved providers</p>
               <p className="ad-empty__msg">Approved provider accounts will appear here.</p>
             </div>
@@ -985,23 +1020,23 @@ function BookingsOverviewTab({ bookings }) {
             <div className="ad-fields">
               <div className="ad-field">
                 <span className="ad-field__label">Visitor</span>
-                <span className="ad-field__value">👤 {selectedBooking.visitorName}</span>
+                <span className="ad-field__value"> {selectedBooking.visitorName}</span>
               </div>
               <div className="ad-field">
                 <span className="ad-field__label">Email</span>
-                <span className="ad-field__value">✉️ {selectedBooking.visitorEmail}</span>
+                <span className="ad-field__value"> {selectedBooking.visitorEmail}</span>
               </div>
               <div className="ad-field">
                 <span className="ad-field__label">Scheduled Date</span>
-                <span className="ad-field__value">📅 {formatDate(selectedBooking.date)}</span>
+                <span className="ad-field__value"> {formatDate(selectedBooking.date)}</span>
               </div>
               <div className="ad-field">
                 <span className="ad-field__label">Party Size</span>
-                <span className="ad-field__value">👥 {selectedBooking.guests} Guests</span>
+                <span className="ad-field__value"> {selectedBooking.guests} Guests</span>
               </div>
               <div className="ad-field">
                 <span className="ad-field__label">Payment</span>
-                <span className="ad-field__value">💳 {selectedBooking.paymentStatus}</span>
+                <span className="ad-field__value"> {selectedBooking.paymentStatus}</span>
               </div>
               <div className="ad-field">
                 <span className="ad-field__label">Total Amount</span>
@@ -1017,7 +1052,7 @@ function BookingsOverviewTab({ bookings }) {
       {/* Filter and Search Bar */}
       <div className="ad-filter-bar">
         <div className="ad-search-wrap">
-          <span className="ad-search-icon">🔍</span>
+          <span className="ad-search-icon"></span>
           <input
             type="text"
             className="ad-search-input"
@@ -1048,7 +1083,7 @@ function BookingsOverviewTab({ bookings }) {
         <div className="ad-card__body" style={{ padding: 0 }}>
           {filtered.length === 0 ? (
             <div className="ad-empty">
-              <div className="ad-empty__icon">📅</div>
+              <div className="ad-empty__icon"></div>
               <p className="ad-empty__title">No bookings recorded</p>
               <p className="ad-empty__msg">Platform booking activities and visitor reservations will appear here.</p>
             </div>
@@ -1123,7 +1158,7 @@ function NotificationsTab({ notifications, onMarkAllRead, onToggleRead, onClearA
         <div style={{ display: 'flex', gap: '8px' }}>
           {unreadCount > 0 && (
             <button className="ad-quick-btn ad-quick-btn--secondary" onClick={onMarkAllRead}>
-              ✓ Mark All Read
+               Mark All Read
             </button>
           )}
           {notifications.length > 0 && (
@@ -1139,13 +1174,13 @@ function NotificationsTab({ notifications, onMarkAllRead, onToggleRead, onClearA
           All ({notifications.length})
         </button>
         <button className={`ad-filter-pill ${filter === 'applications' ? 'active' : ''}`} onClick={() => setFilter('applications')}>
-          📋 Applications ({notifications.filter(n => n.category === 'applications').length})
+          <DocumentScannerIcon size={14} style={{ marginRight: 6 }} /> Applications ({notifications.filter(n => n.category === 'applications').length})
         </button>
         <button className={`ad-filter-pill ${filter === 'users' ? 'active' : ''}`} onClick={() => setFilter('users')}>
-          👥 Users ({notifications.filter(n => n.category === 'users').length})
+          <GroupIcon size={14} style={{ marginRight: 6 }} /> Users ({notifications.filter(n => n.category === 'users').length})
         </button>
         <button className={`ad-filter-pill ${filter === 'system' ? 'active' : ''}`} onClick={() => setFilter('system')}>
-          📢 System ({notifications.filter(n => n.category === 'system').length})
+          <NotificationsActiveIcon size={14} style={{ marginRight: 6 }} /> System ({notifications.filter(n => n.category === 'system').length})
         </button>
       </div>
 
@@ -1153,7 +1188,7 @@ function NotificationsTab({ notifications, onMarkAllRead, onToggleRead, onClearA
         <div className="ad-card">
           <div className="ad-card__body">
             <div className="ad-empty">
-              <div className="ad-empty__icon">🔔</div>
+              <div className="ad-empty__icon"><NotificationsActiveIcon size={32} /></div>
               <p className="ad-empty__title">No notifications</p>
               <p className="ad-empty__msg">You are caught up with all administrative notifications in this category.</p>
             </div>
@@ -1171,10 +1206,17 @@ function NotificationsTab({ notifications, onMarkAllRead, onToggleRead, onClearA
               <div
                 className="ad-notif-icon"
                 style={{
-                  background: n.category === 'applications' ? 'rgba(214, 168, 95, 0.2)' : n.category === 'users' ? 'rgba(22, 138, 173, 0.15)' : 'rgba(18, 59, 93, 0.12)'
+                  background: n.category === 'applications' ? 'rgba(214, 168, 95, 0.2)' : n.category === 'users' ? 'rgba(22, 138, 173, 0.15)' : 'rgba(18, 59, 93, 0.12)',
+                  color: n.category === 'applications' ? '#b8860b' : n.category === 'users' ? '#168aad' : '#123b5d'
                 }}
               >
-                {n.category === 'applications' ? '📋' : n.category === 'users' ? '👥' : '📢'}
+                {n.category === 'applications' ? (
+                  <DocumentScannerIcon size={20} />
+                ) : n.category === 'users' ? (
+                  <GroupIcon size={20} />
+                ) : (
+                  <NotificationsActiveIcon size={20} />
+                )}
               </div>
               <div className="ad-notif-content">
                 <h3 className="ad-notif-title">{n.title}</h3>
@@ -1192,7 +1234,7 @@ function NotificationsTab({ notifications, onMarkAllRead, onToggleRead, onClearA
 
 // ── 7. Admin Account Tab ──────────────────────────────────────────────────────
 
-function AdminAccountTab({ token, onLogout, showToast }) {
+function AdminAccountTab({ token, onLogout, showToast, onProfileUpdate }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -1200,17 +1242,34 @@ function AdminAccountTab({ token, onLogout, showToast }) {
   const [formData, setFormData] = useState({})
   const [saveLoading, setSaveLoading] = useState(false)
   const [saveError, setSaveError] = useState(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarError, setAvatarError] = useState(null)
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false)
+
+  const onLogoutRef = useRef(onLogout)
+  useEffect(() => { onLogoutRef.current = onLogout }, [onLogout])
+  const onProfileUpdateRef = useRef(onProfileUpdate)
+  useEffect(() => { onProfileUpdateRef.current = onProfileUpdate }, [onProfileUpdate])
 
   const fetchProfile = useCallback(async () => {
+    const activeToken = token || localStorage.getItem('authToken')
+    if (!activeToken) {
+      setLoadError('Session expired. Please log in again.')
+      setLoading(false)
+      onLogoutRef.current && onLogoutRef.current()
+      return
+    }
+
     setLoading(true)
     setLoadError(null)
     try {
       const resp = await fetch('/api/users/me', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${activeToken}` }
       })
       if (resp.ok) {
         const data = await resp.json()
         setProfile(data)
+        onProfileUpdateRef.current && onProfileUpdateRef.current(data)
         setFormData({
           firstName: data.firstName || '',
           lastName: data.lastName || '',
@@ -1218,18 +1277,21 @@ function AdminAccountTab({ token, onLogout, showToast }) {
           nationality: data.nationality || ''
         })
       } else if (resp.status === 401) {
-        onLogout && onLogout()
+        setLoadError('Session expired or unauthorized. Please log in again.')
+        onLogoutRef.current && onLogoutRef.current()
       } else {
-        setLoadError('Failed to load admin profile.')
+        setLoadError('Failed to load admin profile. Please try again.')
       }
     } catch {
       setLoadError('Network error. Please check your connection.')
     } finally {
       setLoading(false)
     }
-  }, [token, onLogout])
+  }, [token])
 
-  useEffect(() => { fetchProfile() }, [fetchProfile])
+  useEffect(() => {
+    fetchProfile()
+  }, [fetchProfile])
 
   const handleEdit = () => {
     setSaveError(null)
@@ -1238,10 +1300,10 @@ function AdminAccountTab({ token, onLogout, showToast }) {
 
   const handleCancel = () => {
     setFormData({
-      firstName: profile.firstName || '',
-      lastName: profile.lastName || '',
-      phoneNumber: profile.phoneNumber || '',
-      nationality: profile.nationality || ''
+      firstName: profile?.firstName || '',
+      lastName: profile?.lastName || '',
+      phoneNumber: profile?.phoneNumber || '',
+      nationality: profile?.nationality || ''
     })
     setSaveError(null)
     setEditing(false)
@@ -1256,12 +1318,13 @@ function AdminAccountTab({ token, onLogout, showToast }) {
     setSaveError(null)
     setSaveLoading(true)
 
+    const activeToken = token || localStorage.getItem('authToken')
     try {
       const resp = await fetch('/api/users/me', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${activeToken}`
         },
         body: JSON.stringify(formData)
       })
@@ -1270,6 +1333,7 @@ function AdminAccountTab({ token, onLogout, showToast }) {
         const body = await resp.json()
         const updated = body.profile ?? body
         setProfile(updated)
+        onProfileUpdateRef.current && onProfileUpdateRef.current(updated)
         setFormData({
           firstName: updated.firstName,
           lastName: updated.lastName,
@@ -1279,7 +1343,7 @@ function AdminAccountTab({ token, onLogout, showToast }) {
         setEditing(false)
         showToast('Admin profile updated successfully.')
       } else if (resp.status === 401) {
-        onLogout && onLogout()
+        onLogoutRef.current && onLogoutRef.current()
       } else if (resp.status === 400 || resp.status === 422) {
         const body = await resp.json().catch(() => ({}))
         const first = body.errors && Object.values(body.errors).flat()[0]
@@ -1294,8 +1358,98 @@ function AdminAccountTab({ token, onLogout, showToast }) {
     }
   }
 
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setAvatarError('Please select a valid image file (JPG, PNG, WebP).')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError('Image must be smaller than 5 MB.')
+      return
+    }
+
+    setAvatarError(null)
+    setAvatarUploading(true)
+
+    const activeToken = token || localStorage.getItem('authToken')
+    try {
+      const data = new FormData()
+      data.append('file', file)
+
+      const resp = await fetch('/api/users/me/profile-picture', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${activeToken}`
+        },
+        body: data
+      })
+
+      if (resp.ok) {
+        const result = await resp.json()
+        const updated = result.profile ?? { ...profile, profilePictureUrl: result.profilePictureUrl }
+        setProfile(updated)
+        onProfileUpdateRef.current && onProfileUpdateRef.current(updated)
+        showToast('Admin profile picture updated successfully.')
+      } else {
+        const errBody = await resp.json().catch(() => ({}))
+        setAvatarError(errBody.message || 'Failed to upload profile picture.')
+      }
+    } catch {
+      setAvatarError('Network error while uploading photo.')
+    } finally {
+      setAvatarUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleRemoveAvatar = async () => {
+    setAvatarError(null)
+    setAvatarUploading(true)
+
+    const activeToken = token || localStorage.getItem('authToken')
+    try {
+      const resp = await fetch('/api/users/me/profile-picture', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${activeToken}`
+        }
+      })
+
+      if (resp.ok) {
+        const result = await resp.json()
+        const updated = result.profile ?? { ...profile, profilePictureUrl: null }
+        setProfile(updated)
+        onProfileUpdateRef.current && onProfileUpdateRef.current(updated)
+        setShowRemoveConfirm(false)
+        showToast('Admin profile picture removed.')
+      } else {
+        const errBody = await resp.json().catch(() => ({}))
+        setAvatarError(errBody.message || 'Failed to remove profile picture.')
+      }
+    } catch {
+      setAvatarError('Network error while removing photo.')
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
   return (
     <div className="ad-account-tab">
+      <ConfirmModal
+        isOpen={showRemoveConfirm}
+        title="Remove Profile Picture"
+        message="Are you sure you want to remove your profile picture?"
+        confirmText="Remove Photo"
+        cancelText="Cancel"
+        confirmVariant="danger"
+        onConfirm={handleRemoveAvatar}
+        onCancel={() => setShowRemoveConfirm(false)}
+        loading={avatarUploading}
+      />
       <div className="ad-page-header">
         <div className="ad-page-header__left">
           <h1>Admin Account Settings</h1>
@@ -1306,19 +1460,72 @@ function AdminAccountTab({ token, onLogout, showToast }) {
       <div className="ad-card">
         <div className="ad-card__body">
           {loading && <LoadingState label="Loading profile information…" />}
-          {loadError && !loading && <div className="ad-form-error">{loadError}</div>}
+          {loadError && !loading && (
+            <div className="ad-form-error" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>{loadError}</span>
+              <button
+                type="button"
+                onClick={fetchProfile}
+                style={{
+                  background: '#123b5d',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
           {!loading && profile && !editing && (
             <>
               <div className="ad-identity">
-                <div className="ad-avatar">{initials(profile.firstName, profile.lastName)}</div>
+                <div className="ad-avatar-wrapper">
+                  <div className="ad-avatar">
+                    {profile.profilePictureUrl ? (
+                      <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="ad-avatar__img" />
+                    ) : (
+                      initials(profile.firstName, profile.lastName)
+                    )}
+                  </div>
+                  <label className="ad-avatar-upload-btn" title="Upload / Change admin photo">
+                    <PhotoCameraIcon size={14} />
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      onChange={handleAvatarChange}
+                      disabled={avatarUploading}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
+
                 <div className="ad-identity__info">
                   <h2 className="ad-identity__name">{profile.firstName} {profile.lastName}</h2>
                   <p className="ad-identity__email">{profile.email}</p>
-                  <span className="ad-identity__badge">👑 System Administrator</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                    <span className="ad-identity__badge"><BadgeIcon size={13} style={{ marginRight: 4 }} /> System Administrator</span>
+                    {profile.profilePictureUrl && (
+                      <button
+                        type="button"
+                        className="ad-avatar-remove-text-btn"
+                        onClick={() => setShowRemoveConfirm(true)}
+                        disabled={avatarUploading}
+                      >
+                        <DeleteSweepIcon size={13} style={{ marginRight: 4 }} /> Remove Photo
+                      </button>
+                    )}
+                  </div>
+                  {avatarUploading && <div className="ad-avatar-status">Uploading photo…</div>}
+                  {avatarError && <div className="ad-avatar-error">{avatarError}</div>}
                 </div>
                 <button className="ad-edit-btn" onClick={handleEdit} id="edit-admin-profile-btn">
-                  ✏️ Edit Profile
+                  <CreateIcon size={14} style={{ marginRight: 6 }} /> Edit Profile
                 </button>
               </div>
 
@@ -1354,10 +1561,30 @@ function AdminAccountTab({ token, onLogout, showToast }) {
           {!loading && profile && editing && (
             <form onSubmit={handleSave} className="ad-edit-form" noValidate>
               <div className="ad-identity" style={{ marginBottom: '24px' }}>
-                <div className="ad-avatar">{initials(formData.firstName, formData.lastName)}</div>
+                <div className="ad-avatar-wrapper">
+                  <div className="ad-avatar">
+                    {profile.profilePictureUrl ? (
+                      <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="ad-avatar__img" />
+                    ) : (
+                      initials(formData.firstName, formData.lastName)
+                    )}
+                  </div>
+                  <label className="ad-avatar-upload-btn" title="Upload / Change admin photo">
+                    <PhotoCameraIcon size={14} />
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      onChange={handleAvatarChange}
+                      disabled={avatarUploading}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
                 <div className="ad-identity__info">
                   <h2 className="ad-identity__name">{formData.firstName} {formData.lastName}</h2>
                   <p className="ad-identity__email">{profile.email}</p>
+                  {avatarUploading && <div className="ad-avatar-status">Uploading photo…</div>}
+                  {avatarError && <div className="ad-avatar-error">{avatarError}</div>}
                 </div>
               </div>
 
@@ -1497,7 +1724,7 @@ function ReportsTab({ token, onLogout }) {
     <div className="ad-report">
       <div className="ad-section-header">
         <div>
-          <h1 className="ad-section-title">📈 Registration &amp; Verification Report</h1>
+          <h1 className="ad-section-title"> Registration &amp; Verification Report</h1>
           <p className="ad-section-sub">
             Dynamic report aggregated from live database data.
             {report && <span className="ad-report__generated"> Generated at {formatDateTime(report.generatedAt)}</span>}
@@ -1577,92 +1804,189 @@ function ReportsTab({ token, onLogout }) {
 
       {!loading && !error && report && (
         <>
-          {/* ── Registration Summary ── */}
-          <section className="ad-report__section">
-            <h2 className="ad-report__section-title">👥 User Registrations</h2>
-            <div className="ad-report__cards">
-              <div className="ad-report__card ad-report__card--total">
-                <span className="ad-report__card-value">{r?.totalUsers ?? 0}</span>
-                <span className="ad-report__card-label">Total Users</span>
-              </div>
-              <div className="ad-report__card ad-report__card--visitor">
-                <span className="ad-report__card-value">{r?.totalVisitors ?? 0}</span>
-                <span className="ad-report__card-label">Visitors</span>
-              </div>
-              <div className="ad-report__card ad-report__card--provider">
-                <span className="ad-report__card-value">{r?.totalProviders ?? 0}</span>
-                <span className="ad-report__card-label">Providers</span>
-              </div>
-              <div className="ad-report__card ad-report__card--admin">
-                <span className="ad-report__card-value">{r?.totalAdmins ?? 0}</span>
-                <span className="ad-report__card-label">Admins</span>
-              </div>
-              <div className="ad-report__card ad-report__card--active">
-                <span className="ad-report__card-value">{r?.activeUsers ?? 0}</span>
-                <span className="ad-report__card-label">Active</span>
-              </div>
-              <div className="ad-report__card ad-report__card--inactive">
-                <span className="ad-report__card-value">{r?.inactiveUsers ?? 0}</span>
-                <span className="ad-report__card-label">Inactive</span>
-              </div>
-            </div>
-          </section>
+          {r && (
+            <section className="ad-report__section">
+              <h2 className="ad-report__section-title">
+                 User Registrations {af.role ? `(${af.role}s)` : ''}
+              </h2>
+              <div className="ad-report__cards">
+                {af.role === 'Visitor' && (
+                  <>
+                    <div className="ad-report__card ad-report__card--visitor">
+                      <span className="ad-report__card-value">{r.totalVisitors ?? r.totalUsers ?? 0}</span>
+                      <span className="ad-report__card-label">Total Visitors</span>
+                    </div>
+                    <div className="ad-report__card ad-report__card--active">
+                      <span className="ad-report__card-value">{r.activeUsers ?? 0}</span>
+                      <span className="ad-report__card-label">Active Visitors</span>
+                    </div>
+                    <div className="ad-report__card ad-report__card--inactive">
+                      <span className="ad-report__card-value">{r.inactiveUsers ?? 0}</span>
+                      <span className="ad-report__card-label">Inactive Visitors</span>
+                    </div>
+                  </>
+                )}
 
-          {/* ── Application Summary ── */}
-          <section className="ad-report__section">
-            <h2 className="ad-report__section-title">📋 Provider Applications</h2>
-            <div className="ad-report__cards">
-              <div className="ad-report__card ad-report__card--total">
-                <span className="ad-report__card-value">{a?.totalApplications ?? 0}</span>
-                <span className="ad-report__card-label">Total</span>
-              </div>
-              <div className="ad-report__card ad-report__card--pending">
-                <span className="ad-report__card-value">{a?.pendingApplications ?? 0}</span>
-                <span className="ad-report__card-label">Pending</span>
-              </div>
-              <div className="ad-report__card ad-report__card--approved">
-                <span className="ad-report__card-value">{a?.approvedApplications ?? 0}</span>
-                <span className="ad-report__card-label">Approved</span>
-              </div>
-              <div className="ad-report__card ad-report__card--rejected">
-                <span className="ad-report__card-value">{a?.rejectedApplications ?? 0}</span>
-                <span className="ad-report__card-label">Rejected</span>
-              </div>
-            </div>
+                {af.role === 'Provider' && (
+                  <>
+                    <div className="ad-report__card ad-report__card--provider">
+                      <span className="ad-report__card-value">{r.totalProviders ?? r.totalUsers ?? 0}</span>
+                      <span className="ad-report__card-label">Total Providers</span>
+                    </div>
+                    <div className="ad-report__card ad-report__card--active">
+                      <span className="ad-report__card-value">{r.activeUsers ?? 0}</span>
+                      <span className="ad-report__card-label">Active Providers</span>
+                    </div>
+                    <div className="ad-report__card ad-report__card--inactive">
+                      <span className="ad-report__card-value">{r.inactiveUsers ?? 0}</span>
+                      <span className="ad-report__card-label">Inactive Providers</span>
+                    </div>
+                  </>
+                )}
 
-            {/* ── Service Type Breakdown ── */}
-            {a?.byServiceType?.length > 0 && (
-              <div className="ad-report__breakdown">
-                <h3 className="ad-report__breakdown-title">Applications by Service Type</h3>
-                <table className="ad-report__table" id="ad-report-service-type-table">
-                  <thead>
-                    <tr>
-                      <th>Service Type</th>
-                      <th>Applications</th>
-                      <th>Share</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {a.byServiceType.map(row => (
-                      <tr key={row.serviceType}>
-                        <td>{row.serviceType}</td>
-                        <td>{row.count}</td>
-                        <td>
-                          <div className="ad-report__share-bar">
-                            <div
-                              className="ad-report__share-fill"
-                              style={{ width: `${Math.round((row.count / a.totalApplications) * 100)}%` }}
-                            />
-                            <span>{Math.round((row.count / a.totalApplications) * 100)}%</span>
-                          </div>
-                        </td>
+                {af.role === 'Admin' && (
+                  <>
+                    <div className="ad-report__card ad-report__card--admin">
+                      <span className="ad-report__card-value">{r.totalAdmins ?? r.totalUsers ?? 0}</span>
+                      <span className="ad-report__card-label">Total Admins</span>
+                    </div>
+                    <div className="ad-report__card ad-report__card--active">
+                      <span className="ad-report__card-value">{r.activeUsers ?? 0}</span>
+                      <span className="ad-report__card-label">Active Admins</span>
+                    </div>
+                    <div className="ad-report__card ad-report__card--inactive">
+                      <span className="ad-report__card-value">{r.inactiveUsers ?? 0}</span>
+                      <span className="ad-report__card-label">Inactive Admins</span>
+                    </div>
+                  </>
+                )}
+
+                {!af.role && (
+                  <>
+                    <div className="ad-report__card ad-report__card--total">
+                      <span className="ad-report__card-value">{r.totalUsers ?? 0}</span>
+                      <span className="ad-report__card-label">Total Users</span>
+                    </div>
+                    <div className="ad-report__card ad-report__card--visitor">
+                      <span className="ad-report__card-value">{r.totalVisitors ?? 0}</span>
+                      <span className="ad-report__card-label">Visitors</span>
+                    </div>
+                    <div className="ad-report__card ad-report__card--provider">
+                      <span className="ad-report__card-value">{r.totalProviders ?? 0}</span>
+                      <span className="ad-report__card-label">Providers</span>
+                    </div>
+                    <div className="ad-report__card ad-report__card--admin">
+                      <span className="ad-report__card-value">{r.totalAdmins ?? 0}</span>
+                      <span className="ad-report__card-label">Admins</span>
+                    </div>
+                    <div className="ad-report__card ad-report__card--active">
+                      <span className="ad-report__card-value">{r.activeUsers ?? 0}</span>
+                      <span className="ad-report__card-label">Active</span>
+                    </div>
+                    <div className="ad-report__card ad-report__card--inactive">
+                      <span className="ad-report__card-value">{r.inactiveUsers ?? 0}</span>
+                      <span className="ad-report__card-label">Inactive</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </section>
+          )}
+
+          {a && (
+            <section className="ad-report__section">
+              <h2 className="ad-report__section-title">
+                 Provider Applications {af.applicationStatus ? `(${af.applicationStatus})` : ''}
+              </h2>
+              <div className="ad-report__cards">
+                {af.applicationStatus === 'Pending' && (
+                  <div className="ad-report__card ad-report__card--pending">
+                    <span className="ad-report__card-value">{a.pendingApplications ?? a.totalApplications ?? 0}</span>
+                    <span className="ad-report__card-label">Pending Applications</span>
+                  </div>
+                )}
+
+                {af.applicationStatus === 'Approved' && (
+                  <div className="ad-report__card ad-report__card--approved">
+                    <span className="ad-report__card-value">{a.approvedApplications ?? a.totalApplications ?? 0}</span>
+                    <span className="ad-report__card-label">Approved Applications</span>
+                  </div>
+                )}
+
+                {af.applicationStatus === 'Rejected' && (
+                  <div className="ad-report__card ad-report__card--rejected">
+                    <span className="ad-report__card-value">{a.rejectedApplications ?? a.totalApplications ?? 0}</span>
+                    <span className="ad-report__card-label">Rejected Applications</span>
+                  </div>
+                )}
+
+                {!af.applicationStatus && (
+                  <>
+                    <div className="ad-report__card ad-report__card--total">
+                      <span className="ad-report__card-value">{a.totalApplications ?? 0}</span>
+                      <span className="ad-report__card-label">Total Applications</span>
+                    </div>
+                    <div className="ad-report__card ad-report__card--pending">
+                      <span className="ad-report__card-value">{a.pendingApplications ?? 0}</span>
+                      <span className="ad-report__card-label">Pending</span>
+                    </div>
+                    <div className="ad-report__card ad-report__card--approved">
+                      <span className="ad-report__card-value">{a.approvedApplications ?? 0}</span>
+                      <span className="ad-report__card-label">Approved</span>
+                    </div>
+                    <div className="ad-report__card ad-report__card--rejected">
+                      <span className="ad-report__card-value">{a.rejectedApplications ?? 0}</span>
+                      <span className="ad-report__card-label">Rejected</span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {a.byServiceType?.length > 0 && (
+                <div className="ad-report__breakdown">
+                  <h3 className="ad-report__breakdown-title">
+                    Applications by Service Type {af.applicationStatus ? `(${af.applicationStatus})` : ''}
+                  </h3>
+                  <table className="ad-report__table" id="ad-report-service-type-table">
+                    <thead>
+                      <tr>
+                        <th>Service Type</th>
+                        <th>Applications</th>
+                        <th>Share</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
+                    </thead>
+                    <tbody>
+                      {a.byServiceType.map(row => {
+                        const total = a.totalApplications || 1
+                        const pct = Math.round((row.count / total) * 100)
+                        return (
+                          <tr key={row.serviceType}>
+                            <td>{row.serviceType}</td>
+                            <td>{row.count}</td>
+                            <td>
+                              <div className="ad-report__share-bar">
+                                <div
+                                  className="ad-report__share-fill"
+                                  style={{ width: `${pct}%` }}
+                                />
+                                <span>{pct}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          )}
+
+          {!r && !a && (
+            <div className="ad-report__cards" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
+              No report metrics found matching the selected filter criteria.
+            </div>
+          )}
         </>
       )}
     </div>
@@ -1783,25 +2107,43 @@ function AdminDashboard({ onLogout }) {
     showToast('Notifications cleared.')
   }
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('authToken')
     localStorage.removeItem('userRole')
     onLogout && onLogout()
-  }
+  }, [onLogout])
+
+  const [adminProfile, setAdminProfile] = useState(null)
+
+  const fetchAdminProfile = useCallback(async () => {
+    if (!token) return
+    try {
+      const resp = await fetch('/api/users/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (resp.ok) {
+        setAdminProfile(await resp.json())
+      }
+    } catch { }
+  }, [token])
+
+  useEffect(() => {
+    fetchAdminProfile()
+  }, [fetchAdminProfile])
 
   const appList = Array.isArray(applications) ? applications : (applications ? [applications] : [])
   const pendingAppsCount = appList.filter(a => (a.status || '').toLowerCase() === 'pending').length
   const unreadNotifCount = notifications.filter(n => !n.read).length
 
   const navItems = [
-    { key: 'overview',      icon: '📊', label: 'Dashboard Overview' },
-    { key: 'applications',  icon: '📋', label: 'Provider Applications', badge: pendingAppsCount > 0 ? pendingAppsCount : null },
-    { key: 'users',         icon: '👥', label: 'User Management' },
-    { key: 'providers',     icon: '🏔️', label: 'Provider Management' },
-    { key: 'bookings',      icon: '📅', label: 'Bookings Overview' },
-    { key: 'reports',       icon: '📈', label: 'Reports' },
-    { key: 'notifications', icon: '🔔', label: 'Notifications', badge: unreadNotifCount > 0 ? unreadNotifCount : null },
-    { key: 'account',       icon: '👤', label: 'Admin Account' }
+    { key: 'overview',      icon: <DashboardIcon size={18} />,           label: 'Dashboard Overview' },
+    { key: 'applications',  icon: <DocumentScannerIcon size={18} />,      label: 'Provider Applications', badge: pendingAppsCount > 0 ? pendingAppsCount : null },
+    { key: 'users',         icon: <GroupIcon size={18} />,                label: 'User Management' },
+    { key: 'providers',     icon: <WorkIcon size={18} />,                 label: 'Provider Management' },
+    { key: 'bookings',      icon: <CalendarMonthIcon size={18} />,        label: 'Bookings Overview' },
+    { key: 'reports',       icon: <BarChartIcon size={18} />,             label: 'Reports' },
+    { key: 'notifications', icon: <NotificationsActiveIcon size={18} />,  label: 'Notifications', badge: unreadNotifCount > 0 ? unreadNotifCount : null },
+    { key: 'account',       icon: <PermIdentityIcon size={18} />,         label: 'Admin Account' }
   ]
 
   return (
@@ -1811,8 +2153,8 @@ function AdminDashboard({ onLogout }) {
       {/* ── Sidebar ── */}
       <aside className="ad-sidebar">
         <div className="ad-sidebar__brand">
-          <span className="ad-sidebar__logo">CeylonQuest</span>
-          <span className="ad-sidebar__role">👑 Admin Portal</span>
+          <img src="/dashboard-logo.png" alt="CeylonQuest" className="ad-sidebar__logo-img" />
+          <span className="ad-sidebar__role">Admin Portal</span>
         </div>
 
         <ul className="ad-sidebar__nav">
@@ -1832,8 +2174,23 @@ function AdminDashboard({ onLogout }) {
         </ul>
 
         <div className="ad-sidebar__footer">
+          {adminProfile && (
+            <div className="ad-sidebar-user">
+              <div className="ad-sidebar-avatar">
+                {adminProfile.profilePictureUrl ? (
+                  <img src={formatAvatarUrl(adminProfile.profilePictureUrl)} alt="" className="ad-sidebar-avatar__img" />
+                ) : (
+                  initials(adminProfile.firstName, adminProfile.lastName)
+                )}
+              </div>
+              <div className="ad-sidebar-user__info">
+                <div className="ad-sidebar-user__name">{adminProfile.firstName} {adminProfile.lastName}</div>
+                <div className="ad-sidebar-user__email">{adminProfile.email}</div>
+              </div>
+            </div>
+          )}
           <button className="ad-logout-btn" onClick={handleLogout} id="ad-logout-btn">
-            <span className="ad-nav-icon">🚪</span> Log Out
+            <span className="ad-nav-icon"><LogoutIcon size={18} /></span> Log Out
           </button>
         </div>
       </aside>
@@ -1907,6 +2264,7 @@ function AdminDashboard({ onLogout }) {
             token={token}
             onLogout={handleLogout}
             showToast={showToast}
+            onProfileUpdate={setAdminProfile}
           />
         )}
       </main>

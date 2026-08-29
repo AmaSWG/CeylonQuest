@@ -88,19 +88,16 @@ public class ProviderApplicationsController : ControllerBase
 
         var emailLower = email.Trim().ToLower();
 
-        // 1. Check Users table
         var user = await _db.Users
             .FirstOrDefaultAsync(u => u.Email.ToLower() == emailLower);
 
         if (user != null)
         {
-            // If the account is a Visitor or Admin, it is not a provider application
             if (user.Role != UserRole.Provider)
             {
                 return Ok(new { found = false, message = "This email is registered as a Visitor account, not a Provider application." });
             }
 
-            // User is a verified Provider
             var name = $"{user.FirstName} {user.LastName}".Trim();
             return Ok(new ProviderApplicationStatusResponse
             {
@@ -113,7 +110,6 @@ public class ProviderApplicationsController : ControllerBase
             });
         }
 
-        // 2. Check if a submitted application metadata or document exists on disk for this email
         var emailClean = emailLower.Replace("@", "_at_").Replace(".", "_");
         var uploadsDir = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "uploads", "documents");
 
@@ -159,7 +155,6 @@ public class ProviderApplicationsController : ControllerBase
             }
         }
 
-        // 3. No provider application found for this email
         return Ok(new { found = false, message = "No provider application was found for this email address. Please check the spelling or submit a new application." });
     }
 

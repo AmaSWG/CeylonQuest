@@ -37,11 +37,10 @@
   text-decoration: none;
 }
 
-.pas-logo__brand {
-  font-size: 24px;
-  font-weight: 800;
-  color: #ffffff;
-  letter-spacing: -0.5px;
+.pas-logo__img {
+  height: 52px;
+  width: auto;
+  object-fit: contain;
 }
 
 .pas-logo__badge {

@@ -43,7 +43,6 @@ public class RegistrationService
             Role = UserRole.Visitor
         };
 
-        // Enforce Visitor-only registration regardless of requested type
         user.Role = UserRole.Visitor;
 
         user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);

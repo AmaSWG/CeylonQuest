@@ -30,16 +30,19 @@
 }
 
 .pd-sidebar__brand {
-  padding: 26px 24px 20px;
+  padding: 24px 24px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 
-.pd-sidebar__logo {
-  color: #d6a85f;
-  font-size: 21px;
-  font-weight: 800;
-  letter-spacing: -0.3px;
-  display: block;
+.pd-sidebar__logo-img {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 8px;
 }
 
 .pd-sidebar__role {
@@ -1122,7 +1125,7 @@
 }
 
 .pd-form-error::before {
-  content: "⚠";
+  content: "";
   flex-shrink: 0;
 }
 
@@ -1149,6 +1152,146 @@
   font-size: 13px;
   margin: 0;
   line-height: 1.5;
+}
+
+/* ── Avatar Upload & Styling ── */
+.pd-avatar-wrapper {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+}
+
+.pd-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #123b5d, #168aad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: 800;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(18, 59, 93, 0.18);
+}
+
+.pd-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pd-avatar-upload-btn {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #d6a85f;
+  color: #123b5d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.pd-avatar-upload-btn:hover {
+  background: #c89547;
+  transform: scale(1.1);
+}
+
+.pd-avatar-remove-text-btn {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.pd-avatar-remove-text-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.pd-avatar-status {
+  font-size: 12px;
+  color: #168aad;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.pd-avatar-error {
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* ── Sidebar User Card ── */
+.pd-sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.pd-sidebar-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d6a85f, #c89547);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #123b5d;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.pd-sidebar-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pd-sidebar-user__info {
+  min-width: 0;
+  flex: 1;
+}
+
+.pd-sidebar-user__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pd-sidebar-user__email {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── Responsive ── */

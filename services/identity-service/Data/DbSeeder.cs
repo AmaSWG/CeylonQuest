@@ -51,7 +51,6 @@ public static class DbSeeder
             }
             else
             {
-                // Ensure existing user has Admin role and is active
                 if (existingAdmin.Role != UserRole.Admin || !existingAdmin.IsActive)
                 {
                     existingAdmin.Role = UserRole.Admin;

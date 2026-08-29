@@ -9,12 +9,12 @@ function ProviderSuccessToast({ message, onClose }) {
 
   return (
     <div className="reg-toast reg-toast--success" role="alert" aria-live="polite">
-      <div className="reg-toast__icon">✓</div>
+      <div className="reg-toast__icon"></div>
       <div className="reg-toast__body">
         <p className="reg-toast__title">Application Submitted!</p>
         <p className="reg-toast__msg">{message}</p>
       </div>
-      <button className="reg-toast__close" onClick={onClose} aria-label="Close notification">✕</button>
+      <button className="reg-toast__close" onClick={onClose} aria-label="Close notification"></button>
     </div>
   )
 }
@@ -37,7 +37,6 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
     setLoading(true)
 
     const form = event.target
-    // Build FormData directly — this includes business fields and the real document file bytes
     const fd = new FormData(form)
 
     try {
@@ -61,13 +60,11 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
         const errorList = body.errors ? Object.values(body.errors).flat().join(' ') : null
         setError(errorList || body.message || body.title || 'Validation error. Please check your business details.')
       } else {
-        // Dev fallback: when Provider/Catalog service is not connected or endpoint returns 404
         setToast('Your service provider application has been submitted successfully and is pending admin verification.')
         form.reset()
         setFileName('')
       }
     } catch {
-      // Graceful fallback for local development UI testing
       setToast('Your service provider application has been submitted successfully and is pending admin verification.')
       form.reset()
       setFileName('')
@@ -86,18 +83,13 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
 
         <div className="provider-app-header">
           <div className="provider-app-logo">
-            <span className="provider-app-logo__brand">CeylonQuest</span>
-            <span className="provider-app-logo__badge">Provider Verification</span>
+            <img src="/logo.png" alt="CeylonQuest" className="provider-app-logo__img" />
           </div>
           <h1>Apply as a Service Provider</h1>
           <p>
             Submit your business details for verification. Our administrative team will
             review your documentation before approving your listing.
           </p>
-          <div className="provider-app-status-badge">
-            <span className="provider-app-status-badge__icon">📋</span>
-            1. Business Application → 2. Admin Verification → 3. OTP Activation → 4. Listed
-          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="provider-app-form">
@@ -187,7 +179,7 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
                     onChange={handleFileChange}
                     required
                   />
-                  <div className="file-upload-icon">📄</div>
+                  <div className="file-upload-icon"></div>
                   {fileName ? (
                     <span className="file-upload-label">{fileName}</span>
                   ) : (
@@ -205,7 +197,7 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
           </div>
 
           <div className="provider-app-notice">
-            <span className="provider-app-notice__icon">ℹ️</span>
+            <span className="provider-app-notice__icon">ℹ</span>
             <p>
               <strong>Next Steps:</strong> After our admin team verifies your submitted business details,
               you will receive an activation OTP to complete your personal contact profile and set your account password.
@@ -250,7 +242,7 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
               id="goto-activate-btn"
               style={{ color: '#b8860b', fontWeight: '700' }}
             >
-              🔑 Enter Activation OTP →
+              Enter Activation OTP →
             </button>
           )}
         </div>

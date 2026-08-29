@@ -9,18 +9,17 @@ function ActivationToast({ message, type = 'success', onClose }) {
 
   return (
     <div className={`pact-toast pact-toast--${type}`} role="alert">
-      <div className="pact-toast__icon">{type === 'success' ? '✓' : 'ℹ️'}</div>
+      <div className="pact-toast__icon">{type === 'success' ? '' : 'ℹ'}</div>
       <div className="pact-toast__body">
         <p className="pact-toast__title">{type === 'success' ? 'Success' : 'Notice'}</p>
         <p className="pact-toast__msg">{message}</p>
       </div>
-      <button className="pact-toast__close" onClick={onClose} aria-label="Close notification">✕</button>
+      <button className="pact-toast__close" onClick={onClose} aria-label="Close notification"></button>
     </div>
   )
 }
 
 function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' }) {
-  // Step 1: 'otp' (Enter Email & OTP) -> Step 2: 'personal-info' (Enter Names, Phone, Password) -> Step 3: 'complete'
   const [step, setStep] = useState('otp')
   const [email, setEmail] = useState(initialEmail)
   const [otp, setOtp] = useState('')
@@ -35,7 +34,6 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
 
-  // Check URL query parameters for prefilled email/otp
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const qEmail = params.get('email')
@@ -44,7 +42,6 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
     if (qOtp) setOtp(qOtp)
   }, [])
 
-  // Step 1: Verify OTP and proceed to personal info
   const handleVerifyOtp = async (e) => {
     e.preventDefault()
     setError(null)
@@ -63,8 +60,6 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
 
     setLoading(true)
     try {
-      // Integration point for OTP verification logic.
-      // We validate the format and advance to the personal details step.
       await new Promise(r => setTimeout(r, 400))
       setStep('personal-info')
       setToast('OTP code confirmed. Please complete your personal profile and set your password.')
@@ -75,7 +70,6 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
     }
   }
 
-  // Step 2: Submit personal information & activate account
   const handleCompleteActivation = async (e) => {
     e.preventDefault()
     setError(null)
@@ -91,7 +85,6 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
 
     setLoading(true)
     try {
-      // Call provider activation endpoint
       const resp = await fetch('/api/auth/provider/activate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -128,12 +121,7 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
       <div className="pact-card">
         <div className="pact-card__accent" />
 
-        {/* ── Header ── */}
         <div className="pact-header">
-          <div className="pact-logo" onClick={onBack} style={{ cursor: 'pointer' }}>
-            <span className="pact-logo__brand">CeylonQuest</span>
-            <span className="pact-logo__badge">Provider Portal</span>
-          </div>
           <h1>Provider Account Activation</h1>
           <p>
             {step === 'otp' && 'Enter the activation OTP code sent to your approved business email to complete your registration.'}
@@ -142,15 +130,14 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
           </p>
         </div>
 
-        {/* ── Step Indicator ── */}
         <div className="pact-steps-indicator" aria-label="Activation progress">
           <div className={`pact-indicator-step ${step === 'otp' ? 'active' : 'done'}`}>
-            <span className="pact-indicator-num">{step === 'otp' ? '1' : '✓'}</span>
+            <span className="pact-indicator-num">{step === 'otp' ? '1' : ''}</span>
             <span className="pact-indicator-label">1. OTP Code</span>
           </div>
           <div className="pact-indicator-line" />
           <div className={`pact-indicator-step ${step === 'personal-info' ? 'active' : (step === 'complete' ? 'done' : '')}`}>
-            <span className="pact-indicator-num">{step === 'complete' ? '✓' : '2'}</span>
+            <span className="pact-indicator-num">{step === 'complete' ? '' : '2'}</span>
             <span className="pact-indicator-label">2. Personal Details</span>
           </div>
           <div className="pact-indicator-line" />
@@ -160,9 +147,8 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
           </div>
         </div>
 
-        {error && <div className="pact-error-box" role="alert">⚠️ {error}</div>}
+        {error && <div className="pact-error-box" role="alert"> {error}</div>}
 
-        {/* ── Step 1: OTP Entry ── */}
         {step === 'otp' && (
           <form onSubmit={handleVerifyOtp} className="pact-form">
             <div className="form-group">
@@ -174,6 +160,7 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
                   placeholder="e.g. contact@yourbusiness.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
                   required
                 />
               </div>
@@ -189,6 +176,8 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
                   maxLength="10"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
                   required
                   style={{ letterSpacing: '3px', fontSize: '18px', fontWeight: '700', textAlign: 'center' }}
                 />
@@ -207,7 +196,6 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
           </form>
         )}
 
-        {/* ── Step 2: Personal Information & Password Setup ── */}
         {step === 'personal-info' && (
           <form onSubmit={handleCompleteActivation} className="pact-form">
             <div className="pact-email-pill">
@@ -225,6 +213,7 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
                     placeholder="Enter your first name"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
+                    autoComplete="given-name"
                     required
                   />
                 </div>
@@ -238,6 +227,7 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
                     placeholder="Enter your last name"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
+                    autoComplete="family-name"
                     required
                   />
                 </div>
@@ -253,6 +243,7 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
                   placeholder="e.g. 077 123 4567"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
+                  autoComplete="tel"
                   required
                 />
               </div>
@@ -269,6 +260,7 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     minLength="8"
+                    autoComplete="new-password"
                     required
                   />
                 </div>
@@ -283,6 +275,7 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     minLength="8"
+                    autoComplete="new-password"
                     required
                   />
                 </div>
@@ -322,10 +315,9 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
           </form>
         )}
 
-        {/* ── Step 3: Complete / Success Screen ── */}
         {step === 'complete' && (
           <div className="pact-success-view">
-            <div className="pact-success-icon">🎉</div>
+            <div className="pact-success-icon"></div>
             <h2>Account Successfully Activated!</h2>
             <p>
               Your provider profile and credentials have been recorded. You can now
@@ -344,7 +336,6 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
           </div>
         )}
 
-        {/* ── Footer Navigation ── */}
         <div className="pact-footer">
           {onBack && (
             <button type="button" className="pact-footer-link" onClick={onBack}>

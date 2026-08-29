@@ -1,7 +1,7 @@
 import '../styles/Registration.css'
 import { useState, useEffect } from 'react'
+import { HomeIcon } from '../components/Icons'
 
-// Mirrors IdentityService.DTOs.RegisterRequest password rules.
 const PASSWORD_REQUIREMENTS = 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.'
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z\s]).{8,}$/
 
@@ -13,12 +13,12 @@ function SuccessToast({ message, onClose }) {
 
   return (
     <div className="reg-toast reg-toast--success" role="alert" aria-live="polite">
-      <div className="reg-toast__icon">✓</div>
+      <div className="reg-toast__icon"></div>
       <div className="reg-toast__body">
         <p className="reg-toast__title">Registration Successful!</p>
         <p className="reg-toast__msg">{message}</p>
       </div>
-      <button className="reg-toast__close" onClick={onClose} aria-label="Close notification">✕</button>
+      <button className="reg-toast__close" onClick={onClose} aria-label="Close notification"></button>
     </div>
   )
 }
@@ -75,7 +75,6 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome, onAct
         const body = await resp.json().catch(() => ({}))
         setToast(body.message || 'Your account has been created successfully.')
         form.reset()
-        // Give the user a moment to see the success message before redirecting to login.
         setTimeout(() => { onLogin && onLogin() }, 1800)
       } else if (resp.status === 409) {
         setError('Email already in use.')
@@ -108,18 +107,13 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome, onAct
             onClick={onHome}
             aria-label="Go back to home page"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-              <polyline points="9 22 9 12 15 12 15 22" />
-            </svg>
+            <HomeIcon size={14} />
             Home
           </button>
         )}
 
         <div className="registration-header">
-          <h1>CeylonQuest</h1>
-          <h2>Create Your Account</h2>
-          <p>Start your journey through Sri Lanka with CeylonQuest.</p>
+          <img src="/logo.png" alt="CeylonQuest" className="registration-header__logo-img" />
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -134,6 +128,7 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome, onAct
                   id="firstName"
                   name="firstName"
                   placeholder="Enter your first name"
+                  autoComplete="given-name"
                   required
                 />
               </div>
@@ -147,6 +142,7 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome, onAct
                   id="lastName"
                   name="lastName"
                   placeholder="Enter your last name"
+                  autoComplete="family-name"
                   required
                 />
               </div>
@@ -161,6 +157,7 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome, onAct
                 id="email"
                 name="email"
                 placeholder="Enter your email"
+                autoComplete="email"
                 required
               />
             </div>
@@ -174,6 +171,7 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome, onAct
                 id="phoneNumber"
                 name="phoneNumber"
                 placeholder="Enter your phone number"
+                autoComplete="tel"
                 required
               />
             </div>
@@ -187,6 +185,7 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome, onAct
                 id="nationality"
                 name="nationality"
                 placeholder="Enter your nationality"
+                autoComplete="country-name"
                 required
               />
             </div>
@@ -201,6 +200,7 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome, onAct
                 name="password"
                 placeholder="Enter your password"
                 minLength="8"
+                autoComplete="new-password"
                 required
               />
               <small>Must be 8+ characters with an uppercase letter, a lowercase letter, a number, and a special character.</small>
@@ -216,6 +216,7 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome, onAct
                 name="confirmPassword"
                 placeholder="Confirm your password"
                 minLength="8"
+                autoComplete="new-password"
                 required
               />
             </div>
@@ -238,7 +239,6 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome, onAct
           </div>
 
           <div className="provider-section__content">
-            <div className="provider-section__icon">🏨</div>
             <h3 className="provider-section__title">
               Are you a tourism service provider?
             </h3>

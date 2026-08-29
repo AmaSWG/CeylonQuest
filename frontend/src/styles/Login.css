@@ -45,29 +45,14 @@
 /* ── Header ── */
 .login-header {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
 
-.login-header h1 {
-  margin: 0;
-  color: #123b5d;
-  font-size: 38px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-}
-
-.login-header h2 {
-  margin: 8px 0 8px;
-  color: #123b5d;
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.login-header p {
-  margin: 0;
-  color: #666666;
-  font-size: 14.5px;
-  line-height: 1.6;
+.login-header__logo-img {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 0;
 }
 
 /* ── Form ── */
@@ -271,7 +256,7 @@
 }
 
 .login-error::before {
-  content: "⚠";
+  content: "";
   flex-shrink: 0;
   font-size: 15px;
 }

@@ -1,5 +1,6 @@
 import '../styles/ResetPassword.css'
 import { useState, useEffect } from 'react'
+import { CheckCircleIcon, CancelIcon, HomeIcon } from '../components/Icons'
 
 function PasswordRequirementsList({ password }) {
   const requirements = [
@@ -16,7 +17,9 @@ function PasswordRequirementsList({ password }) {
       <ul className="password-requirements__list">
         {requirements.map((req, idx) => (
           <li key={idx} className={`password-requirements__item ${req.met ? 'met' : ''}`}>
-            <span className="password-requirements__check">{req.met ? '✓' : '○'}</span>
+            <span className="password-requirements__check">
+              {req.met ? <CheckCircleIcon size={14} color="#4f8a45" /> : <CancelIcon size={14} color="#b0a898" />}
+            </span>
             {req.label}
           </li>
         ))}
@@ -115,14 +118,14 @@ function ResetPassword({ token: tokenProp, onBack }) {
     <div className="reset-password-page">
       <div className="reset-password-card">
         <div className="reset-password-header">
-          <h1>CeylonQuest</h1>
+          <img src="/logo.png" alt="CeylonQuest" className="reset-password-header__logo-img" />
           <h2>Reset Your Password</h2>
           <p>Create a new password for your account.</p>
         </div>
 
         {success ? (
           <div className="reset-password-success">
-            <div className="success-icon">✓</div>
+            <div className="success-icon"></div>
             <h3>Password Reset Successful</h3>
             <p>Your password has been successfully reset. You can now log in with your new password.</p>
             <button 
@@ -135,7 +138,7 @@ function ResetPassword({ token: tokenProp, onBack }) {
           </div>
         ) : !tokenValid ? (
           <div className="reset-password-error-container">
-            <div className="error-icon">⚠</div>
+            <div className="error-icon"></div>
             <h3>Invalid Link</h3>
             <p>This password reset link is invalid or has expired.</p>
             <button 
@@ -173,7 +176,7 @@ function ResetPassword({ token: tokenProp, onBack }) {
                   aria-label={showNewPassword ? 'Hide password' : 'Show password'}
                   tabIndex="-1"
                 >
-                  {showNewPassword ? '👁‍🗨' : '👁'}
+                  {showNewPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
             </div>
@@ -197,12 +200,12 @@ function ResetPassword({ token: tokenProp, onBack }) {
                   aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                   tabIndex="-1"
                 >
-                  {showConfirmPassword ? '👁‍🗨' : '👁'}
+                  {showConfirmPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
               {newPassword && confirmPassword && (
                 <p className={`reset-password-match ${passwordsMatch ? 'match' : 'mismatch'}`}>
-                  {passwordsMatch ? '✓ Passwords match' : '✗ Passwords do not match'}
+                  {passwordsMatch ? 'Passwords match' : 'Passwords do not match'}
                 </p>
               )}
             </div>

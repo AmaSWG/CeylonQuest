@@ -24,4 +24,6 @@ public class UpdateProfileRequest
     [RegularExpression(NotBlankPattern, ErrorMessage = "Nationality cannot be blank.")]
     [MaxLength(100, ErrorMessage = "Nationality must be 100 characters or fewer.")]
     public string Nationality { get; set; } = string.Empty;
+
+    public string? ProfilePictureUrl { get; set; }
 }

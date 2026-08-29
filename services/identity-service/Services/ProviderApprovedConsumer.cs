@@ -7,9 +7,6 @@ using SharedKafka = Shared.Kafka;
 
 namespace IdentityService.Services;
 
-// Consumes provider.approved events published by Provider/Catalog Service and
-// applies the Identity-side account activation workflow. Does not implement
-// provider application/approval logic - that remains owned by Provider/Catalog Service.
 public class ProviderApprovedConsumer : SharedKafka.KafkaConsumerBase
 {
     private const string ProviderApprovedTopic = "provider.approved";

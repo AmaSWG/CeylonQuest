@@ -9,10 +9,6 @@ using Microsoft.Extensions.Logging;
 
 namespace IdentityService.Services;
 
-/// <summary>
-/// Email service dedicated strictly to sending password-reset emails.
-/// Does not handle OTPs, provider registration, or account activation.
-/// </summary>
 public class EmailService : IEmailService
 {
     private readonly IConfiguration _config;
@@ -69,12 +65,10 @@ This link will expire after the configured amount of time.
 
 If you did not request a password reset, you can safely ignore this email.";
 
-        // If SMTP host or credentials are not configured
         if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
             if (isDevelopment)
             {
-                // Development fallback: Log the link to console for local developer testing
                 _logger.LogInformation("[DEV] Password reset email for {Email}", recipientEmail);
                 _logger.LogInformation("[DEV] Reset link: {ResetLink}", resetLink);
                 return;
@@ -97,7 +91,6 @@ If you did not request a password reset, you can safely ignore this email.";
             client.EnableSsl = enableSsl;
             client.Credentials = new NetworkCredential(username, password);
 
-            // Register cancellation token
             using (cancellationToken.Register(() => client.SendAsyncCancel()))
             {
                 await client.SendMailAsync(message);
@@ -109,7 +102,6 @@ If you did not request a password reset, you can safely ignore this email.";
         {
             if (isDevelopment)
             {
-                // Development fallback: Log link so local testing continues without crash
                 _logger.LogWarning(ex, "[DEV] SMTP send failed; falling back to console output.");
                 _logger.LogInformation("[DEV] Password reset email for {Email}", recipientEmail);
                 _logger.LogInformation("[DEV] Reset link: {ResetLink}", resetLink);
@@ -117,7 +109,6 @@ If you did not request a password reset, you can safely ignore this email.";
             }
 
             _logger.LogError(ex, "Failed to send password reset email to {Email}", recipientEmail);
-            // In production, do not crash or leak tokens
         }
     }
 

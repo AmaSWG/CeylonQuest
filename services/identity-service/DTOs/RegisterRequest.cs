@@ -4,7 +4,6 @@ namespace IdentityService.DTOs;
 
 public class RegisterRequest
 {
-    // Password requirements are surfaced to the client via this message so the UI can display them (Story 1.1, Scenario 3).
     public const string PasswordRequirementsMessage =
         "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.";
 

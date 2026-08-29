@@ -42,7 +42,7 @@
 .home-nav__inner {
   max-width: 1200px;
   margin: 0 auto;
-  height: 72px;
+  height: 90px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -50,16 +50,27 @@
 
 /* Logo */
 .home-nav__logo {
-  font-size: 24px;
-  font-weight: 800;
-  color: #123b5d;
-  letter-spacing: -0.6px;
   cursor: default;
   user-select: none;
+  display: inline-flex;
+  align-items: center;
 }
 
-.home-nav__logo span {
-  color: #d6a85f;
+.home-nav__logo-img {
+  height: 72px;
+  width: auto;
+  object-fit: contain;
+  transition: transform 0.2s ease;
+}
+
+.home-nav__logo-img:hover {
+  transform: scale(1.04);
+}
+
+.home-footer__logo-img {
+  height: 64px;
+  width: auto;
+  object-fit: contain;
 }
 
 /* Nav buttons */
@@ -109,36 +120,44 @@
 /* ══════════════════════════════════
    HERO
 ══════════════════════════════════ */
+.home-hero-section {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  background-image: 
+    linear-gradient(
+      135deg,
+      rgba(247, 243, 232, 0.92) 0%,
+      rgba(247, 243, 232, 0.82) 45%,
+      rgba(247, 243, 232, 0.65) 100%
+    ),
+    url('/hero.png');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: scroll;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
 .home-hero {
   min-height: 100vh;
   display: flex;
   align-items: center;
   padding: 96px 32px 64px;
   max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
   gap: 64px;
   box-sizing: border-box;
+  position: relative;
+  z-index: 1;
 }
 
 .home-hero__content {
   flex: 1;
   min-width: 0;
-}
-
-/* Badge pill */
-.home-hero__badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(18, 59, 93, 0.08);
-  color: #123b5d;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 7px 16px;
-  border-radius: 999px;
-  margin-bottom: 28px;
-  letter-spacing: 0.2px;
-  border: 1px solid rgba(18, 59, 93, 0.12);
 }
 
 /* Main headline */
@@ -242,10 +261,12 @@
 /* Floating destination cards */
 .home-hero__card {
   position: absolute;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-radius: 16px;
-  padding: 14px 20px;
-  box-shadow: 0 8px 32px rgba(18, 59, 93, 0.14);
+  padding: 14px 22px;
+  box-shadow: 0 10px 30px rgba(18, 59, 93, 0.14), 0 2px 8px rgba(18, 59, 93, 0.06);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -253,28 +274,41 @@
   color: #123b5d;
   font-size: 15px;
   white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.9);
   border-left: 4px solid #d6a85f;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.home-hero__card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 38px rgba(18, 59, 93, 0.20);
 }
 
 .home-hero__card-icon {
-  font-size: 26px;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #123b5d;
 }
 
 .home-hero__card--1 {
-  top: 40px;
-  left: 0;
+  top: 48px;
+  left: 20px;
 }
 
 .home-hero__card--2 {
   top: 50%;
-  right: 0;
+  right: 12px;
   transform: translateY(-50%);
 }
 
+.home-hero__card--2:hover {
+  transform: translateY(calc(-50% - 4px));
+}
+
 .home-hero__card--3 {
-  bottom: 40px;
-  left: 30px;
+  bottom: 48px;
+  left: 0px;
 }
 
 /* ══════════════════════════════════
@@ -733,11 +767,6 @@
 
   .home-nav__login {
     display: none;
-  }
-
-  .home-hero__badge {
-    font-size: 12px;
-    padding: 6px 12px;
   }
 
   .home-btn {

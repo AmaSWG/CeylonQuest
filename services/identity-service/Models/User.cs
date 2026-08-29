@@ -18,14 +18,14 @@ public class User
 
     public UserRole Role { get; set; } = UserRole.Visitor;
 
-    // One-time password issued for account activation (e.g. after provider approval).
     public string? OtpCode { get; set; }
     public DateTime? OtpExpiresAt { get; set; }
 
-    // Forces the user to set a new password on next login (e.g. newly activated provider accounts).
     public bool RequiresPasswordChange { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    public string? ProfilePictureUrl { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
