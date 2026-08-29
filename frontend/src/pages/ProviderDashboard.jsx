@@ -656,15 +656,24 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
     }
   }
 
-  const handleDelete = async (serviceId) => {
-    if (!window.confirm('Are you sure you want to delete this activity/service?')) return
+  const [serviceToDelete, setServiceToDelete] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
+  const handleDelete = (serviceId) => {
+    setServiceToDelete(serviceId)
+  }
+
+  const executeDeleteService = async () => {
+    if (!serviceToDelete) return
+    setDeleteLoading(true)
     try {
-      const resp = await fetch(`/api/provider/prices/${serviceId}`, {
+      const resp = await fetch(`/api/provider/prices/${serviceToDelete}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.status === 204) {
         showToast('Activity/Service deleted.')
+        setServiceToDelete(null)
         onRefreshServices && onRefreshServices()
       } else if (resp.status === 401) {
         onLogout && onLogout()
@@ -673,6 +682,8 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
       }
     } catch {
       showToast('Network error. Please check connection.')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -688,6 +699,17 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
 
   return (
     <div className="pd-activities-tab">
+      <ConfirmModal
+        isOpen={Boolean(serviceToDelete)}
+        title="Delete Activity / Service"
+        message="Are you sure you want to delete this activity/service? This action cannot be undone."
+        confirmText="Delete Activity"
+        cancelText="Cancel"
+        confirmVariant="danger"
+        onConfirm={executeDeleteService}
+        onCancel={() => setServiceToDelete(null)}
+        loading={deleteLoading}
+      />
       <div className="pd-page-header">
         <div className="pd-page-header__left">
           <h1>Activity & Service Management</h1>

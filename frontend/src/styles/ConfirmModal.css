@@ -76,6 +76,7 @@
   color: #123b5d;
   flex: 1;
   letter-spacing: -0.2px;
+  text-align: left;
 }
 
 .cq-confirm-close {
@@ -97,6 +98,7 @@
 
 .cq-confirm-body {
   padding: 18px 22px;
+  text-align: left;
 }
 
 .cq-confirm-message {
@@ -104,6 +106,7 @@
   color: #475569;
   font-size: 14px;
   line-height: 1.55;
+  text-align: left;
 }
 
 .cq-confirm-actions {

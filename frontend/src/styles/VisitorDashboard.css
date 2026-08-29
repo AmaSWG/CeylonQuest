@@ -162,7 +162,7 @@
 .vd-page-header {
   width: 100%;
   max-width: 680px;
-  text-align: center;
+  text-align: left;
   margin-bottom: 28px;
 }
 
@@ -172,12 +172,14 @@
   font-size: 32px;
   font-weight: 800;
   letter-spacing: -0.5px;
+  text-align: left;
 }
 
 .vd-page-header p {
   margin: 0;
   color: #666666;
   font-size: 15px;
+  text-align: left;
 }
 
 /* ── Profile card ── */
@@ -198,8 +200,7 @@
   content: "";
   position: absolute;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 36px;
   width: 80px;
   height: 5px;
   background-color: #d6a85f;

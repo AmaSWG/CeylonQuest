@@ -33,8 +33,7 @@
 .provider-app-card__accent {
   position: absolute;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 36px;
   width: 88px;
   height: 5px;
   background: linear-gradient(90deg, #4f8a45, #6ab85e);
@@ -43,7 +42,7 @@
 
 /* ── Header ── */
 .provider-app-header {
-  text-align: center;
+  text-align: left;
   margin-bottom: 36px;
 }
 
@@ -51,7 +50,7 @@
 .provider-app-logo {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   margin-bottom: 22px;
 }
 

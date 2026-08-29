@@ -1,6 +1,6 @@
 import '../styles/Registration.css'
 import { useState, useEffect } from 'react'
-import { HomeIcon } from '../components/Icons'
+import { HomeIcon, VisibilityIcon, VisibilityOffIcon } from '../components/Icons'
 
 const PASSWORD_REQUIREMENTS = 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.'
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z\s]).{8,}$/
@@ -38,6 +38,8 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome, onAct
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -194,15 +196,26 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome, onAct
           <div className="form-group">
             <label htmlFor="password"><span className="required-star">*</span> Password</label>
             <div className="field-wrap">
-              <input
-                type="password"
-                id="password"
-                name="password"
-                placeholder="Enter your password"
-                minLength="8"
-                autoComplete="new-password"
-                required
-              />
+              <div className="password-input-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  name="password"
+                  placeholder="Enter your password"
+                  minLength="8"
+                  autoComplete="new-password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowPassword(v => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  tabIndex="-1"
+                >
+                  {showPassword ? <VisibilityOffIcon size={18} /> : <VisibilityIcon size={18} />}
+                </button>
+              </div>
               <small>Must be 8+ characters with an uppercase letter, a lowercase letter, a number, and a special character.</small>
             </div>
           </div>
@@ -210,15 +223,26 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome, onAct
           <div className="form-group">
             <label htmlFor="confirmPassword"><span className="required-star">*</span> Confirm Password</label>
             <div className="field-wrap">
-              <input
-                type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                placeholder="Confirm your password"
-                minLength="8"
-                autoComplete="new-password"
-                required
-              />
+              <div className="password-input-wrap">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  placeholder="Confirm your password"
+                  minLength="8"
+                  autoComplete="new-password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowConfirmPassword(v => !v)}
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  tabIndex="-1"
+                >
+                  {showConfirmPassword ? <VisibilityOffIcon size={18} /> : <VisibilityIcon size={18} />}
+                </button>
+              </div>
             </div>
           </div>
 

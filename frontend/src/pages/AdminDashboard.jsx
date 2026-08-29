@@ -563,10 +563,16 @@ function UserManagementTab({ token, onLogout, users, onRefresh, showToast }) {
   const [filterStatus, setFilterStatus] = useState('all') // all | active | inactive
   const [selectedUser, setSelectedUser] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [confirmUserAction, setConfirmUserAction] = useState(null) // { user, newStatus }
 
-  const handleToggleUserStatus = async (user) => {
+  const handleToggleUserStatus = (user) => {
     const newStatus = !user.isActive
-    if (!window.confirm(`Are you sure you want to ${newStatus ? 'activate' : 'deactivate'} user ${user.email}?`)) return
+    setConfirmUserAction({ user, newStatus })
+  }
+
+  const executeToggleUserStatus = async () => {
+    if (!confirmUserAction) return
+    const { user, newStatus } = confirmUserAction
     setActionLoading(true)
     try {
       const resp = await fetch(`/api/admin/users/${user.id}/status`, {
@@ -579,6 +585,7 @@ function UserManagementTab({ token, onLogout, users, onRefresh, showToast }) {
         if (selectedUser && selectedUser.id === user.id) {
           setSelectedUser(prev => ({ ...prev, isActive: newStatus }))
         }
+        setConfirmUserAction(null)
         onRefresh && onRefresh()
       } else if (resp.status === 401) {
         onLogout && onLogout()
@@ -612,6 +619,17 @@ function UserManagementTab({ token, onLogout, users, onRefresh, showToast }) {
 
   return (
     <div className="ad-users-tab">
+      <ConfirmModal
+        isOpen={Boolean(confirmUserAction)}
+        title={confirmUserAction?.newStatus ? 'Activate User' : 'Deactivate User'}
+        message={`Are you sure you want to ${confirmUserAction?.newStatus ? 'activate' : 'deactivate'} user ${confirmUserAction?.user?.email}?`}
+        confirmText={confirmUserAction?.newStatus ? 'Activate User' : 'Deactivate User'}
+        cancelText="Cancel"
+        confirmVariant={confirmUserAction?.newStatus ? 'primary' : 'danger'}
+        onConfirm={executeToggleUserStatus}
+        onCancel={() => setConfirmUserAction(null)}
+        loading={actionLoading}
+      />
       <div className="ad-page-header">
         <div className="ad-page-header__left">
           <h1>User Management</h1>
@@ -795,9 +813,16 @@ function ProviderManagementTab({ token, onLogout, users = [], applications = [],
       }
     })
 
-  const handleToggleStatus = async (provider) => {
+  const [confirmProviderAction, setConfirmProviderAction] = useState(null) // { provider, newStatus }
+
+  const handleToggleStatus = (provider) => {
     const newStatus = !provider.isActive
-    if (!window.confirm(`Are you sure you want to ${newStatus ? 're-activate' : 'suspend'} provider ${provider.businessName}?`)) return
+    setConfirmProviderAction({ provider, newStatus })
+  }
+
+  const executeToggleProviderStatus = async () => {
+    if (!confirmProviderAction) return
+    const { provider, newStatus } = confirmProviderAction
     setActionLoading(true)
     try {
       const resp = await fetch(`/api/admin/users/${provider.id}/status`, {
@@ -810,6 +835,7 @@ function ProviderManagementTab({ token, onLogout, users = [], applications = [],
         if (selectedProvider && selectedProvider.id === provider.id) {
           setSelectedProvider(prev => ({ ...prev, isActive: newStatus }))
         }
+        setConfirmProviderAction(null)
         onRefresh && onRefresh()
       } else if (resp.status === 401) {
         onLogout && onLogout()
@@ -838,6 +864,17 @@ function ProviderManagementTab({ token, onLogout, users = [], applications = [],
 
   return (
     <div className="ad-providers-tab">
+      <ConfirmModal
+        isOpen={Boolean(confirmProviderAction)}
+        title={confirmProviderAction?.newStatus ? 'Re-activate Provider' : 'Suspend Provider'}
+        message={`Are you sure you want to ${confirmProviderAction?.newStatus ? 're-activate' : 'suspend'} provider ${confirmProviderAction?.provider?.businessName}?`}
+        confirmText={confirmProviderAction?.newStatus ? 'Re-activate' : 'Suspend Provider'}
+        cancelText="Cancel"
+        confirmVariant={confirmProviderAction?.newStatus ? 'primary' : 'danger'}
+        onConfirm={executeToggleProviderStatus}
+        onCancel={() => setConfirmProviderAction(null)}
+        loading={actionLoading}
+      />
       <div className="ad-page-header">
         <div className="ad-page-header__left">
           <h1>Provider Management</h1>
@@ -1722,10 +1759,10 @@ function ReportsTab({ token, onLogout }) {
 
   return (
     <div className="ad-report">
-      <div className="ad-section-header">
-        <div>
-          <h1 className="ad-section-title"> Registration &amp; Verification Report</h1>
-          <p className="ad-section-sub">
+      <div className="ad-page-header">
+        <div className="ad-page-header__left">
+          <h1>Registration and Verification Report</h1>
+          <p>
             Dynamic report aggregated from live database data.
             {report && <span className="ad-report__generated"> Generated at {formatDateTime(report.generatedAt)}</span>}
           </p>

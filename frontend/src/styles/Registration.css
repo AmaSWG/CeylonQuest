@@ -34,8 +34,7 @@
   content: "";
   position: absolute;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 36px;
   width: 80px;
   height: 5px;
   background-color: #d6a85f;
@@ -44,7 +43,7 @@
 
 /* ── Header ── */
 .registration-header {
-  text-align: center;
+  text-align: left;
   margin-bottom: 28px;
 }
 
@@ -131,6 +130,38 @@
   color: #777777;
   font-size: 12px;
   line-height: 1.4;
+}
+
+.password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.password-input-wrap input {
+  padding-right: 42px !important;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #8aa0b5;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.password-toggle-btn:hover {
+  color: #123b5d;
 }
 
 /* ── Primary CTA: Create Account ── */

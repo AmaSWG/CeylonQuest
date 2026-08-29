@@ -1,6 +1,6 @@
 import '../styles/ResetPassword.css'
 import { useState, useEffect } from 'react'
-import { CheckCircleIcon, CancelIcon, HomeIcon } from '../components/Icons'
+import { CheckCircleIcon, CancelIcon, HomeIcon, VisibilityIcon, VisibilityOffIcon } from '../components/Icons'
 
 function PasswordRequirementsList({ password }) {
   const requirements = [
@@ -176,7 +176,7 @@ function ResetPassword({ token: tokenProp, onBack }) {
                   aria-label={showNewPassword ? 'Hide password' : 'Show password'}
                   tabIndex="-1"
                 >
-                  {showNewPassword ? 'Hide' : 'Show'}
+                  {showNewPassword ? <VisibilityOffIcon size={18} /> : <VisibilityIcon size={18} />}
                 </button>
               </div>
             </div>
@@ -200,7 +200,7 @@ function ResetPassword({ token: tokenProp, onBack }) {
                   aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                   tabIndex="-1"
                 >
-                  {showConfirmPassword ? 'Hide' : 'Show'}
+                  {showConfirmPassword ? <VisibilityOffIcon size={18} /> : <VisibilityIcon size={18} />}
                 </button>
               </div>
               {newPassword && confirmPassword && (

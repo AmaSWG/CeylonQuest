@@ -41,7 +41,7 @@
 
 /* ── Header ── */
 .pact-header {
-  text-align: center;
+  text-align: left;
   margin-bottom: 24px;
 }
 
@@ -276,6 +276,38 @@
 .pact-form .field-wrap input:focus {
   border-color: #123b5d;
   box-shadow: 0 0 0 3px rgba(18, 59, 93, 0.12);
+}
+
+.pact-password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.pact-password-wrap input {
+  padding-right: 40px !important;
+}
+
+.pact-password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.pact-password-toggle:hover {
+  color: #123b5d;
 }
 
 .pact-form small {

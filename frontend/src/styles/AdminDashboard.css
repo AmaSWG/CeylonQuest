@@ -158,6 +158,15 @@
 }
 
 /* ── Page Header ── */
+.ad-overview,
+.ad-applications-tab,
+.ad-users-tab,
+.ad-providers-tab,
+.ad-report,
+.ad-account {
+  text-align: left;
+}
+
 .ad-page-header {
   margin-bottom: 26px;
   display: flex;
@@ -165,6 +174,11 @@
   align-items: flex-start;
   flex-wrap: wrap;
   gap: 16px;
+  text-align: left;
+}
+
+.ad-page-header__left {
+  text-align: left;
 }
 
 .ad-page-header__left h1 {
@@ -173,12 +187,14 @@
   font-size: 28px;
   font-weight: 800;
   letter-spacing: -0.4px;
+  text-align: left;
 }
 
 .ad-page-header__left p {
   margin: 0;
   color: #666666;
   font-size: 14.5px;
+  text-align: left;
 }
 
 /* ── Generic Card ── */
@@ -1192,16 +1208,23 @@
    Scoped to the Reports tab; no global styles modified.
 ============================================================================= */
 
-.ad-report { padding: 0; }
+.ad-report { padding: 0; text-align: left; }
 
-.ad-report .ad-section-title {
-  font-size: 22px; font-weight: 700;
-  color: var(--ad-text, #0f172a); margin: 0 0 4px;
+.ad-report .ad-page-header__left h1 {
+  margin: 0 0 6px;
+  color: #123b5d;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  text-align: left;
 }
-.ad-report .ad-section-sub {
-  font-size: 13px; color: var(--ad-text-muted, #64748b); margin: 0;
+.ad-report .ad-page-header__left p {
+  margin: 0;
+  color: #666666;
+  font-size: 14.5px;
+  text-align: left;
 }
-.ad-report__generated { font-style: italic; color: var(--ad-text-muted, #64748b); }
+.ad-report__generated { font-style: italic; color: #888888; font-weight: normal; }
 
 /* Filter bar */
 .ad-report__filters {

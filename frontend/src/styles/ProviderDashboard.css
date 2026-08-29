@@ -158,6 +158,14 @@
 }
 
 /* ── Page Header ── */
+.pd-overview,
+.pd-activities-tab,
+.pd-bookings-tab,
+.pd-reviews-tab,
+.pd-account {
+  text-align: left;
+}
+
 .pd-page-header {
   margin-bottom: 26px;
   display: flex;
@@ -165,6 +173,11 @@
   align-items: flex-start;
   flex-wrap: wrap;
   gap: 16px;
+  text-align: left;
+}
+
+.pd-page-header__left {
+  text-align: left;
 }
 
 .pd-page-header__left h1 {
@@ -173,12 +186,14 @@
   font-size: 28px;
   font-weight: 800;
   letter-spacing: -0.4px;
+  text-align: left;
 }
 
 .pd-page-header__left p {
   margin: 0;
   color: #666666;
   font-size: 14.5px;
+  text-align: left;
 }
 
 /* ── Generic Card ── */

@@ -145,11 +145,11 @@ function HomePage({ onLogin, onRegister }) {
             </article>
 
             <article className="home-feature-card home-feature-card--highlight">
-              <div className="home-feature-card__icon" aria-hidden="true">
+              <div className="home-feature-card__icon" aria-hidden="true" style={{ color: '#D6A85F' }}>
                 <BoltIcon size={24} />
               </div>
-              <h3>Book Experiences</h3>
-              <p>
+              <h3 style={{ color: '#D6A85F' }}>Book Experiences</h3>
+              <p style={{ color: '#D6A85F' }}>
                 Reserve unique tours, activities, and stays directly with verified
                 local providers at the best prices.
               </p>
