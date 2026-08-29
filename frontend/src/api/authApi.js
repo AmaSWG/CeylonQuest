@@ -12,7 +12,7 @@
  *   POST /api/auth/reset-password
  */
 
-const BASE = '/api/auth'
+const BASE = `${ import.meta.env.VITE_IDENTITY_API_URL || ''}/api/auth`
 
 /**
  * Log in an existing user.

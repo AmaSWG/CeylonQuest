@@ -25,7 +25,7 @@
 
 /* ── Header ── */
 .pas-header {
-  text-align: left;
+  text-align: center;
   margin-bottom: 28px;
 }
 
@@ -61,6 +61,7 @@
   color: #ffffff;
   margin: 0 0 10px;
   letter-spacing: -0.5px;
+  text-align: center;
 }
 
 .pas-subtitle {
@@ -68,6 +69,7 @@
   color: #a3b8cc;
   margin: 0;
   line-height: 1.5;
+  text-align: center;
 }
 
 /* ── Card ── */
