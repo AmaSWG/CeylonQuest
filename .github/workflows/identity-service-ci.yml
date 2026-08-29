@@ -5,7 +5,6 @@ on:
     branches: [ main, development ]
     paths:
       - "services/identity-service/**"
-      - "services/identity-service.Tests/**"
       - "Shared/**"
 
   pull_request:
@@ -29,8 +28,8 @@ jobs:
 
       - name: Restore dependencies
         run: |
-          dotnet restore services/identity-service/IdentityService.csproj
-          dotnet restore services/identity-service.Tests/identity-service.Tests/IdentityService.Tests.csproj
+            dotnet restore services/identity-service/IdentityService.csproj
+            dotnet restore services/identity-service/identity-service.Tests/IdentityService.Tests.csproj
 
       - name: Build .NET Projects
         run: |
