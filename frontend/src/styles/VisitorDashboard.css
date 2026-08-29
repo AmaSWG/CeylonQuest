@@ -200,7 +200,8 @@
   content: "";
   position: absolute;
   top: 0;
-  left: 36px;
+  left: 50%;
+  transform: translateX(-50%);
   width: 80px;
   height: 5px;
   background-color: #d6a85f;
@@ -739,4 +740,3 @@
   .vd-identity { flex-wrap: wrap; }
   .vd-edit-btn { width: 100%; justify-content: center; }
 }
-
