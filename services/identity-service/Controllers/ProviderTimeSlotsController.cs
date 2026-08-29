@@ -36,10 +36,9 @@ public class ProviderTimeSlotsController : ControllerBase
             .Where(s => s.ProviderId == providerId.Value)
             .OrderBy(s => s.Date)
             .ThenBy(s => s.StartTime)
-            .Select(s => MapToResponse(s))
             .ToListAsync();
 
-        return Ok(slots);
+        return Ok(slots.Select(MapToResponse));
     }
 
     // POST /api/provider/timeslots

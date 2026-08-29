@@ -50,7 +50,11 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
 
       if (resp.ok) {
         const data = await resp.json()
-        setResult(data)
+        if (data.found === false) {
+          setError(data.message || `No provider application was found for "${cleanEmail}". Please check the spelling or submit a new application.`)
+        } else {
+          setResult(data)
+        }
       } else if (resp.status === 404) {
         setError(`No provider application was found for "${cleanEmail}". Please check the spelling or submit a new application.`)
       } else if (resp.status === 400) {

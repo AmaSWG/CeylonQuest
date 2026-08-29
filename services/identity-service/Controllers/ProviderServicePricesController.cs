@@ -35,10 +35,9 @@ public class ProviderServicePricesController : ControllerBase
         var prices = await _db.ProviderServicePrices
             .Where(p => p.ProviderId == providerId.Value)
             .OrderBy(p => p.ServiceName)
-            .Select(p => MapToResponse(p))
             .ToListAsync();
 
-        return Ok(prices);
+        return Ok(prices.Select(MapToResponse));
     }
 
     // POST /api/provider/prices

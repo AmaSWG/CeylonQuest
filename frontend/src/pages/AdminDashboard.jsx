@@ -746,16 +746,19 @@ function ProviderManagementTab({ token, onLogout, users = [], applications = [],
   const userList = Array.isArray(users) ? users : []
 
   // Match provider users with their application details if available
-  const providers = userList.filter(u => u.role === 'Provider').map(p => {
-    const app = appList.find(a => (a.email || '').toLowerCase() === (p.email || '').toLowerCase())
-    return {
-      ...p,
-      businessName: app?.businessName || (p.firstName ? `${p.firstName} ${p.lastName || ''} Services`.trim() : 'Service Provider'),
-      serviceType: app?.serviceType || 'Tourism Services',
-      location: app?.location || 'Sri Lanka',
-      description: app?.description || ''
-    }
-  })
+  const providers = userList
+    .filter(u => (u.role || '').toLowerCase() === 'provider')
+    .map(p => {
+      const app = appList.find(a => (a.email || '').toLowerCase() === (p.email || '').toLowerCase())
+      const name = `${p.firstName || ''} ${p.lastName || ''}`.trim()
+      return {
+        ...p,
+        businessName: app?.businessName || (name ? `${name} Services` : 'Tourism Service Provider'),
+        serviceType: app?.serviceType || 'Tourism Services',
+        location: app?.location || p.nationality || 'Sri Lanka',
+        description: app?.description || 'Verified Tourism Service Provider'
+      }
+    })
 
   const handleToggleStatus = async (provider) => {
     const newStatus = !provider.isActive
@@ -786,13 +789,15 @@ function ProviderManagementTab({ token, onLogout, users = [], applications = [],
   }
 
   const filtered = providers.filter(p => {
+    const q = (search || '').toLowerCase().trim()
+    if (!q) return true
     return (
-      p.businessName.toLowerCase().includes(search.toLowerCase()) ||
-      p.firstName.toLowerCase().includes(search.toLowerCase()) ||
-      p.lastName.toLowerCase().includes(search.toLowerCase()) ||
-      p.email.toLowerCase().includes(search.toLowerCase()) ||
-      p.location.toLowerCase().includes(search.toLowerCase()) ||
-      p.serviceType.toLowerCase().includes(search.toLowerCase())
+      (p.businessName || '').toLowerCase().includes(q) ||
+      (p.firstName || '').toLowerCase().includes(q) ||
+      (p.lastName || '').toLowerCase().includes(q) ||
+      (p.email || '').toLowerCase().includes(q) ||
+      (p.location || '').toLowerCase().includes(q) ||
+      (p.serviceType || '').toLowerCase().includes(q)
     )
   })
 

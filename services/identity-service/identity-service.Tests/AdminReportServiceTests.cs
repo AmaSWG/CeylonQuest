@@ -170,6 +170,10 @@ public class AdminReportServiceTests
         Assert.Equal(0, report.Registrations.InactiveUsers);
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    // General Report Tests
+    // ══════════════════════════════════════════════════════════════════════════
+
     [Fact]
     public async Task GetReportAsync_GeneratedAt_IsRecentUtcTimestamp()
     {
@@ -193,13 +197,15 @@ public class AdminReportServiceTests
         {
             DateFrom          = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             DateTo            = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc),
-            Role              = "Visitor"
+            Role              = "Visitor",
+            ApplicationStatus = "Pending"
         };
 
         var report = await svc.GetReportAsync(filters);
 
-        Assert.Equal(filters.DateFrom, report.AppliedFilters.DateFrom);
-        Assert.Equal(filters.DateTo,   report.AppliedFilters.DateTo);
-        Assert.Equal(filters.Role,     report.AppliedFilters.Role);
+        Assert.Equal(filters.DateFrom,          report.AppliedFilters.DateFrom);
+        Assert.Equal(filters.DateTo,            report.AppliedFilters.DateTo);
+        Assert.Equal(filters.Role,              report.AppliedFilters.Role);
+        Assert.Equal(filters.ApplicationStatus, report.AppliedFilters.ApplicationStatus);
     }
 }

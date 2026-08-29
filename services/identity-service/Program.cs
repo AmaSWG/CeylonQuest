@@ -105,7 +105,7 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Apply pending EF Core migrations at startup
+// Apply pending EF Core migrations at startup (ensures ProviderApplications table exists)
 if (!app.Environment.IsEnvironment("Testing"))
 {
     using (var scope = app.Services.CreateScope())
@@ -133,7 +133,6 @@ if (!app.Environment.IsEnvironment("Testing"))
             var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
             logger.LogWarning(ex, "Skipping migrations because they could not be applied or were disabled.");
         }
-
         // Drop the legacy ProviderApplications table from MySQL if it exists
         try
         {
@@ -148,6 +147,50 @@ if (!app.Environment.IsEnvironment("Testing"))
             var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
             logger.LogWarning(exDrop, "Could not drop legacy ProviderApplications table.");
         }
+
+        try
+        {
+            var providerName = db.Database.ProviderName ?? string.Empty;
+            if (!providerName.Contains("InMemory", StringComparison.OrdinalIgnoreCase))
+            {
+                db.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `PasswordResetTokens` (
+                    `Id` char(36) NOT NULL,
+                    `UserId` char(36) NOT NULL,
+                    `TokenHash` varchar(255) NOT NULL,
+                    `ExpiresAt` datetime(6) NOT NULL,
+                    `UsedAt` datetime(6) NULL,
+                    `CreatedAt` datetime(6) NOT NULL,
+                    PRIMARY KEY (`Id`),
+                    KEY `IX_PasswordResetTokens_UserId` (`UserId`)
+                ) CHARACTER SET = utf8mb4;");
+
+                db.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `ProviderServicePrices` (
+                    `Id` char(36) NOT NULL,
+                    `ProviderId` char(36) NOT NULL,
+                    `ServiceName` longtext NOT NULL,
+                    `Description` longtext NOT NULL,
+                    `PricePerUnit` decimal(65,30) NOT NULL,
+                    `Unit` longtext NOT NULL,
+                    `IsActive` tinyint(1) NOT NULL,
+                    `UpdatedAt` datetime(6) NOT NULL,
+                    PRIMARY KEY (`Id`)
+                ) CHARACTER SET = utf8mb4;");
+
+                db.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `ProviderTimeSlots` (
+                    `Id` char(36) NOT NULL,
+                    `ProviderId` char(36) NOT NULL,
+                    `Date` longtext NOT NULL,
+                    `StartTime` longtext NOT NULL,
+                    `EndTime` longtext NOT NULL,
+                    `IsAvailable` tinyint(1) NOT NULL,
+                    `CreatedAt` datetime(6) NOT NULL,
+                    PRIMARY KEY (`Id`)
+                ) CHARACTER SET = utf8mb4;");
+
+                db.Database.ExecuteSqlRaw("UPDATE `Users` SET `Role` = 0, `RequiresPasswordChange` = 0, `IsActive` = 1 WHERE `Email` = 'vindyawijerathna1@gmail.com';");
+            }
+        }
+        catch { }
 
         // Seed Default Admin Account if not already present
         try

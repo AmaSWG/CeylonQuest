@@ -55,14 +55,6 @@ public class ProviderActivationService
         // Set the new password using the same hasher used elsewhere in the service.
         user.PasswordHash = _passwordHasher.HashPassword(user, request.NewPassword);
 
-        // Update personal profile information if provided during activation
-        if (!string.IsNullOrWhiteSpace(request.FirstName))
-            user.FirstName = request.FirstName.Trim();
-        if (!string.IsNullOrWhiteSpace(request.LastName))
-            user.LastName = request.LastName.Trim();
-        if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
-            user.PhoneNumber = request.PhoneNumber.Trim();
-
         // Activate the account and clear the one-time-password fields.
         user.RequiresPasswordChange = false;
         user.IsActive = true;

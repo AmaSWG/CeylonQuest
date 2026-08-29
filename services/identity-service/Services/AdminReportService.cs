@@ -132,14 +132,10 @@ public class AdminReportService
         return summary;
     }
 
-    private async Task<ApplicationSummary> GetApplicationSummaryAdoAsync(ReportQueryParams f)
+    private Task<ApplicationSummary> GetApplicationSummaryAdoAsync(ReportQueryParams f)
     {
-        var conn = _db.Database.GetDbConnection();
-        await EnsureOpenAsync(conn);
-
-        // Provider applications are managed by Provider/Catalog Service
         var summary = new ApplicationSummary();
-        return summary;
+        return Task.FromResult(summary);
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -175,8 +171,8 @@ public class AdminReportService
 
     private Task<ApplicationSummary> GetApplicationSummaryLinqAsync(ReportQueryParams f)
     {
-        // Provider applications are managed by Provider/Catalog Service
-        return Task.FromResult(new ApplicationSummary());
+        var summary = new ApplicationSummary();
+        return Task.FromResult(summary);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

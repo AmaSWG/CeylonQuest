@@ -65,3 +65,5 @@ coverage/
 
 ## Docker
 *.log
+
+services/identity-service/uploads/

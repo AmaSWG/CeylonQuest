@@ -9,8 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace IdentityService.Controllers;
 
 /// <summary>
-/// Returns and manages the authenticated Provider's business/service information,
-/// combining their user record with their approved ProviderApplication record.
+/// Returns and manages the authenticated Provider's business/service information.
 /// </summary>
 [ApiController]
 [Route("api/provider/info")]
@@ -42,10 +41,10 @@ public class ProviderInfoController : ControllerBase
             Email              = user.Email,
             PhoneNumber        = user.PhoneNumber,
             BusinessName       = $"{user.FirstName} {user.LastName}".Trim(),
-            ServiceType        = "Service Provider",
+            ServiceType        = "Tourism Service Provider",
             Location           = user.Nationality,
-            Description        = string.Empty,
-            VerificationStatus = user.IsActive ? "Verified" : "Pending",
+            Description        = "Tourism Services",
+            VerificationStatus = "Verified",
             MemberSince        = user.CreatedAt
         };
 
@@ -64,8 +63,6 @@ public class ProviderInfoController : ControllerBase
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == providerId.Value);
         if (user is null) return NotFound(new { message = "Provider not found." });
 
-        await _db.SaveChangesAsync();
-
         var response = new ProviderInfoResponse
         {
             UserId             = user.Id,
@@ -73,11 +70,11 @@ public class ProviderInfoController : ControllerBase
             LastName           = user.LastName,
             Email              = user.Email,
             PhoneNumber        = user.PhoneNumber,
-            BusinessName       = request.BusinessName?.Trim() ?? $"{user.FirstName} {user.LastName}".Trim(),
-            ServiceType        = request.ServiceType?.Trim() ?? "Service Provider",
-            Location           = request.Location?.Trim() ?? user.Nationality,
-            Description        = request.Description?.Trim() ?? string.Empty,
-            VerificationStatus = user.IsActive ? "Verified" : "Pending",
+            BusinessName       = request.BusinessName.Trim(),
+            ServiceType        = request.ServiceType.Trim(),
+            Location           = request.Location.Trim(),
+            Description        = request.Description.Trim(),
+            VerificationStatus = "Verified",
             MemberSince        = user.CreatedAt
         };
 

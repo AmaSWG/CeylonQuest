@@ -4,19 +4,14 @@ namespace IdentityService.DTOs;
 
 public class ProviderActivateRequest
 {
-    [Required(ErrorMessage = "Email is required.")]
-    [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+    [Required]
+    [EmailAddress]
     public string Email { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "OTP code is required.")]
+    [Required]
     public string Otp { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "New password is required.")]
-    [MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
+    [Required]
+    [MinLength(8)]
     public string NewPassword { get; set; } = string.Empty;
-
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-    public string? PhoneNumber { get; set; }
 }
-
