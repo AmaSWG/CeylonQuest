@@ -1,0 +1,159 @@
+/* ── CeylonQuest Custom Confirmation Modal ── */
+.cq-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 59, 93, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: cq-confirm-fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cq-confirm-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.cq-confirm-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 45px rgba(18, 59, 93, 0.22), 0 4px 12px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 440px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(214, 168, 95, 0.25);
+  animation: cq-confirm-scale-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes cq-confirm-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.cq-confirm-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid #f0ece3;
+}
+
+.cq-confirm-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cq-confirm-icon--danger {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.cq-confirm-icon--primary {
+  background: rgba(214, 168, 95, 0.15);
+  color: #123b5d;
+}
+
+.cq-confirm-title {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 700;
+  color: #123b5d;
+  flex: 1;
+  letter-spacing: -0.2px;
+  text-align: left;
+}
+
+.cq-confirm-close {
+  background: none;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.cq-confirm-close:hover {
+  color: #1e293b;
+  background: #f1f5f9;
+}
+
+.cq-confirm-body {
+  padding: 18px 22px;
+  text-align: left;
+}
+
+.cq-confirm-message {
+  margin: 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.55;
+  text-align: left;
+}
+
+.cq-confirm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px 18px;
+  background: #fafaf9;
+  border-top: 1px solid #f0ece3;
+}
+
+.cq-confirm-btn {
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.cq-confirm-btn--cancel {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #475569;
+}
+
+.cq-confirm-btn--cancel:hover:not(:disabled) {
+  background: #f8fafc;
+  color: #1e293b;
+  border-color: #94a3b8;
+}
+
+.cq-confirm-btn--danger {
+  background: #ef4444;
+  border: 1px solid #ef4444;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+}
+
+.cq-confirm-btn--danger:hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.cq-confirm-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
