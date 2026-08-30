@@ -57,5 +57,36 @@ public class ProviderApplicationStatusTest : BaseTest
         );
     }
 
+    [Fact]
+    public void UnknownApplication_ShouldDisplayNotFoundAndNoApplicantInformation()
+    {
+        ProviderApplicationStatusPage statusPage = new(Driver);
+
+        string unknownEmail =
+            $"does-not-exist-{Guid.NewGuid():N}@example.com";
+
+        statusPage.Open();
+
+        statusPage.SearchByEmail(unknownEmail);
+
+        Assert.True(
+            statusPage.IsNotFoundErrorDisplayed(),
+            "Unknown application should display a not-found error."
+        );
+
+        string errorMessage = statusPage.GetErrorMessage();
+
+        Assert.Contains(
+            "No provider application was found",
+            errorMessage,
+            StringComparison.OrdinalIgnoreCase
+        );
+
+        Assert.False(
+            statusPage.IsResultsDisplayed(),
+            "Application details must not be displayed for an unknown applicant."
+        );
+    }
+
 
 }

@@ -126,9 +126,19 @@ namespace CeylonQuest.Tests.Pages
 
         public bool IsNotFoundErrorDisplayed()
         {
-            return driver
-                .FindElements(By.CssSelector(".pas-error-box[role='alert']"))
-                .Any(e => e.Displayed);
+            try
+            {
+                return wait.Until(d =>
+                    d.FindElements(
+                        By.CssSelector(".pas-error-box[role='alert']")
+                    )
+                    .Any(e => e.Displayed)
+                );
+            }
+            catch (WebDriverTimeoutException)
+            {
+                return false;
+            }
         }
 
         public string GetErrorMessage()
