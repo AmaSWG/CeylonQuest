@@ -1,0 +1,49 @@
+# ==============================
+# .NET Build Files
+# ==============================
+bin/
+obj/
+
+# ==============================
+# Local Configuration
+# ==============================
+appsettings.Local.json
+CeylonQuest.Tests/appsettings.Local.json
+local.runsettings
+
+# ==============================
+# Test Results
+# ==============================
+TestResults/
+*.trx
+coverage/
+coverage.cobertura.xml
+
+# ==============================
+# IDE Files
+# ==============================
+.idea/
+.vs/
+*.user
+*.suo
+
+# ==============================
+# Environment / Secrets
+# ==============================
+.env
+.env.*
+*.pem
+*.key
+
+# ==============================
+# Logs / Temporary Files
+# ==============================
+*.log
+*.tmp
+*.temp
+
+# ==============================
+# OS Files
+# ==============================
+.DS_Store
+Thumbs.db
