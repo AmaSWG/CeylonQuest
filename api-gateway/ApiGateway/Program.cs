@@ -1,7 +1,6 @@
 var builder = WebApplication.CreateBuilder(args);
 
-// Listen on a local development port different from Identity Service
-builder.WebHost.UseUrls("http://localhost:5000");
+
 
 // Add named CORS policy for frontend development
 const string FrontendPolicy = "FrontendDevelopment";
