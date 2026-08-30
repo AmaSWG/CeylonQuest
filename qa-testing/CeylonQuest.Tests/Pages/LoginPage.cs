@@ -167,4 +167,11 @@ public class LoginPage
         return role != null &&
                !string.IsNullOrWhiteSpace(role.ToString());
     }
+
+    public void Open()
+    {
+        driver.Navigate().GoToUrl(
+            "http://localhost:5173/login"
+        );
+    }
 }
