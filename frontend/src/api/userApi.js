@@ -10,7 +10,7 @@
  *   PUT /api/users/me
  */
 
-const BASE = `${import.meta.env.VITE_API_BASE_URL||''}/api/users`
+const BASE = `${import.meta.env.VITE_API_BASE_URL || ''}/api/users`
 
 /**
  * Fetch the currently authenticated user's profile.
