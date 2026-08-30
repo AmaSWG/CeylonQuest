@@ -9,7 +9,12 @@ builder.Services.AddCors(options =>
 {
 	options.AddPolicy(FrontendPolicy, policy =>
 	{
-		policy.SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost" || new Uri(origin).Host == "127.0.0.1")
+		policy.SetIsOriginAllowed(origin => {
+    var host = new Uri(origin).Host;
+    return host == "localhost" || 
+           host == "127.0.0.1" ||
+           host.EndsWith(".azurestaticapps.net");
+})
 			  .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
 			  .AllowAnyHeader()
 			  .AllowCredentials();
