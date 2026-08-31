@@ -14,6 +14,7 @@ import {
   DeleteSweepIcon
 } from '../components/Icons'
 import ConfirmModal from '../components/ConfirmModal'
+import { apiUrl } from '../api/client'
 
 function SuccessToast({ message, onClose }) {
   useEffect(() => {
@@ -46,7 +47,7 @@ function formatAvatarUrl(url) {
   if (!url) return null
   if (url.startsWith('/uploads/avatars/')) {
     const fileName = url.split('/').pop()
-    return `/api/users/avatar/${fileName}`
+    return apiUrl(`/api/users/avatar/${fileName}`)
   }
   return url
 }
@@ -74,7 +75,7 @@ function VisitorDashboard({ onLogout }) {
     setLoading(true)
     setLoadError(null)
     try {
-      const resp = await fetch('/api/users/me', {
+      const resp = await fetch(apiUrl('/api/users/me'), {
         headers: { Authorization: `Bearer ${currentToken}` }
       })
       if (resp.ok) {
@@ -126,7 +127,7 @@ function VisitorDashboard({ onLogout }) {
     setSaveError(null)
     setSaveLoading(true)
     try {
-      const resp = await fetch('/api/users/me', {
+      const resp = await fetch(apiUrl('/api/users/me'), {
         method:  'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -194,7 +195,7 @@ function VisitorDashboard({ onLogout }) {
       const data = new FormData()
       data.append('file', file)
 
-      const resp = await fetch('/api/users/me/profile-picture', {
+      const resp = await fetch(apiUrl('/api/users/me/profile-picture'), {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`
@@ -224,7 +225,7 @@ function VisitorDashboard({ onLogout }) {
     setAvatarUploading(true)
 
     try {
-      const resp = await fetch('/api/users/me/profile-picture', {
+      const resp = await fetch(apiUrl('/api/users/me/profile-picture'), {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`

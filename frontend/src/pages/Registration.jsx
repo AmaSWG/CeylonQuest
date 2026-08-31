@@ -1,6 +1,7 @@
 import '../styles/Registration.css'
 import { useState, useEffect } from 'react'
 import { HomeIcon, VisibilityIcon, VisibilityOffIcon } from '../components/Icons'
+import { apiUrl } from '../api/client'
 
 const PASSWORD_REQUIREMENTS = 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.'
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z\s]).{8,}$/
@@ -67,7 +68,7 @@ function Registration({ onApplyAsProvider, onCheckStatus, onLogin, onHome, onAct
     setLoading(true)
 
     try {
-      const resp = await fetch('/api/auth/register', {
+      const resp = await fetch(apiUrl('/api/auth/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)

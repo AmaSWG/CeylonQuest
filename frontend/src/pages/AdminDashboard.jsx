@@ -24,6 +24,7 @@ import {
   CreateIcon
 } from '../components/Icons'
 import ConfirmModal from '../components/ConfirmModal'
+import { apiUrl } from '../api/client'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ function formatAvatarUrl(url) {
   if (!url) return null
   if (url.startsWith('/uploads/avatars/')) {
     const fileName = url.split('/').pop()
-    return `/api/users/avatar/${fileName}`
+    return apiUrl(`/api/users/avatar/${fileName}`)
   }
   return url
 }
@@ -310,7 +311,7 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
     if (!app) return
     setDownloadingId(app.id)
     try {
-      const resp = await fetch(`/api/admin/provider-applications/${app.id}/document`, {
+      const resp = await fetch(apiUrl(`/api/admin/provider-applications/${app.id}/document`), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
@@ -575,7 +576,7 @@ function UserManagementTab({ token, onLogout, users, onRefresh, showToast }) {
     const { user, newStatus } = confirmUserAction
     setActionLoading(true)
     try {
-      const resp = await fetch(`/api/admin/users/${user.id}/status`, {
+      const resp = await fetch(apiUrl(`/api/admin/users/${user.id}/status`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ isActive: newStatus })
@@ -825,7 +826,7 @@ function ProviderManagementTab({ token, onLogout, users = [], applications = [],
     const { provider, newStatus } = confirmProviderAction
     setActionLoading(true)
     try {
-      const resp = await fetch(`/api/admin/users/${provider.id}/status`, {
+      const resp = await fetch(apiUrl(`/api/admin/users/${provider.id}/status`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ isActive: newStatus })
@@ -1300,7 +1301,7 @@ function AdminAccountTab({ token, onLogout, showToast, onProfileUpdate }) {
     setLoading(true)
     setLoadError(null)
     try {
-      const resp = await fetch('/api/users/me', {
+      const resp = await fetch(apiUrl('/api/users/me'), {
         headers: { Authorization: `Bearer ${activeToken}` }
       })
       if (resp.ok) {
@@ -1357,7 +1358,7 @@ function AdminAccountTab({ token, onLogout, showToast, onProfileUpdate }) {
 
     const activeToken = token || localStorage.getItem('authToken')
     try {
-      const resp = await fetch('/api/users/me', {
+      const resp = await fetch(apiUrl('/api/users/me'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1417,7 +1418,7 @@ function AdminAccountTab({ token, onLogout, showToast, onProfileUpdate }) {
       const data = new FormData()
       data.append('file', file)
 
-      const resp = await fetch('/api/users/me/profile-picture', {
+      const resp = await fetch(apiUrl('/api/users/me/profile-picture'), {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${activeToken}`
@@ -1449,7 +1450,7 @@ function AdminAccountTab({ token, onLogout, showToast, onProfileUpdate }) {
 
     const activeToken = token || localStorage.getItem('authToken')
     try {
-      const resp = await fetch('/api/users/me/profile-picture', {
+      const resp = await fetch(apiUrl('/api/users/me/profile-picture'), {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${activeToken}`
@@ -1720,7 +1721,7 @@ function ReportsTab({ token, onLogout }) {
     setError(null)
     try {
       const qs = buildQuery(activeFilters)
-      const resp = await fetch(`/api/admin/reports${qs ? '?' + qs : ''}`, {
+      const resp = await fetch(apiUrl(`/api/admin/reports${qs ? '?' + qs : ''}`), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
@@ -2065,7 +2066,7 @@ function AdminDashboard({ onLogout }) {
   const fetchStats = useCallback(async () => {
     if (!token) return
     try {
-      const resp = await fetch('/api/admin/stats', {
+      const resp = await fetch(apiUrl('/api/admin/stats'), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
@@ -2084,7 +2085,7 @@ function AdminDashboard({ onLogout }) {
   const fetchUsers = useCallback(async () => {
     if (!token) return
     try {
-      const resp = await fetch('/api/admin/users', {
+      const resp = await fetch(apiUrl('/api/admin/users'), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
@@ -2104,7 +2105,7 @@ function AdminDashboard({ onLogout }) {
   const fetchApplications = useCallback(async () => {
     if (!token) return
     try {
-      const resp = await fetch('/api/admin/provider-applications', {
+      const resp = await fetch(apiUrl('/api/admin/provider-applications'), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
@@ -2155,7 +2156,7 @@ function AdminDashboard({ onLogout }) {
   const fetchAdminProfile = useCallback(async () => {
     if (!token) return
     try {
-      const resp = await fetch('/api/users/me', {
+      const resp = await fetch(apiUrl('/api/users/me'), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {

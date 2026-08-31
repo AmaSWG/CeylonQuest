@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import '../styles/ProviderActivation.css'
 import { VisibilityIcon, VisibilityOffIcon } from '../components/Icons'
+import { apiUrl } from '../api/client'
 
 function ActivationToast({ message, type = 'success', onClose }) {
   useEffect(() => {
@@ -87,7 +88,7 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
 
     setLoading(true)
     try {
-      const resp = await fetch('/api/auth/provider/activate', {
+      const resp = await fetch(apiUrl('/api/auth/provider/activate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,5 +1,6 @@
 import '../styles/ForgotPassword.css'
 import { useState } from 'react'
+import { apiUrl } from '../api/client'
 
 function ForgotPassword({ onBack }) {
   const [email, setEmail] = useState('')
@@ -26,7 +27,7 @@ function ForgotPassword({ onBack }) {
     setLoading(true)
 
     try {
-      const resp = await fetch('/api/auth/forgot-password', {
+      const resp = await fetch(apiUrl('/api/auth/forgot-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: trimmedEmail })

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import '../styles/ProviderApplicationStatus.css'
+import { apiUrl } from '../api/client'
 
 function formatDate(iso) {
   if (!iso) return '—'
@@ -45,7 +46,7 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
     setSearchedEmail(cleanEmail)
 
     try {
-      const resp = await fetch(`/api/provider-applications/status?email=${encodeURIComponent(cleanEmail)}`)
+      const resp = await fetch(apiUrl(`/api/provider-applications/status?email=${encodeURIComponent(cleanEmail)}`))
 
       if (resp.ok) {
         const data = await resp.json()

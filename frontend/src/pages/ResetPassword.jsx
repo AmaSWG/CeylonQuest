@@ -1,6 +1,7 @@
 import '../styles/ResetPassword.css'
 import { useState, useEffect } from 'react'
 import { CheckCircleIcon, CancelIcon, HomeIcon, VisibilityIcon, VisibilityOffIcon } from '../components/Icons'
+import { apiUrl } from '../api/client'
 
 function PasswordRequirementsList({ password }) {
   const requirements = [
@@ -87,7 +88,7 @@ function ResetPassword({ token: tokenProp, onBack }) {
     setLoading(true)
 
     try {
-      const resp = await fetch('/api/auth/reset-password', {
+      const resp = await fetch(apiUrl('/api/auth/reset-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

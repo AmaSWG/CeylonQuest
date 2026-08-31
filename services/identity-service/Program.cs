@@ -1,6 +1,7 @@
 using IdentityService.Data;
 using IdentityService.Services;
 using Microsoft.EntityFrameworkCore;
+using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 using Shared.Kafka;
 using System.Text.Json.Serialization;
 
@@ -13,6 +14,21 @@ builder.Services.AddControllers()
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// CORS for the SPA. Origins come from config (Cors:AllowedOrigins) so each
+// environment can set its own; the defaults cover local dev. Credentials are
+// allowed because the frontend sends requests with credentials: 'include'.
+const string FrontendPolicy = "FrontendPolicy";
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                     ?? new[] { "http://localhost:5173", "http://localhost:5000" };
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(FrontendPolicy, policy =>
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials());
+});
 
 builder.Services.AddAuthentication(options =>
 {
@@ -53,8 +69,16 @@ builder.Services.AddScoped<AuthService>();
 var identityConn = builder.Configuration.GetConnectionString("IdentityDb");
 if (!string.IsNullOrWhiteSpace(identityConn))
 {
+    // Use a configured server version rather than ServerVersion.AutoDetect: AutoDetect
+    // opens a connection while the service container is still being built, so a briefly
+    // unavailable database turns into a hard startup failure. Mirrors the version
+    // resolution already used by DesignTimeDbContextFactory.
+    var serverVersion = Version.TryParse(builder.Configuration["DatabaseServerVersion"], out var parsedVersion)
+        ? new MySqlServerVersion(parsedVersion)
+        : new MySqlServerVersion(new Version(8, 0, 29));
+
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseMySql(identityConn, ServerVersion.AutoDetect(identityConn)));
+        options.UseMySql(identityConn, serverVersion));
 }
 else
 {
@@ -87,14 +111,41 @@ if (!builder.Environment.IsEnvironment("Testing"))
 
 var app = builder.Build();
 
+// Fail loudly at startup rather than silently at first use. These values are secrets
+// or environment-specific and are supplied via environment variables / app settings
+// (Email__Password, Jwt__Key), never committed to appsettings.json.
+if (app.Environment.IsProduction())
+{
+    var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
+
+    if (string.IsNullOrWhiteSpace(builder.Configuration["Email:Password"]))
+    {
+        startupLogger.LogError(
+            "Email:Password is not configured. Password-reset emails will fail. Set the Email__Password app setting.");
+    }
+
+    if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"]))
+    {
+        startupLogger.LogError(
+            "Jwt:Key is not configured; falling back to the built-in development key. Set the Jwt__Key app setting.");
+    }
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Only redirect to HTTPS outside Development: the Vite dev proxy speaks plain
+// HTTP to this service and cannot follow a 307 to the self-signed HTTPS port.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseStaticFiles();
+app.UseCors(FrontendPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -124,69 +175,12 @@ if (!app.Environment.IsEnvironment("Testing"))
                 logger.LogWarning(ex, "Skipping migrations because they could not be applied or were disabled.");
             }
 
-            try
-            {
-                var providerName = db.Database.ProviderName ?? string.Empty;
-                if (!providerName.Contains("InMemory", StringComparison.OrdinalIgnoreCase))
-                {
-                    db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS `ProviderApplications`;");
-                }
-            }
-            catch (Exception exDrop)
-            {
-                var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
-                logger.LogWarning(exDrop, "Could not drop legacy ProviderApplications table.");
-            }
-
-            try
-            {
-                var providerName = db.Database.ProviderName ?? string.Empty;
-                if (!providerName.Contains("InMemory", StringComparison.OrdinalIgnoreCase))
-                {
-                    db.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `PasswordResetTokens` (
-                        `Id` char(36) NOT NULL,
-                        `UserId` char(36) NOT NULL,
-                        `TokenHash` varchar(255) NOT NULL,
-                        `ExpiresAt` datetime(6) NOT NULL,
-                        `UsedAt` datetime(6) NULL,
-                        `CreatedAt` datetime(6) NOT NULL,
-                        PRIMARY KEY (`Id`),
-                        KEY `IX_PasswordResetTokens_UserId` (`UserId`)
-                    ) CHARACTER SET = utf8mb4;");
-
-                    db.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `ProviderServicePrices` (
-                        `Id` char(36) NOT NULL,
-                        `ProviderId` char(36) NOT NULL,
-                        `ServiceName` longtext NOT NULL,
-                        `Description` longtext NOT NULL,
-                        `PricePerUnit` decimal(65,30) NOT NULL,
-                        `Unit` longtext NOT NULL,
-                        `IsActive` tinyint(1) NOT NULL,
-                        `UpdatedAt` datetime(6) NOT NULL,
-                        PRIMARY KEY (`Id`)
-                    ) CHARACTER SET = utf8mb4;");
-
-                    db.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `ProviderTimeSlots` (
-                        `Id` char(36) NOT NULL,
-                        `ProviderId` char(36) NOT NULL,
-                        `Date` longtext NOT NULL,
-                        `StartTime` longtext NOT NULL,
-                        `EndTime` longtext NOT NULL,
-                        `IsAvailable` tinyint(1) NOT NULL,
-                        `CreatedAt` datetime(6) NOT NULL,
-                        PRIMARY KEY (`Id`)
-                    ) CHARACTER SET = utf8mb4;");
-
-                    try
-                    {
-                        db.Database.ExecuteSqlRaw("ALTER TABLE `Users` ADD COLUMN `ProfilePictureUrl` longtext NULL;");
-                    }
-                    catch { }
-
-                    db.Database.ExecuteSqlRaw("UPDATE `Users` SET `Role` = 0, `RequiresPasswordChange` = 0, `IsActive` = 1 WHERE `Email` = 'vindyawijerathna1@gmail.com';");
-                }
-            }
-            catch { }
+            // The schema this block used to patch by hand at every startup is now owned
+            // entirely by EF migrations:
+            //   PasswordResetTokens                -> 20260826112445_AddPasswordResetToken
+            //   ProviderServicePrices/TimeSlots    -> 20260824024121_AddProviderDashboardTables
+            //   Users.ProfilePictureUrl, and the
+            //   legacy ProviderApplications drop   -> 20260830164618_AddProfilePictureUrlAndDropLegacyProviderApplications
 
             try
             {

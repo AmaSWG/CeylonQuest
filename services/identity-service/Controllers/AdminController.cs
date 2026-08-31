@@ -153,7 +153,7 @@ public class AdminController : ControllerBase
                 Id                    = u.Id,
                 FirstName             = u.FirstName,
                 LastName              = u.LastName,
-                Email                 = u.Email,
+                Email                 = u.Email ?? string.Empty,
                 PhoneNumber           = u.PhoneNumber,
                 BusinessName          = string.IsNullOrWhiteSpace(u.FirstName) ? "Tourism Service Provider" : $"{u.FirstName} {u.LastName}".Trim(),
                 ServiceType           = "Tourism Services",

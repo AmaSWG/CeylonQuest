@@ -45,6 +45,12 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       Kafka__BootstrapServers: kafka:29092
+      # Secrets and environment-specific values are read from the host environment
+      # (or a local .env file) and are never committed. See services/identity-service/README.md.
+      ConnectionStrings__IdentityDb: ${ConnectionStrings__IdentityDb:-}
+      Email__Password: ${Email__Password:-}
+      Email__ResetPasswordBaseUrl: ${Email__ResetPasswordBaseUrl:-http://localhost:5173/reset-password}
+      Jwt__Key: ${Jwt__Key:-}
     depends_on:
       - kafka
       

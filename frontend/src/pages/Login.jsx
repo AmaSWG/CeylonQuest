@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import '../styles/Login.css'
 import { HomeIcon, EmailIcon, VisibilityIcon } from '../components/Icons'
+import { apiUrl } from '../api/client'
 
 function LoginSuccessToast({ message, onClose }) {
   useEffect(() => {
@@ -34,7 +35,7 @@ function Login({ onLoginSuccess, onBack, onForgotPassword, onHome, onActivatePro
     setLoading(true)
 
     try {
-      const resp = await fetch('/api/auth/login', {
+      const resp = await fetch(apiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })

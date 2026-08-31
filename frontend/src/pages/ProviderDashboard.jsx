@@ -26,6 +26,7 @@ import {
   BadgeIcon
 } from '../components/Icons'
 import ConfirmModal from '../components/ConfirmModal'
+import { apiUrl } from '../api/client'
 
 // ── Helpers & Formatting ──────────────────────────────────────────────────────
 
@@ -37,7 +38,7 @@ function formatAvatarUrl(url) {
   if (!url) return null
   if (url.startsWith('/uploads/avatars/')) {
     const fileName = url.split('/').pop()
-    return `/api/users/avatar/${fileName}`
+    return apiUrl(`/api/users/avatar/${fileName}`)
   }
   return url
 }
@@ -354,7 +355,7 @@ function BusinessProfileTab({ token, onLogout, providerInfo, onUpdateSuccess, sh
     setSaveLoading(true)
 
     try {
-      const resp = await fetch('/api/provider/info', {
+      const resp = await fetch(apiUrl('/api/provider/info'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -634,7 +635,7 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
   const handleToggleStatus = async (service) => {
     const newStatus = !service.isActive
     try {
-      const resp = await fetch(`/api/provider/prices/${service.id}`, {
+      const resp = await fetch(apiUrl(`/api/provider/prices/${service.id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -667,7 +668,7 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
     if (!serviceToDelete) return
     setDeleteLoading(true)
     try {
-      const resp = await fetch(`/api/provider/prices/${serviceToDelete}`, {
+      const resp = await fetch(apiUrl(`/api/provider/prices/${serviceToDelete}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -1225,7 +1226,7 @@ function AccountTab({ token, onLogout, showToast, onProfileUpdate }) {
     setLoading(true)
     setLoadError(null)
     try {
-      const resp = await fetch('/api/users/me', {
+      const resp = await fetch(apiUrl('/api/users/me'), {
         headers: { Authorization: `Bearer ${activeToken}` }
       })
       if (resp.ok) {
@@ -1282,7 +1283,7 @@ function AccountTab({ token, onLogout, showToast, onProfileUpdate }) {
 
     const activeToken = token || localStorage.getItem('authToken')
     try {
-      const resp = await fetch('/api/users/me', {
+      const resp = await fetch(apiUrl('/api/users/me'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1342,7 +1343,7 @@ function AccountTab({ token, onLogout, showToast, onProfileUpdate }) {
       const data = new FormData()
       data.append('file', file)
 
-      const resp = await fetch('/api/users/me/profile-picture', {
+      const resp = await fetch(apiUrl('/api/users/me/profile-picture'), {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${activeToken}`
@@ -1374,7 +1375,7 @@ function AccountTab({ token, onLogout, showToast, onProfileUpdate }) {
 
     const activeToken = token || localStorage.getItem('authToken')
     try {
-      const resp = await fetch('/api/users/me/profile-picture', {
+      const resp = await fetch(apiUrl('/api/users/me/profile-picture'), {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${activeToken}`
@@ -1680,7 +1681,7 @@ function ProviderDashboard({ onLogout }) {
   const fetchProviderInfo = useCallback(async () => {
     if (!token) return
     try {
-      const resp = await fetch('/api/provider/info', {
+      const resp = await fetch(apiUrl('/api/provider/info'), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
@@ -1695,7 +1696,7 @@ function ProviderDashboard({ onLogout }) {
   const fetchServices = useCallback(async () => {
     if (!token) return
     try {
-      const resp = await fetch('/api/provider/prices', {
+      const resp = await fetch(apiUrl('/api/provider/prices'), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
@@ -1742,7 +1743,7 @@ function ProviderDashboard({ onLogout }) {
   const fetchUserProfile = useCallback(async () => {
     if (!token) return
     try {
-      const resp = await fetch('/api/users/me', {
+      const resp = await fetch(apiUrl('/api/users/me'), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
