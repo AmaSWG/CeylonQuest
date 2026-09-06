@@ -24,7 +24,7 @@ import {
   CreateIcon
 } from '../components/Icons'
 import ConfirmModal from '../components/ConfirmModal'
-import { apiUrl } from '../api/client'
+import { apiUrl, catalogUrl } from '../api/client'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -53,17 +53,25 @@ function formatDateTime(iso) {
 
 // ── Shared UI Components ──────────────────────────────────────────────────────
 
-function Toast({ message, title = 'Success', onClose }) {
+function Toast({ message, title, onClose }) {
+  const isError = message.toLowerCase().includes('error') || message.toLowerCase().includes('failed');
+  const displayTitle = title || (isError ? 'Error' : 'Success');
+
   useEffect(() => {
     const t = setTimeout(onClose, 4000)
     return () => clearTimeout(t)
   }, [onClose])
 
   return (
-    <div className="ad-toast" role="alert" aria-live="polite">
+    <div 
+      className={`ad-toast ${isError ? 'ad-toast--error' : ''}`} 
+      style={isError ? { borderLeft: '5px solid #dc2626' } : {}}
+      role="alert" 
+      aria-live="polite"
+    >
       <div className="ad-toast__icon"></div>
       <div className="ad-toast__body">
-        <p className="ad-toast__title">{title}</p>
+        <p className="ad-toast__title" style={isError ? { color: '#dc2626'} : {}}>{displayTitle}</p>
         <p className="ad-toast__msg">{message}</p>
       </div>
       <button className="ad-toast__close" onClick={onClose} aria-label="Close notification"></button>
@@ -287,31 +295,37 @@ function OverviewTab({ stats, users = [], applications = [], bookings = [], onNa
   )
 }
 
-// ── 2. Provider Applications Review Tab ───────────────────────────────────────
+// ── 2. Provider Applications Tab ───────────────
 
-function ProviderApplicationsTab({ token, applications = [], onRefresh, showToast }) {
+function ProviderApplicationsTab({ token, onLogout, applications = [], onRefresh, showToast }) {
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all') // all | pending | approved | rejected
   const [selectedApp, setSelectedApp] = useState(null)
   const [downloadingId, setDownloadingId] = useState(null)
-  const [refreshing, setRefreshing] = useState(false)
 
-  const handleManualRefresh = async () => {
-    if (!onRefresh) return
-    setRefreshing(true)
-    try {
-      await onRefresh()
-      showToast && showToast('Applications list refreshed.')
-    } finally {
-      setRefreshing(false)
-    }
-  }
+  const [confirmApproveApp, setConfirmApproveApp] = useState(null)
+  const [confirmRejectApp, setConfirmRejectApp] = useState(null)
+  const [rejectionReason, setRejectionReason] = useState('')
+  const [customRejectionReason, setCustomRejectionReason] = useState('') // Added missing state
+  const [rejectionError, setRejectionError] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
+
+  const commonRejectionReasons = [
+    'Business does not meet certification requirements',
+    'Invalid or unverifiable business registration',
+    'Service category does not match provided documentation',
+    'Location verification failed',
+    'Negative reviews or complaints from previous customers',
+    'Applicant did not respond to verification requests',
+    'Business is not operational in the specified location',
+    'Insufficient insurance or liability coverage'
+  ]
 
   const handleDownloadDocument = async (app) => {
     if (!app) return
     setDownloadingId(app.id)
     try {
-      const resp = await fetch(apiUrl(`/api/admin/provider-applications/${app.id}/document`), {
+      const resp = await fetch(catalogUrl(`/api/catalog/admin/providers/${app.id}/document`), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
@@ -338,6 +352,85 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
       showToast && showToast('Download failed. Please check network connection.')
     } finally {
       setDownloadingId(null)
+    }
+  }
+
+  // Approve Application
+  const executeApprove = async () => {
+    if (!confirmApproveApp) return
+    setActionLoading(true)
+    try {
+      const resp = await fetch(catalogUrl(`/api/catalog/admin/providers/${confirmApproveApp.id}/approve`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      })
+      if (resp.ok) {
+        showToast('Approved — provider will receive OTP')
+        setSelectedApp(null)
+        setConfirmApproveApp(null)
+        onRefresh && onRefresh()
+      } else if (resp.status === 401) {
+        onLogout && onLogout()
+      } else {
+        showToast('Error approving application.')
+      }
+    } catch {
+      showToast('Error approving application.')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Reject Application
+  const executeReject = async () => {
+    if (!confirmRejectApp) return
+
+    let finalReason = ''
+    if (rejectionReason && rejectionReason !== 'other') {
+      finalReason = rejectionReason
+      if (customRejectionReason.trim()) {
+        finalReason += ` — ${customRejectionReason.trim()}`
+      }
+    } else if (customRejectionReason.trim()) {
+      finalReason = customRejectionReason.trim()
+    }
+
+    if (!finalReason) {
+      setRejectionError('Please select a reason or provide detailed feedback.')
+      return
+    }
+
+    setActionLoading(true)
+    setRejectionError('')
+
+    try {
+      const resp = await fetch(catalogUrl(`/api/catalog/admin/providers/${confirmRejectApp.id}/reject`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ rejectionReason: finalReason })
+      })
+      if (resp.ok) {
+        showToast('Application rejected.')
+        setSelectedApp(null)
+        setConfirmRejectApp(null)
+        setRejectionReason('')
+        setCustomRejectionReason('')
+        onRefresh && onRefresh()
+      } else if (resp.status === 401) {
+        onLogout && onLogout()
+      } else {
+        showToast('Error rejecting application.')
+      }
+    } catch {
+      showToast('Error rejecting application.')
+    } finally {
+      setActionLoading(false)
     }
   }
 
@@ -394,8 +487,8 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
                 <span className="ad-field__label">Applicant Personal Details</span>
                 <span className="ad-field__value">
                   <PermIdentityIcon size={15} style={{ marginRight: 6 }} />
-                   {(selectedApp.firstName || selectedApp.lastName) 
-                    ? `${selectedApp.firstName || ''} ${selectedApp.lastName || ''}`.trim() 
+                  {(selectedApp.firstName || selectedApp.lastName)
+                    ? `${selectedApp.firstName || ''} ${selectedApp.lastName || ''}`.trim()
                     : 'To be completed by Provider via OTP activation'}
                 </span>
               </div>
@@ -403,7 +496,7 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
                 <span className="ad-field__label">Contact Phone</span>
                 <span className="ad-field__value">
                   <LocalPhoneIcon size={15} style={{ marginRight: 6 }} />
-                   {selectedApp.phoneNumber || 'Completed upon OTP activation'}
+                  {selectedApp.phoneNumber || 'Completed upon OTP activation'}
                 </span>
               </div>
               <div className="ad-field">
@@ -440,14 +533,30 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
             </div>
 
             <div style={{ paddingTop: '16px', borderTop: '1px solid #f0ece3', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button
-                type="button"
-                className="ad-quick-btn ad-quick-btn--primary"
-                onClick={() => handleDownloadDocument(selectedApp)}
-                disabled={downloadingId === selectedApp.id}
-              >
-                <DocumentScannerIcon size={14} /> {downloadingId === selectedApp.id ? 'Downloading…' : 'Download Legal Document'}
-              </button>
+              {selectedApp.status?.toLowerCase() === 'pending' && (
+                <>
+                  <button
+                    type="button"
+                    className="ad-quick-btn"
+                    style={{ backgroundColor: '#4F8A45', color: '#ffffff', border: 'none' }}
+                    onClick={() => setConfirmApproveApp(selectedApp)}
+                  >
+                    <CheckCircleIcon size={16} style={{ marginRight: 4 }} /> Approve
+                  </button>
+                  <button
+                    type="button"
+                    className="ad-quick-btn ad-quick-btn--danger"
+                    onClick={() => {
+                      setConfirmRejectApp(selectedApp)
+                      setRejectionReason('')
+                      setCustomRejectionReason('')
+                      setRejectionError('')
+                    }}
+                  >
+                    <CancelIcon size={16} style={{ marginRight: 4 }} /> Reject
+                  </button>
+                </>
+              )}
               <button className="ad-cancel-btn" onClick={() => setSelectedApp(null)}>
                 Close Review
               </button>
@@ -504,7 +613,6 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
                     <th>Service Category</th>
                     <th>Location</th>
                     <th>Submitted</th>
-                    <th>Legal Document</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -523,26 +631,16 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
                       <td>{app.location}</td>
                       <td>{formatDate(app.createdAt)}</td>
                       <td>
-                        <button
-                          type="button"
-                          className="ad-row-btn ad-row-btn--view"
-                          style={{ fontSize: '11.5px', padding: '4px 8px', color: '#168aad', borderColor: '#168aad' }}
-                          onClick={() => handleDownloadDocument(app)}
-                          disabled={downloadingId === app.id}
-                          title="Download Document File"
-                        >
-                          {downloadingId === app.id ? '…' : `⬇ ${app.legalDocumentFileName || 'Download Record'}`}
-                        </button>
-                      </td>
-                      <td>
                         <span className={`ad-badge ad-badge--${app.status.toLowerCase()}`}>
                           {app.status}
                         </span>
                       </td>
                       <td>
-                        <button className="ad-row-btn ad-row-btn--view" onClick={() => setSelectedApp(app)}>
-                          Review Details
-                        </button>
+                        <div className="ad-row-actions">
+                          <button className="ad-row-btn ad-row-btn--view" onClick={() => setSelectedApp(app)}>
+                            Review Details
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -552,6 +650,118 @@ function ProviderApplicationsTab({ token, applications = [], onRefresh, showToas
           )}
         </div>
       </div>
+
+      {/* Confirmation Modals */}
+      <ConfirmModal
+        isOpen={Boolean(confirmApproveApp)}
+        title="Approve Provider Application"
+        message={`Are you sure you want to approve the application for ${confirmApproveApp?.businessName}?`}
+        confirmText="Approve"
+        cancelText="Cancel"
+        confirmVariant="primary"
+        onConfirm={executeApprove}
+        onCancel={() => setConfirmApproveApp(null)}
+        loading={actionLoading}
+      />
+
+      {confirmRejectApp && (
+        <Modal
+          title={`Reject Application: ${confirmRejectApp.businessName}`}
+          onClose={() => {
+            setConfirmRejectApp(null)
+            setRejectionReason('')
+            setCustomRejectionReason('')
+            setRejectionError('')
+          }}
+        >
+          <div className="ad-confirm-reject-form">
+            <p style={{ marginBottom: '12px', color: '#4a5568' }}>
+              Are you sure you want to reject the application for <strong>{confirmRejectApp.businessName}</strong>?
+            </p>
+
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px', fontSize: '13px' }}>
+              Primary Rejection Reason
+            </label>
+            <select
+              value={rejectionReason}
+              onChange={(e) => {
+                setRejectionReason(e.target.value)
+                if (rejectionError) setRejectionError('')
+              }}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '6px',
+                border: '1px solid #cbd5e1',
+                fontSize: '14px',
+                marginBottom: '12px',
+                backgroundColor: '#fff',
+                boxSizing: 'border-box'
+              }}
+              disabled={actionLoading}
+            >
+              <option value="">Select a reason (optional)...</option>
+              {commonRejectionReasons.map((reason, index) => (
+                <option key={index} value={reason}>{reason}</option>
+              ))}
+              <option value="other">Other</option>
+            </select>
+
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px', fontSize: '13px' }}>
+              Additional Feedback
+            </label>
+            <textarea
+              rows={4}
+              value={customRejectionReason}
+              onChange={(e) => {
+                setCustomRejectionReason(e.target.value)
+                if (rejectionError) setRejectionError('')
+              }}
+              placeholder="Provide further explanation or notes."
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '6px',
+                border: rejectionError ? '1px solid #e53e3e' : '1px solid #cbd5e1',
+                fontSize: '14px',
+                resize: 'vertical',
+                boxSizing: 'border-box'
+              }}
+              disabled={actionLoading}
+            />
+
+            {rejectionError && (
+              <p style={{ color: '#e53e3e', fontSize: '12px', marginTop: '4px' }}>
+                {rejectionError}
+              </p>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button
+                type="button"
+                className="ad-cancel-btn"
+                onClick={() => {
+                  setConfirmRejectApp(null)
+                  setRejectionReason('')
+                  setCustomRejectionReason('')
+                  setRejectionError('')
+                }}
+                disabled={actionLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="ad-quick-btn ad-quick-btn--danger"
+                onClick={executeReject}
+                disabled={actionLoading || (!rejectionReason && !customRejectionReason.trim())}
+              >
+                {actionLoading ? 'Rejecting...' : 'Reject Application'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
@@ -1696,7 +1906,7 @@ function AdminAccountTab({ token, onLogout, showToast, onProfileUpdate }) {
   )
 }
 
-// ── 7. Reports Tab ───────────────────────────────────────────────────────────
+// ── 8. Reports Tab ───────────────────────────────────────────────────────────
 
 function ReportsTab({ token, onLogout }) {
   const emptyFilters = { dateFrom: '', dateTo: '', role: '', applicationStatus: '' }
@@ -1708,10 +1918,10 @@ function ReportsTab({ token, onLogout }) {
 
   const buildQuery = (f) => {
     const params = new URLSearchParams()
-    if (f.dateFrom)           params.append('dateFrom', f.dateFrom)
-    if (f.dateTo)             params.append('dateTo',   f.dateTo)
-    if (f.role)               params.append('role',     f.role)
-    if (f.applicationStatus)  params.append('applicationStatus', f.applicationStatus)
+    if (f.dateFrom)          params.append('dateFrom', f.dateFrom)
+    if (f.dateTo)            params.append('dateTo',   f.dateTo)
+    if (f.role)              params.append('role',     f.role)
+    if (f.applicationStatus) params.append('applicationStatus', f.applicationStatus)
     return params.toString()
   }
 
@@ -2105,7 +2315,7 @@ function AdminDashboard({ onLogout }) {
   const fetchApplications = useCallback(async () => {
     if (!token) return
     try {
-      const resp = await fetch(apiUrl('/api/admin/provider-applications'), {
+      const resp = await fetch(catalogUrl('/api/catalog/admin/providers'), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
@@ -2174,14 +2384,14 @@ function AdminDashboard({ onLogout }) {
   const unreadNotifCount = notifications.filter(n => !n.read).length
 
   const navItems = [
-    { key: 'overview',      icon: <DashboardIcon size={18} />,           label: 'Dashboard Overview' },
-    { key: 'applications',  icon: <DocumentScannerIcon size={18} />,      label: 'Provider Applications', badge: pendingAppsCount > 0 ? pendingAppsCount : null },
-    { key: 'users',         icon: <GroupIcon size={18} />,                label: 'User Management' },
-    { key: 'providers',     icon: <WorkIcon size={18} />,                 label: 'Provider Management' },
-    { key: 'bookings',      icon: <CalendarMonthIcon size={18} />,        label: 'Bookings Overview' },
-    { key: 'reports',       icon: <BarChartIcon size={18} />,             label: 'Reports' },
+    { key: 'overview',     icon: <DashboardIcon size={18} />,           label: 'Dashboard Overview' },
+    { key: 'applications', icon: <DocumentScannerIcon size={18} />,      label: 'Provider Applications', badge: pendingAppsCount > 0 ? pendingAppsCount : null },
+    { key: 'users',        icon: <GroupIcon size={18} />,                label: 'User Management' },
+    { key: 'providers',    icon: <WorkIcon size={18} />,                 label: 'Provider Management' },
+    { key: 'bookings',     icon: <CalendarMonthIcon size={18} />,        label: 'Bookings Overview' },
+    { key: 'reports',      icon: <BarChartIcon size={18} />,             label: 'Reports' },
     { key: 'notifications', icon: <NotificationsActiveIcon size={18} />,  label: 'Notifications', badge: unreadNotifCount > 0 ? unreadNotifCount : null },
-    { key: 'account',       icon: <PermIdentityIcon size={18} />,         label: 'Admin Account' }
+    { key: 'account',      icon: <PermIdentityIcon size={18} />,         label: 'Admin Account' }
   ]
 
   return (
@@ -2248,6 +2458,7 @@ function AdminDashboard({ onLogout }) {
         {activeTab === 'applications' && (
           <ProviderApplicationsTab
             token={token}
+            onLogout={handleLogout}
             applications={applications}
             onRefresh={fetchApplications}
             showToast={showToast}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import '../styles/ProviderApplication.css'
-import { apiUrl } from '../api/client'
+import { apiUrl, catalogUrl } from '../api/client'
 
 function ProviderSuccessToast({ message, onClose }) {
   useEffect(() => {
@@ -41,7 +41,7 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
     const fd = new FormData(form)
 
     try {
-      const resp = await fetch(apiUrl('/api/provider-applications'), {
+      const resp = await fetch(catalogUrl('/api/catalog/provider-applications'), {
         method: 'POST',
         body: fd
       }).catch(() => null)
