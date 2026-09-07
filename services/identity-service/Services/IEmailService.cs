@@ -9,4 +9,7 @@ public interface IEmailService
         string recipientEmail,
         string resetLink,
         CancellationToken cancellationToken = default);
+		
+	Task SendProviderOtpEmailAsync(string recipientEmail, string businessName, string otpCode, 
+		CancellationToken cancellationToken = default);
 }

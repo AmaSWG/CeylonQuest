@@ -41,7 +41,7 @@
 
 /* ── Header ── */
 .pact-header {
-  text-align: left;
+  text-align: center;
   margin-bottom: 24px;
 }
 
@@ -147,6 +147,12 @@
 
 /* ── Toast ── */
 .pact-toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  width: 340px;
+  max-width: calc(100vw - 32px);
   display: flex;
   align-items: flex-start;
   gap: 12px;
@@ -161,6 +167,7 @@
 .pact-toast--notice {
   background: #eff6ff;
   border-color: #bfdbfe;
+  border-left-color: #3b82f6;
 }
 
 .pact-toast__icon {
@@ -203,9 +210,9 @@
 
 /* ── Error Box ── */
 .pact-error-box {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #b91c1c;
+  /*background: #fef2f2;
+  border: 1px solid #fecaca;*/
+  color: #dc2626;
   padding: 12px 14px;
   border-radius: 10px;
   font-size: 13px;
@@ -225,6 +232,10 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 20px;
+
+  overflow: hidden;
+  word-break: break-all; 
+  min-width: 0;
 }
 
 .pact-email-pill span {
@@ -259,8 +270,12 @@
   font-weight: 700;
 }
 
-.pact-form .field-wrap input {
+.pact-form .field-wrap {
   width: 100%;
+  box-sizing: border-box;
+}
+
+.pact-form .field-wrap input {
   padding: 11px 14px;
   border-radius: 10px;
   border: 1.5px solid #cbd5e1;
@@ -271,6 +286,7 @@
   transition: border-color 0.15s, box-shadow 0.15s;
   background: #ffffff;
   color: #1e293b;
+  width: 100%;
 }
 
 .pact-form .field-wrap input:focus {
@@ -375,6 +391,7 @@
   font-weight: 800;
   color: #065f46;
   margin: 0 0 10px;
+
 }
 
 .pact-success-view p {

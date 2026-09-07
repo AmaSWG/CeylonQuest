@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using ProviderCatalogService.Data;
 using ProviderCatalogService.DTOs;
 using ProviderCatalogService.Models;
+using ProviderCatalogService.Services;
 using Shared.Kafka;
 
 namespace ProviderCatalogService.Controllers;
@@ -15,11 +16,13 @@ public class ProviderAdminController : ControllerBase
 {
     private readonly CatalogDbContext _db;
     private readonly IKafkaProducer _kafkaProducer;
+	private readonly IEmailService _emailService;
 
-    public ProviderAdminController(CatalogDbContext db, IKafkaProducer kafkaProducer)
+    public ProviderAdminController(CatalogDbContext db, IKafkaProducer kafkaProducer, IEmailService emailService)
     {
         _db = db;
         _kafkaProducer = kafkaProducer;
+		_emailService = emailService;
     }
 
     [HttpGet]
@@ -190,10 +193,16 @@ public class ProviderAdminController : ControllerBase
         }
 
         application.Status = ProviderStatus.Rejected;
+		application.ReviewedAt = DateTime.UtcNow;
         application.RejectionReason = request.RejectionReason.Trim();
-        application.ReviewedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
+		
+		await _emailService.SendApplicationRejectionEmailAsync(
+			application.Email,
+			application.BusinessName,
+			application.RejectionReason
+		);
 
         return Ok(new
         {

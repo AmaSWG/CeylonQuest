@@ -37,6 +37,9 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
 
+  const [isOtpFocused, setIsOtpFocused] = useState(false)
+  const [isResending, setIsResending] = useState(false)
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const qEmail = params.get('email')
@@ -62,12 +65,37 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
     }
 
     setLoading(true)
-    try {
+    /*try {
       await new Promise(r => setTimeout(r, 400))
       setStep('personal-info')
       setToast('OTP code confirmed. Please complete your personal profile and set your password.')
     } catch {
       setError('Invalid or expired OTP. Please verify the code or check your application status.')
+    } finally {
+      setLoading(false)
+    }*/
+
+    try {
+      const resp = await fetch(apiUrl('/api/auth/provider/verify-otp'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: cleanEmail,
+          otp: cleanOtp
+        })
+      })
+
+      const data = await resp.json()
+
+      if (resp.ok) {
+        setStep('personal-info')
+        setToast('OTP code confirmed. Please complete your personal profile and set your password.')
+      } else {
+        // This catches the exact error message from your C# Controller (BadRequest or Unauthorized)
+        setError(data.message || 'Invalid or expired OTP. Please verify the code.')
+      }
+    } catch {
+      setError('Network error. Please check your connection.')
     } finally {
       setLoading(false)
     }
@@ -117,6 +145,34 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
     }
   }
 
+  const handleResendOtp = async () => {
+    if (!email.trim()) {
+      setError('Please enter your email address first.')
+      return
+    }
+    setError(null)
+    setIsResending(true)
+    try {
+      const resp = await fetch(apiUrl('/api/auth/provider/resend-otp'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() })
+      })
+      const data = await resp.json()
+      if (resp.ok) {
+        setToast(data.message || 'New OTP sent! Please check your inbox.')
+      } else {
+        setError(data.message || 'Failed to resend OTP.')
+      }
+    } catch {
+      setError('Network error. Unable to resend OTP.')
+    } finally {
+      setIsResending(false)
+    }
+  }
+
+  
+
   return (
     <div className="pact-page">
       {toast && <ActivationToast message={toast} onClose={() => setToast(null)} />}
@@ -133,27 +189,13 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
           </p>
         </div>
 
-        <div className="pact-steps-indicator" aria-label="Activation progress">
-          <div className={`pact-indicator-step ${step === 'otp' ? 'active' : 'done'}`}>
-            <span className="pact-indicator-num">{step === 'otp' ? '1' : ''}</span>
-            <span className="pact-indicator-label">1. OTP Code</span>
-          </div>
-          <div className="pact-indicator-line" />
-          <div className={`pact-indicator-step ${step === 'personal-info' ? 'active' : (step === 'complete' ? 'done' : '')}`}>
-            <span className="pact-indicator-num">{step === 'complete' ? '' : '2'}</span>
-            <span className="pact-indicator-label">2. Personal Details</span>
-          </div>
-          <div className="pact-indicator-line" />
-          <div className={`pact-indicator-step ${step === 'complete' ? 'active' : ''}`}>
-            <span className="pact-indicator-num">3</span>
-            <span className="pact-indicator-label">3. Ready</span>
-          </div>
-        </div>
-
-        {error && <div className="pact-error-box" role="alert"> {error}</div>}
-
         {step === 'otp' && (
           <form onSubmit={handleVerifyOtp} className="pact-form">
+            {error && (
+              <div className="pact-error-box" role="alert">
+                {error}
+              </div>
+            )}
             <div className="form-group">
               <label htmlFor="pact-email">Approved Business Email</label>
               <div className="field-wrap">
@@ -175,16 +217,32 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
                 <input
                   type="text"
                   id="pact-otp"
-                  placeholder="Enter 6-digit code (e.g. 123456)"
+                  placeholder={isOtpFocused ? '' : 'Enter 6-digit code (e.g. 123456)'}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
+                  onFocus={() => setIsOtpFocused(true)}
+                  onBlur={() => setIsOtpFocused(false)}
                   maxLength="10"
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   required
-                  style={{ letterSpacing: '3px', fontSize: '18px', fontWeight: '700', textAlign: 'center' }}
+                  style={{
+                    letterSpacing: otp ? '3px' : 'normal',
+                    fontSize: otp ? '18px' : '14px',
+                    fontWeight: otp ? '700' : 'normal',
+                    textAlign: otp ? 'center' : 'left'
+                  }}
                 />
                 <small>Check your email inbox for the approval confirmation &amp; OTP code.</small>
+                <button
+                  type="button"
+                  className="pact-link-btn"
+                  onClick={handleResendOtp}
+                  disabled={loading}
+                  style={{ background: 'none', border: 'none', color: '#168aad', cursor: 'pointer', fontSize: '13px', marginTop: '12px', textAlign:'left' }}
+                >
+                  {isResending ? 'Resending code…' : <>Didn't receive code or OTP expired? <strong>Resend OTP</strong></>}
+                </button>
               </div>
             </div>
 
@@ -194,7 +252,7 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
               id="pact-verify-otp-btn"
               disabled={loading}
             >
-              {loading ? 'Verifying OTP…' : 'Verify OTP & Continue →'}
+              {loading ? 'Verifying OTP…' : 'Verify OTP and Continue →'}
             </button>
           </form>
         )}
@@ -345,28 +403,10 @@ function ProviderActivation({ onLogin, onBack, onStatusCheck, initialEmail = '' 
               id="pact-login-redirect-btn"
               style={{ marginTop: '20px', width: '100%' }}
             >
-              Sign In to Provider Portal →
+              Log In to access your Provider Portal →
             </button>
           </div>
         )}
-
-        <div className="pact-footer">
-          {onBack && (
-            <button type="button" className="pact-footer-link" onClick={onBack}>
-              ← Back to Registration
-            </button>
-          )}
-          {onLogin && step !== 'complete' && (
-            <button type="button" className="pact-footer-link" onClick={onLogin}>
-              Already have an active password? Login →
-            </button>
-          )}
-          {onStatusCheck && (
-            <button type="button" className="pact-footer-link" onClick={onStatusCheck}>
-              Check Application Status →
-            </button>
-          )}
-        </div>
 
       </div>
     </div>
