@@ -194,10 +194,11 @@ if (!app.Environment.IsEnvironment("Testing"))
             }
         }
         catch (Exception ex)
-        {
-            var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
-            logger.LogError(ex, "Failed to apply migrations or seeds on startup");
-        }
+			{
+				Console.WriteLine("DATABASE MIGRATION ERROR:");
+				Console.WriteLine(ex.ToString());
+				throw;
+			}
     }
 }
 else

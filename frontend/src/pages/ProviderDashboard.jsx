@@ -26,7 +26,7 @@ import {
   BadgeIcon
 } from '../components/Icons'
 import ConfirmModal from '../components/ConfirmModal'
-import { apiUrl } from '../api/client'
+import { apiUrl, catalogUrl } from '../api/client'
 
 // ── Helpers & Formatting ──────────────────────────────────────────────────────
 
@@ -121,7 +121,9 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
       <div className="pd-page-header">
         <div className="pd-page-header__left">
           <h1>Dashboard Overview</h1>
-          <p>Welcome back, {providerInfo?.businessName || providerInfo?.firstName || 'Provider'}! Here is your service performance summary.</p>
+          <p>
+            Welcome back, <span style={{ fontWeight: 'bold' }}>{providerInfo?.businessName || providerInfo?.firstName || 'Provider'}</span>!
+          </p>
         </div>
       </div>
 
@@ -130,27 +132,16 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
         <div className="pd-verification-banner__left">
           <div className="pd-verification-badge-icon"><VerifiedUserIcon size={24} /></div>
           <div>
-            <h2 className="pd-verification-banner__title">Verification Status: Verified & Approved Partner</h2>
+            <h2 className="pd-verification-banner__title">Verified and Approved Partner</h2>
             <p className="pd-verification-banner__desc">
               Your business is officially certified to accept visitor bookings and list tourism services across Sri Lanka.
             </p>
           </div>
         </div>
-        <button className="pd-quick-btn pd-quick-btn--secondary" onClick={() => onNavigate('business')}>
-          <StorefrontIcon size={16} /> View Business Profile
-        </button>
       </div>
 
       {/* Metric Cards */}
       <div className="pd-metrics-grid">
-        <div className="pd-metric-card">
-          <div className="pd-metric-icon pd-metric-icon--gold"><VerifiedUserIcon size={24} /></div>
-          <div className="pd-metric-info">
-            <div className="pd-metric-title">Verification</div>
-            <div className="pd-metric-value" style={{ fontSize: '18px', color: '#4f8a45' }}>Verified</div>
-            <div className="pd-metric-sub">Active Partner</div>
-          </div>
-        </div>
 
         <div className="pd-metric-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('services')}>
           <div className="pd-metric-icon pd-metric-icon--teal"><KitesurfingIcon size={24} /></div>
@@ -402,12 +393,12 @@ function BusinessProfileTab({ token, onLogout, providerInfo, onUpdateSuccess, sh
             <span className="pd-badge pd-badge--active"> Verified & Approved</span>
           </div>
 
-          <div style={{ background: '#faf8f3', border: '1px solid #ede8dc', borderRadius: '12px', padding: '18px 20px', marginTop: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+          <div style={{ background: '#faf8f3', border: '1px solid #ede8dc', borderRadius: '12px', padding: '18px 20px', marginTop: '14px', textAlign: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',gap: '12px', marginBottom: '10px' }}>
               <span style={{ fontSize: '20px' }}></span>
               <div>
-                <strong style={{ color: '#123b5d', fontSize: '14px' }}>Official Partner Accreditation</strong>
-                <p style={{ margin: 0, color: '#666', fontSize: '12.5px' }}>Verified by CeylonQuest Quality & Safety Assurance Team.</p>
+                <strong style={{ color: '#123b5d', fontSize: '18px' }}>Officially Verified By</strong>
+                <p style={{ margin: 0, color: '#666', fontSize: '12.5px' }}>CeylonQuest Admin Team</p>
               </div>
             </div>
             <div className="pd-fields" style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #ede8dc' }}>
@@ -546,17 +537,38 @@ const EMPTY_SERVICE_FORM = {
   isActive: true
 }
 
-function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast }) {
-  const [modal, setModal] = useState(null) // null | 'add' | 'edit'
+function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showToast }) {
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all') 
+  const [modal, setModal] = useState(null)
   const [editTarget, setEditTarget] = useState(null)
-  const [form, setForm] = useState(EMPTY_SERVICE_FORM)
+  
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    price: '',
+    unit: 'Per Person',
+    location: '',
+    maxParticipants: 10,
+    isActive: true
+  })
   const [formError, setFormError] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
-  const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all') // all | active | inactive
+  
+  const [serviceToDelete, setServiceToDelete] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const openAdd = () => {
-    setForm(EMPTY_SERVICE_FORM)
+    setEditTarget(null)
+    setForm({
+      title: '',
+      description: '',
+      price: '',
+      unit: 'Per Person',
+      location: '',
+      maxParticipants: 10,
+      isActive: true
+    })
     setFormError(null)
     setModal('add')
   }
@@ -564,10 +576,12 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
   const openEdit = (service) => {
     setEditTarget(service)
     setForm({
-      serviceName: service.serviceName,
+      title: service.title || '',
       description: service.description || '',
-      pricePerUnit: String(service.pricePerUnit),
-      unit: service.unit || 'per person',
+      price: service.price ?? '',
+      unit: service.unit || 'Per Person',
+      location: service.location || '',
+      maxParticipants: service.maxParticipants || 10,
       isActive: service.isActive !== false
     })
     setFormError(null)
@@ -577,35 +591,50 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
   const closeModal = () => {
     setModal(null)
     setEditTarget(null)
+    setFormError(null)
   }
 
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target
     setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+    if(formError) setFormError(null)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFormError(null)
+  
+    if (!form.title.trim()) {
+      setFormError('Experience title is required.')
+      return
+    }
+    if (!form.location.trim()) {
+      setFormError('Operating location is required.')
+      return
+    }
+    const numPrice = parseFloat(form.price)
+    if (isNaN(numPrice) || numPrice <= 0) {
+      setFormError('Price must be a valid positive amount.')
+      return
+    }
     setFormLoading(true)
 
     const payload = {
-      serviceName: form.serviceName.trim(),
+      stitle: form.title.trim(),
       description: form.description.trim(),
-      pricePerUnit: parseFloat(form.pricePerUnit),
+      price: numPrice,
       unit: form.unit.trim(),
-      isActive: Boolean(form.isActive)
-    }
-
-    if (isNaN(payload.pricePerUnit) || payload.pricePerUnit <= 0) {
-      setFormError('Price must be a valid positive number.')
-      setFormLoading(false)
-      return
+      location: form.location.trim(),
+      maxParticipants: parseInt(form.maxParticipants, 10) || 1,
+      isActive: form.isActive
     }
 
     try {
-      const url = modal === 'edit' ? `/api/provider/prices/${editTarget.id}` : '/api/provider/prices'
+      const url = modal === 'edit' 
+        ? catalogUrl(`/api/catalog/activity-listings/${editTarget.id}`)
+        : catalogUrl('/api/catalog/activity-listings')
       const method = modal === 'edit' ? 'PUT' : 'POST'
+      
       const resp = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -614,16 +643,17 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
 
       if (resp.ok || resp.status === 201) {
         closeModal()
-        showToast(modal === 'edit' ? 'Activity/Service updated successfully.' : 'New Activity/Service published.')
+        showToast(modal === 'edit' ? 'Experience listing updated.' : 'New experience listing created.')
         onRefreshServices && onRefreshServices()
-      } else if (resp.status === 400 || resp.status === 422) {
+      } else if (resp.status === 403) {
         const body = await resp.json().catch(() => ({}))
-        const first = body.errors && Object.values(body.errors).flat()[0]
+        setFormError(body.message || 'Only approved providers can manage listings.')
         setFormError(first || body.message || 'Validation error. Check your input.')
       } else if (resp.status === 401) {
         onLogout && onLogout()
       } else {
-        setFormError('Server error. Please try again.')
+        const body = await resp.json().catch(() => ({}))
+        setFormError(body.message || 'Error saving listing. Check your input.')
       }
     } catch {
       setFormError('Network error. Please check your connection.')
@@ -635,19 +665,21 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
   const handleToggleStatus = async (service) => {
     const newStatus = !service.isActive
     try {
-      const resp = await fetch(apiUrl(`/api/provider/prices/${service.id}`), {
+      const resp = await fetch(apiUrl(`/api/catalog/activity-listings/${service.id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          serviceName: service.serviceName,
-          description: service.description || '',
-          pricePerUnit: service.pricePerUnit,
+          title: service.title,
+          description: service.description,
+          price: service.price,
           unit: service.unit,
+          location: service.location,
+          maxParticipants: service.maxParticipants,
           isActive: newStatus
         })
       })
       if (resp.ok) {
-        showToast(`Activity ${newStatus ? 'activated' : 'deactivated'}.`)
+        showToast(`Listing ${newStatus ? 'activated' : 'deactivated'}.`)
         onRefreshServices && onRefreshServices()
       } else {
         showToast('Failed to update status.')
@@ -657,29 +689,23 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
     }
   }
 
-  const [serviceToDelete, setServiceToDelete] = useState(null)
-  const [deleteLoading, setDeleteLoading] = useState(false)
-
-  const handleDelete = (serviceId) => {
-    setServiceToDelete(serviceId)
-  }
-
   const executeDeleteService = async () => {
     if (!serviceToDelete) return
     setDeleteLoading(true)
     try {
-      const resp = await fetch(apiUrl(`/api/provider/prices/${serviceToDelete}`), {
+      const resp = await fetch(catalogUrl(`/api/catalog/activity-listings/${serviceToDelete}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
-      if (resp.status === 204) {
-        showToast('Activity/Service deleted.')
+      if (resp.status === 204 || resp.ok) {
+        showToast('Listing deleted successfully.')
         setServiceToDelete(null)
         onRefreshServices && onRefreshServices()
       } else if (resp.status === 401) {
         onLogout && onLogout()
       } else {
-        showToast('Failed to delete item.')
+        const body = await resp.json().catch(() => ({}))
+        showToast(body.message || 'Failed to delete listing.')
       }
     } catch {
       showToast('Network error. Please check connection.')
@@ -688,23 +714,14 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
     }
   }
 
-  // Filtered List
-  const filtered = services.filter(s => {
-    const matchSearch = s.serviceName.toLowerCase().includes(search.toLowerCase()) ||
-      (s.description && s.description.toLowerCase().includes(search.toLowerCase()))
-    if (!matchSearch) return false
-    if (filterStatus === 'active') return s.isActive !== false
-    if (filterStatus === 'inactive') return s.isActive === false
-    return true
-  })
-
+  
   return (
     <div className="pd-activities-tab">
       <ConfirmModal
         isOpen={Boolean(serviceToDelete)}
-        title="Delete Activity / Service"
-        message="Are you sure you want to delete this activity/service? This action cannot be undone."
-        confirmText="Delete Activity"
+        title="Delete Experience"
+        message="Are you sure you want to delete this listing? This action cannot be undone."
+        confirmText="Delete Listing"
         cancelText="Cancel"
         confirmVariant="danger"
         onConfirm={executeDeleteService}
@@ -714,40 +731,41 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
       <div className="pd-page-header">
         <div className="pd-page-header__left">
           <h1>Activity & Service Management</h1>
-          <p>Add, edit, deactivate, or remove tourism activities and services you offer to visitors.</p>
+          <p>Create, edit, activate, or remove tourism experiences you offer to visitors.</p>
         </div>
         <button className="pd-quick-btn pd-quick-btn--primary" onClick={openAdd} id="add-activity-btn">
-          <AddIcon size={16} /> Add New Activity / Service
+          <AddIcon size={16} /> Create New Experience
         </button>
       </div>
 
       {modal && (
-        <Modal title={modal === 'edit' ? 'Edit Activity / Service' : 'Add New Activity / Service'} onClose={closeModal}>
+        <Modal title={modal === 'edit' ? 'Edit Experience Listing' : 'Create New Experience'} onClose={closeModal}>
           <form onSubmit={handleSubmit} className="pd-modal__form" noValidate>
             {formError && <div className="pd-form-error">{formError}</div>}
 
             <div className="pd-form-group">
-              <label htmlFor="srv-name">Activity / Service Name *</label>
+              <label htmlFor="exp-title">Experience Title *</label>
               <input
-                id="srv-name"
-                name="serviceName"
+                id="exp-title"
+                name="title"
                 type="text"
-                value={form.serviceName}
+                value={form.title}
                 onChange={handleFormChange}
-                placeholder="e.g. Half-Day Yala Safari Tour"
+                placeholder="e.g. Guided Snorkeling at Pigeon Island"
                 required
               />
             </div>
 
             <div className="pd-form-group">
-              <label htmlFor="srv-desc">Description & Inclusions</label>
-              <textarea
-                id="srv-desc"
-                name="description"
-                rows="3"
-                value={form.description}
+              <label htmlFor="exp-location">Operating Location</label>
+              <input
+                id="exp-location"
+                name="location"
+                type="text"
+                value={form.location}
                 onChange={handleFormChange}
-                placeholder="Provide details about duration, inclusions, difficulty, and meeting points..."
+                placeholder="e.g. Nilaveli, Trincomalee"
+                required
               />
             </div>
 
@@ -1775,7 +1793,7 @@ function ProviderDashboard({ onLogout }) {
       <aside className="pd-sidebar">
         <div className="pd-sidebar__brand">
           <img src="/dashboard-logo.png" alt="CeylonQuest" className="pd-sidebar__logo-img" />
-          <span className="pd-sidebar__role">Provider Hub</span>
+          <span className="pd-sidebar__role">Provider Portal</span>
         </div>
 
         <ul className="pd-sidebar__nav">
