@@ -146,7 +146,7 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
         <div className="pd-metric-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('services')}>
           <div className="pd-metric-icon pd-metric-icon--teal"><KitesurfingIcon size={24} /></div>
           <div className="pd-metric-info">
-            <div className="pd-metric-title">Activities & Services</div>
+            <div className="pd-metric-title">Listings</div>
             <div className="pd-metric-value">{activeServices.length} Active</div>
             <div className="pd-metric-sub">{services.length} Total Registered</div>
           </div>
@@ -174,7 +174,7 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
       {/* Quick Actions Bar */}
       <div className="pd-quick-actions">
         <button className="pd-quick-btn pd-quick-btn--primary" onClick={() => onNavigate('services')}>
-          <AddIcon size={16} /> Add New Activity / Service
+          <AddIcon size={16} /> Add New Listing
         </button>
         <button className="pd-quick-btn pd-quick-btn--secondary" onClick={() => onNavigate('business')}>
           <CreateIcon size={16} /> Edit Business Profile
@@ -529,20 +529,12 @@ function BusinessProfileTab({ token, onLogout, providerInfo, onUpdateSuccess, sh
 
 // ── 3. Activity / Service Management Tab ──────────────────────────────────────
 
-const EMPTY_SERVICE_FORM = {
-  serviceName: '',
-  description: '',
-  pricePerUnit: '',
-  unit: 'per person',
-  isActive: true
-}
-
-function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showToast }) {
+function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, showToast }) {
   const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all') 
-  const [modal, setModal] = useState(null)
+  const [filterStatus, setFilterStatus] = useState('all') // all | active | inactive
+  const [modal, setModal] = useState(null) // null | 'add' | 'edit'
   const [editTarget, setEditTarget] = useState(null)
-  
+
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -554,7 +546,7 @@ function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showT
   })
   const [formError, setFormError] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
-  
+
   const [serviceToDelete, setServiceToDelete] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
@@ -596,14 +588,17 @@ function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showT
 
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target
-    setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
-    if(formError) setFormError(null)
+    setForm(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }))
+    if (formError) setFormError(null)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFormError(null)
-  
+
     if (!form.title.trim()) {
       setFormError('Experience title is required.')
       return
@@ -617,10 +612,11 @@ function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showT
       setFormError('Price must be a valid positive amount.')
       return
     }
+
     setFormLoading(true)
 
     const payload = {
-      stitle: form.title.trim(),
+      title: form.title.trim(),
       description: form.description.trim(),
       price: numPrice,
       unit: form.unit.trim(),
@@ -630,14 +626,17 @@ function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showT
     }
 
     try {
-      const url = modal === 'edit' 
+      const url = modal === 'edit'
         ? catalogUrl(`/api/catalog/activity-listings/${editTarget.id}`)
         : catalogUrl('/api/catalog/activity-listings')
       const method = modal === 'edit' ? 'PUT' : 'POST'
-      
+
       const resp = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
         body: JSON.stringify(payload)
       })
 
@@ -648,7 +647,6 @@ function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showT
       } else if (resp.status === 403) {
         const body = await resp.json().catch(() => ({}))
         setFormError(body.message || 'Only approved providers can manage listings.')
-        setFormError(first || body.message || 'Validation error. Check your input.')
       } else if (resp.status === 401) {
         onLogout && onLogout()
       } else {
@@ -665,9 +663,12 @@ function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showT
   const handleToggleStatus = async (service) => {
     const newStatus = !service.isActive
     try {
-      const resp = await fetch(apiUrl(`/api/catalog/activity-listings/${service.id}`), {
+      const resp = await fetch(catalogUrl(`/api/catalog/activity-listings/${service.id}`), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
         body: JSON.stringify({
           title: service.title,
           description: service.description,
@@ -714,13 +715,24 @@ function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showT
     }
   }
 
-  
+  const filtered = services.filter(s => {
+    const q = search.toLowerCase().trim()
+    const matchSearch = !q ||
+      (s.title || '').toLowerCase().includes(q) ||
+      (s.description || '').toLowerCase().includes(q) ||
+      (s.location || '').toLowerCase().includes(q)
+    if (!matchSearch) return false
+    if (filterStatus === 'active') return s.isActive !== false
+    if (filterStatus === 'inactive') return s.isActive === false
+    return true
+  })
+
   return (
     <div className="pd-activities-tab">
       <ConfirmModal
         isOpen={Boolean(serviceToDelete)}
-        title="Delete Experience"
-        message="Are you sure you want to delete this listing? This action cannot be undone."
+        title="Delete Experience Listing"
+        message="Are you sure you want to delete this listing? It will no longer be discoverable by visitors."
         confirmText="Delete Listing"
         cancelText="Cancel"
         confirmVariant="danger"
@@ -728,9 +740,10 @@ function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showT
         onCancel={() => setServiceToDelete(null)}
         loading={deleteLoading}
       />
+
       <div className="pd-page-header">
         <div className="pd-page-header__left">
-          <h1>Activity & Service Management</h1>
+          <h1>Experience Listings</h1>
           <p>Create, edit, activate, or remove tourism experiences you offer to visitors.</p>
         </div>
         <button className="pd-quick-btn pd-quick-btn--primary" onClick={openAdd} id="add-activity-btn">
@@ -757,7 +770,7 @@ function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showT
             </div>
 
             <div className="pd-form-group">
-              <label htmlFor="exp-location">Operating Location</label>
+              <label htmlFor="exp-location">Operating Location *</label>
               <input
                 id="exp-location"
                 name="location"
@@ -769,54 +782,77 @@ function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showT
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <div className="pd-form-group">
+              <label htmlFor="exp-desc">Description & Inclusions *</label>
+              <textarea
+                id="exp-desc"
+                name="description"
+                rows="3"
+                value={form.description}
+                onChange={handleFormChange}
+                placeholder="Describe the experience, itinerary, gear provided, and meeting point..."
+                required
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
               <div className="pd-form-group">
-                <label htmlFor="srv-price">Price (LKR) *</label>
+                <label htmlFor="exp-price">Price (LKR) *</label>
                 <input
-                  id="srv-price"
-                  name="pricePerUnit"
+                  id="exp-price"
+                  name="price"
                   type="number"
                   min="0.01"
                   step="100"
-                  value={form.pricePerUnit}
+                  value={form.price}
                   onChange={handleFormChange}
-                  placeholder="e.g. 7500"
+                  placeholder="e.g. 8500"
                   required
                 />
               </div>
 
               <div className="pd-form-group">
-                <label htmlFor="srv-unit">Pricing Unit *</label>
+                <label htmlFor="exp-unit">Pricing Unit *</label>
+                <select id="exp-unit" name="unit" value={form.unit} onChange={handleFormChange}>
+                  <option value="Per Person">Per Person</option>
+                  <option value="Per Group">Per Group</option>
+                  <option value="Per Hour">Per Hour</option>
+                  <option value="Per Day">Per Day</option>
+                </select>
+              </div>
+
+              <div className="pd-form-group">
+                <label htmlFor="exp-max">Max Guests</label>
                 <input
-                  id="srv-unit"
-                  name="unit"
-                  type="text"
-                  value={form.unit}
+                  id="exp-max"
+                  name="maxParticipants"
+                  type="number"
+                  min="1"
+                  value={form.maxParticipants}
                   onChange={handleFormChange}
-                  placeholder="per person, per group, per hour"
                   required
                 />
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0' }}>
-              <input
-                id="srv-active"
-                name="isActive"
-                type="checkbox"
-                checked={form.isActive}
-                onChange={handleFormChange}
-                style={{ width: '18px', height: '18px', accentColor: '#168aad' }}
-              />
-              <label htmlFor="srv-active" style={{ fontSize: '13.5px', fontWeight: 600, color: '#123b5d', cursor: 'pointer' }}>
-                Active & visible for bookings
+            <div className="pd-checkbox-group" style={{ marginTop: '8px' }}>
+              <label className="pd-checkbox-label">
+                <input
+                  type="checkbox"
+                  name="isActive"
+                  checked={form.isActive}
+                  onChange={handleFormChange}
+                />
+                <span>Active and bookable by visitors immediately</span>
               </label>
             </div>
 
             <div className="pd-modal__actions">
-              <button type="button" className="pd-cancel-btn" onClick={closeModal} disabled={formLoading}>Cancel</button>
-              <button type="submit" className="pd-save-btn" disabled={formLoading}>
-                {formLoading ? 'Saving…' : modal === 'edit' ? 'Update Activity' : 'Publish Activity'}
+              <button type="button" className="pd-btn pd-btn--secondary" onClick={closeModal} disabled={formLoading}>
+                Cancel
+              </button>
+              <button type="submit" className="pd-btn pd-btn--primary" disabled={formLoading}>
+                {formLoading ? 'Saving…' : (modal === 'edit' ? 'Save Changes' : 'Publish Experience')}
               </button>
             </div>
           </form>
@@ -826,11 +862,11 @@ function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showT
       {/* Filter and Search Bar */}
       <div className="pd-filter-bar">
         <div className="pd-search-wrap">
-          <span className="pd-search-icon"></span>
+          <span className="pd-search-icon"><ManageSearchIcon size={18} /></span>
           <input
             type="text"
             className="pd-search-input"
-            placeholder="Search activities or descriptions..."
+            placeholder="Search your listings..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -849,26 +885,27 @@ function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showT
         </div>
       </div>
 
-      {/* Table of Services */}
+      {/* Listings Table */}
       <div className="pd-card">
         <div className="pd-card__body" style={{ padding: 0 }}>
           {filtered.length === 0 ? (
             <div className="pd-empty">
-              <div className="pd-empty__icon"></div>
-              <p className="pd-empty__title">No activities found</p>
-              <p className="pd-empty__msg">
-                {search || filterStatus !== 'all' ? 'Try adjusting your search query or filter.' : 'Click "Add New Activity" to publish your first service offering.'}
-              </p>
+              <div className="pd-empty__icon"><KitesurfingIcon size={32} /></div>
+              <p className="pd-empty__title">No experience listings found</p>
+              <p className="pd-empty__msg">Create your first tourism experience listing to start receiving visitor bookings.</p>
+              <button className="pd-quick-btn pd-quick-btn--primary" onClick={openAdd} style={{ marginTop: '12px' }}>
+                <AddIcon size={16} /> Add Your First Listing
+              </button>
             </div>
           ) : (
             <div className="pd-table-wrap" style={{ border: 'none', borderRadius: 0 }}>
               <table className="pd-table">
                 <thead>
                   <tr>
-                    <th>Activity / Service</th>
-                    <th>Description & Details</th>
-                    <th>Price (LKR)</th>
-                    <th>Unit</th>
+                    <th>Experience Title</th>
+                    <th>Location</th>
+                    <th>Price</th>
+                    <th>Max Guests</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -876,30 +913,30 @@ function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showT
                 <tbody>
                   {filtered.map(s => (
                     <tr key={s.id}>
-                      <td style={{ fontWeight: 700, color: '#123b5d' }}>{s.serviceName}</td>
-                      <td style={{ color: '#666666', maxWidth: '280px' }}>{s.description || '—'}</td>
-                      <td style={{ fontWeight: 700, color: '#168aad' }}>{formatCurrency(s.pricePerUnit)}</td>
-                      <td>{s.unit}</td>
+                      <td style={{ fontWeight: 600, color: '#123b5d' }}>
+                        <div>{s.title}</div>
+                        <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 400 }}>{s.description?.slice(0, 60)}{s.description?.length > 60 ? '…' : ''}</div>
+                      </td>
+                      <td>{s.location}</td>
+                      <td style={{ fontWeight: 700, color: '#4f8a45' }}>
+                        LKR {Number(s.price).toLocaleString()} <span style={{ fontSize: '11px', color: '#777', fontWeight: 400 }}>/ {s.unit}</span>
+                      </td>
+                      <td>{s.maxParticipants} guests</td>
                       <td>
-                        <span className={`pd-badge pd-badge--${s.isActive !== false ? 'active' : 'inactive'}`}>
-                          {s.isActive !== false ? 'Active' : 'Inactive'}
-                        </span>
+                        <button
+                          type="button"
+                          className={`pd-badge pd-badge--${s.isActive ? 'active' : 'inactive'}`}
+                          style={{ cursor: 'pointer', border: 'none' }}
+                          onClick={() => handleToggleStatus(s)}
+                          title="Click to toggle status"
+                        >
+                          {s.isActive ? 'Active' : 'Inactive'}
+                        </button>
                       </td>
                       <td>
                         <div className="pd-row-actions">
-                          <button
-                            className="pd-row-btn pd-row-btn--toggle"
-                            title={s.isActive !== false ? 'Deactivate this activity' : 'Activate this activity'}
-                            onClick={() => handleToggleStatus(s)}
-                          >
-                            {s.isActive !== false ? 'Deactivate' : 'Activate'}
-                          </button>
-                          <button className="pd-row-btn pd-row-btn--edit" onClick={() => openEdit(s)}>
-                            Edit
-                          </button>
-                          <button className="pd-row-btn pd-row-btn--delete" onClick={() => handleDelete(s.id)}>
-                            Delete
-                          </button>
+                          <button className="pd-row-btn" onClick={() => openEdit(s)}>Edit</button>
+                          <button className="pd-row-btn pd-row-btn--delete" onClick={() => setServiceToDelete(s.id)}>Delete</button>
                         </div>
                       </td>
                     </tr>
@@ -907,732 +944,6 @@ function ActivitiesTab({ token, onLogout, services= [], onRefreshServices, showT
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── 4. Booking Management Tab ─────────────────────────────────────────────────
-
-function BookingsTab({ bookings, onUpdateBookingStatus }) {
-  const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all') // all | pending | confirmed | completed | cancelled
-  const [selectedBooking, setSelectedBooking] = useState(null)
-
-  const handleStatusChange = (bookingId, newStatus) => {
-    onUpdateBookingStatus && onUpdateBookingStatus(bookingId, newStatus)
-    if (selectedBooking && selectedBooking.id === bookingId) {
-      setSelectedBooking(prev => ({ ...prev, status: newStatus }))
-    }
-  }
-
-  const filtered = bookings.filter(b => {
-    const matchSearch = b.visitorName.toLowerCase().includes(search.toLowerCase()) ||
-      b.id.toLowerCase().includes(search.toLowerCase()) ||
-      b.activityName.toLowerCase().includes(search.toLowerCase())
-    if (!matchSearch) return false
-    if (filterStatus !== 'all' && b.status.toLowerCase() !== filterStatus.toLowerCase()) return false
-    return true
-  })
-
-  return (
-    <div className="pd-bookings-tab">
-      <div className="pd-page-header">
-        <div className="pd-page-header__left">
-          <h1>Booking Management</h1>
-          <p>Review visitor reservations, view complete booking details, and manage reservation statuses.</p>
-        </div>
-      </div>
-
-      {/* Booking Details Modal */}
-      {selectedBooking && (
-        <Modal title={`Booking Details (${selectedBooking.id})`} onClose={() => setSelectedBooking(null)} wide>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid #f0ece3' }}>
-              <div>
-                <h3 style={{ margin: '0 0 4px', color: '#123b5d' }}>{selectedBooking.activityName}</h3>
-                <span style={{ fontSize: '13px', color: '#777' }}>Booking Ref: <strong>{selectedBooking.id}</strong></span>
-              </div>
-              <span className={`pd-badge pd-badge--${selectedBooking.status.toLowerCase()}`} style={{ fontSize: '12px', padding: '5px 12px' }}>
-                {selectedBooking.status}
-              </span>
-            </div>
-
-            <div className="pd-fields">
-              <div className="pd-field">
-                <span className="pd-field__label">Visitor Name</span>
-                <span className="pd-field__value"> {selectedBooking.visitorName}</span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Email Address</span>
-                <span className="pd-field__value"> {selectedBooking.visitorEmail}</span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Contact Phone</span>
-                <span className="pd-field__value"> {selectedBooking.visitorPhone}</span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Scheduled Date</span>
-                <span className="pd-field__value"> {formatDate(selectedBooking.date)}</span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Time Slot</span>
-                <span className="pd-field__value"> {selectedBooking.timeSlot}</span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Party Size / Guests</span>
-                <span className="pd-field__value"> {selectedBooking.guests} People</span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Payment Status</span>
-                <span className="pd-field__value" style={{ color: '#4f8a45', fontWeight: 600 }}> {selectedBooking.paymentStatus}</span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Total Amount</span>
-                <span className="pd-field__value" style={{ color: '#168aad', fontWeight: 800, fontSize: '16px' }}>{formatCurrency(selectedBooking.totalAmount)}</span>
-              </div>
-              <div className="pd-field pd-field--full">
-                <span className="pd-field__label">Special Requests / Notes</span>
-                <span className="pd-field__value" style={{ background: '#faf8f3', padding: '10px 12px', borderRadius: '8px', border: '1px solid #ede8dc' }}>
-                  {selectedBooking.specialRequests || 'No special requests provided.'}
-                </span>
-              </div>
-            </div>
-
-            <div style={{ paddingTop: '16px', borderTop: '1px solid #f0ece3', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#123b5d' }}>Manage Status:</span>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {selectedBooking.status === 'Pending' && (
-                  <button className="pd-quick-btn pd-quick-btn--primary" onClick={() => handleStatusChange(selectedBooking.id, 'Confirmed')}>
-                    <CheckCircleIcon size={16} /> Confirm Booking
-                  </button>
-                )}
-                {selectedBooking.status === 'Confirmed' && (
-                  <button className="pd-quick-btn pd-quick-btn--primary" onClick={() => handleStatusChange(selectedBooking.id, 'Completed')}>
-                    <CheckCircleIcon size={16} /> Mark Completed
-                  </button>
-                )}
-                {selectedBooking.status !== 'Cancelled' && (
-                  <button className="pd-quick-btn pd-quick-btn--secondary" style={{ color: '#e74c3c', borderColor: '#e74c3c' }} onClick={() => handleStatusChange(selectedBooking.id, 'Cancelled')}>
-                    <CancelIcon size={16} /> Cancel Reservation
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Filter and Search Bar */}
-      <div className="pd-filter-bar">
-        <div className="pd-search-wrap">
-          <span className="pd-search-icon"><ManageSearchIcon size={18} /></span>
-          <input
-            type="text"
-            className="pd-search-input"
-            placeholder="Search by visitor, ID, or activity..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-
-        <div className="pd-filter-pills">
-          <button className={`pd-filter-pill ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => setFilterStatus('all')}>
-            All ({bookings.length})
-          </button>
-          <button className={`pd-filter-pill ${filterStatus === 'pending' ? 'active' : ''}`} onClick={() => setFilterStatus('pending')}>
-            Pending ({bookings.filter(b => b.status === 'Pending').length})
-          </button>
-          <button className={`pd-filter-pill ${filterStatus === 'confirmed' ? 'active' : ''}`} onClick={() => setFilterStatus('confirmed')}>
-            Confirmed ({bookings.filter(b => b.status === 'Confirmed').length})
-          </button>
-          <button className={`pd-filter-pill ${filterStatus === 'completed' ? 'active' : ''}`} onClick={() => setFilterStatus('completed')}>
-            Completed ({bookings.filter(b => b.status === 'Completed').length})
-          </button>
-        </div>
-      </div>
-
-      {/* Bookings Table */}
-      <div className="pd-card">
-        <div className="pd-card__body" style={{ padding: 0 }}>
-          {filtered.length === 0 ? (
-            <div className="pd-empty">
-              <div className="pd-empty__icon"><CalendarMonthIcon size={32} /></div>
-              <p className="pd-empty__title">No bookings found</p>
-              <p className="pd-empty__msg">No reservation records match the active search and status filter.</p>
-            </div>
-          ) : (
-            <div className="pd-table-wrap" style={{ border: 'none', borderRadius: 0 }}>
-              <table className="pd-table">
-                <thead>
-                  <tr>
-                    <th>Ref #</th>
-                    <th>Visitor</th>
-                    <th>Activity / Service</th>
-                    <th>Scheduled Date</th>
-                    <th>Guests</th>
-                    <th>Total</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(b => (
-                    <tr key={b.id}>
-                      <td style={{ fontWeight: 700, color: '#168aad' }}>{b.id}</td>
-                      <td>
-                        <div style={{ fontWeight: 600, color: '#123b5d' }}>{b.visitorName}</div>
-                        <div style={{ fontSize: '11.5px', color: '#888' }}>{b.visitorEmail}</div>
-                      </td>
-                      <td style={{ color: '#333' }}>{b.activityName}</td>
-                      <td>{formatDate(b.date)}</td>
-                      <td>{b.guests}</td>
-                      <td style={{ fontWeight: 700, color: '#123b5d' }}>{formatCurrency(b.totalAmount)}</td>
-                      <td>
-                        <span className={`pd-badge pd-badge--${b.status.toLowerCase()}`}>{b.status}</span>
-                      </td>
-                      <td>
-                        <div className="pd-row-actions">
-                          <button className="pd-row-btn pd-row-btn--view" onClick={() => setSelectedBooking(b)}>
-                            Details
-                          </button>
-                          {b.status === 'Pending' && (
-                            <button className="pd-row-btn pd-row-btn--confirm" onClick={() => handleStatusChange(b.id, 'Confirmed')}>
-                              Confirm
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── 5. Notifications Tab ──────────────────────────────────────────────────────
-
-function NotificationsTab({ notifications, onMarkAllRead, onToggleRead, onClearAll }) {
-  const [filter, setFilter] = useState('all') // all | booking | verification | provider
-
-  const filtered = notifications.filter(n => {
-    if (filter === 'all') return true
-    return n.category === filter
-  })
-
-  const unreadCount = notifications.filter(n => !n.read).length
-
-  return (
-    <div className="pd-notifications-tab">
-      <div className="pd-page-header">
-        <div className="pd-page-header__left">
-          <h1>Notifications</h1>
-          <p>Stay updated on new visitor reservations, accreditation verification, and system updates.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {unreadCount > 0 && (
-            <button className="pd-quick-btn pd-quick-btn--secondary" onClick={onMarkAllRead}>
-              <CheckCircleIcon size={16} /> Mark All Read
-            </button>
-          )}
-          {notifications.length > 0 && (
-            <button className="pd-quick-btn pd-quick-btn--secondary" onClick={onClearAll}>
-              <DeleteSweepIcon size={16} /> Clear All
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="pd-filter-pills" style={{ marginBottom: '20px' }}>
-        <button className={`pd-filter-pill ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
-          All ({notifications.length})
-        </button>
-        <button className={`pd-filter-pill ${filter === 'booking' ? 'active' : ''}`} onClick={() => setFilter('booking')}>
-          <CalendarMonthIcon size={14} style={{ marginRight: 6 }} /> Bookings ({notifications.filter(n => n.category === 'booking').length})
-        </button>
-        <button className={`pd-filter-pill ${filter === 'verification' ? 'active' : ''}`} onClick={() => setFilter('verification')}>
-          <VerifiedUserIcon size={14} style={{ marginRight: 6 }} /> Verification ({notifications.filter(n => n.category === 'verification').length})
-        </button>
-        <button className={`pd-filter-pill ${filter === 'provider' ? 'active' : ''}`} onClick={() => setFilter('provider')}>
-          <NotificationsActiveIcon size={14} style={{ marginRight: 6 }} /> Updates ({notifications.filter(n => n.category === 'provider').length})
-        </button>
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="pd-card">
-          <div className="pd-card__body">
-            <div className="pd-empty">
-              <div className="pd-empty__icon"><NotificationsActiveIcon size={32} /></div>
-              <p className="pd-empty__title">No notifications</p>
-              <p className="pd-empty__msg">You have caught up with all notifications in this category.</p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="pd-notif-list">
-          {filtered.map(n => (
-            <div
-              key={n.id}
-              className={`pd-notif-item ${!n.read ? 'pd-notif-item--unread' : ''}`}
-              style={{ cursor: 'pointer' }}
-              onClick={() => onToggleRead && onToggleRead(n.id)}
-            >
-              <div
-                className="pd-notif-icon"
-                style={{
-                  background: n.category === 'booking' ? 'rgba(22, 138, 173, 0.15)' : n.category === 'verification' ? 'rgba(79, 138, 69, 0.15)' : 'rgba(214, 168, 95, 0.2)',
-                  color: n.category === 'booking' ? '#168aad' : n.category === 'verification' ? '#4f8a45' : '#b8860b'
-                }}
-              >
-                {n.category === 'booking' ? (
-                  <CalendarMonthIcon size={20} />
-                ) : n.category === 'verification' ? (
-                  <VerifiedUserIcon size={20} />
-                ) : (
-                  <NotificationsActiveIcon size={20} />
-                )}
-              </div>
-              <div className="pd-notif-content">
-                <h3 className="pd-notif-title">{n.title}</h3>
-                <p className="pd-notif-desc">{n.desc}</p>
-                <span className="pd-notif-time">{n.time}</span>
-              </div>
-              {!n.read && <div className="pd-notif-dot" title="Unread" />}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── 6. Account Profile Tab ────────────────────────────────────────────────────
-
-function AccountTab({ token, onLogout, showToast, onProfileUpdate }) {
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState(null)
-  const [editing, setEditing] = useState(false)
-  const [formData, setFormData] = useState({})
-  const [saveLoading, setSaveLoading] = useState(false)
-  const [saveError, setSaveError] = useState(null)
-  const [avatarUploading, setAvatarUploading] = useState(false)
-  const [avatarError, setAvatarError] = useState(null)
-  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false)
-
-  const onLogoutRef = useRef(onLogout)
-  useEffect(() => { onLogoutRef.current = onLogout }, [onLogout])
-  const onProfileUpdateRef = useRef(onProfileUpdate)
-  useEffect(() => { onProfileUpdateRef.current = onProfileUpdate }, [onProfileUpdate])
-
-  const fetchProfile = useCallback(async () => {
-    const activeToken = token || localStorage.getItem('authToken')
-    if (!activeToken) {
-      setLoadError('Session expired. Please log in again.')
-      setLoading(false)
-      onLogoutRef.current && onLogoutRef.current()
-      return
-    }
-
-    setLoading(true)
-    setLoadError(null)
-    try {
-      const resp = await fetch(apiUrl('/api/users/me'), {
-        headers: { Authorization: `Bearer ${activeToken}` }
-      })
-      if (resp.ok) {
-        const data = await resp.json()
-        setProfile(data)
-        onProfileUpdateRef.current && onProfileUpdateRef.current(data)
-        setFormData({
-          firstName: data.firstName || '',
-          lastName: data.lastName || '',
-          phoneNumber: data.phoneNumber || '',
-          nationality: data.nationality || ''
-        })
-      } else if (resp.status === 401) {
-        setLoadError('Session expired or unauthorized. Please log in again.')
-        onLogoutRef.current && onLogoutRef.current()
-      } else {
-        setLoadError('Failed to load profile. Please try again.')
-      }
-    } catch {
-      setLoadError('Network error. Please check your connection.')
-    } finally {
-      setLoading(false)
-    }
-  }, [token])
-
-  useEffect(() => {
-    fetchProfile()
-  }, [fetchProfile])
-
-  const handleEdit = () => {
-    setSaveError(null)
-    setEditing(true)
-  }
-
-  const handleCancel = () => {
-    setFormData({
-      firstName: profile?.firstName || '',
-      lastName: profile?.lastName || '',
-      phoneNumber: profile?.phoneNumber || '',
-      nationality: profile?.nationality || ''
-    })
-    setSaveError(null)
-    setEditing(false)
-  }
-
-  const handleChange = (e) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
-  }
-
-  const handleSave = async (e) => {
-    e.preventDefault()
-    setSaveError(null)
-    setSaveLoading(true)
-
-    const activeToken = token || localStorage.getItem('authToken')
-    try {
-      const resp = await fetch(apiUrl('/api/users/me'), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${activeToken}`
-        },
-        body: JSON.stringify(formData)
-      })
-
-      if (resp.ok) {
-        const body = await resp.json()
-        const updated = body.profile ?? body
-        setProfile(updated)
-        onProfileUpdateRef.current && onProfileUpdateRef.current(updated)
-        setFormData({
-          firstName: updated.firstName,
-          lastName: updated.lastName,
-          phoneNumber: updated.phoneNumber,
-          nationality: updated.nationality
-        })
-        setEditing(false)
-        showToast('Personal account profile updated successfully.')
-      } else if (resp.status === 401) {
-        onLogoutRef.current && onLogoutRef.current()
-      } else if (resp.status === 400 || resp.status === 422) {
-        const body = await resp.json().catch(() => ({}))
-        const first = body.errors && Object.values(body.errors).flat()[0]
-        setSaveError(first || body.message || 'Validation error. Check your input.')
-      } else {
-        setSaveError('Server error. Please try again.')
-      }
-    } catch {
-      setSaveError('Network error. Please check your connection.')
-    } finally {
-      setSaveLoading(false)
-    }
-  }
-
-  const handleAvatarChange = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    if (!file.type.startsWith('image/')) {
-      setAvatarError('Please select a valid image file (JPG, PNG, WebP).')
-      return
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setAvatarError('Image must be smaller than 5 MB.')
-      return
-    }
-
-    setAvatarError(null)
-    setAvatarUploading(true)
-
-    const activeToken = token || localStorage.getItem('authToken')
-    try {
-      const data = new FormData()
-      data.append('file', file)
-
-      const resp = await fetch(apiUrl('/api/users/me/profile-picture'), {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${activeToken}`
-        },
-        body: data
-      })
-
-      if (resp.ok) {
-        const result = await resp.json()
-        const updated = result.profile ?? { ...profile, profilePictureUrl: result.profilePictureUrl }
-        setProfile(updated)
-        onProfileUpdateRef.current && onProfileUpdateRef.current(updated)
-        showToast('Profile picture updated successfully.')
-      } else {
-        const errBody = await resp.json().catch(() => ({}))
-        setAvatarError(errBody.message || 'Failed to upload profile picture.')
-      }
-    } catch {
-      setAvatarError('Network error while uploading photo.')
-    } finally {
-      setAvatarUploading(false)
-      e.target.value = ''
-    }
-  }
-
-  const handleRemoveAvatar = async () => {
-    setAvatarError(null)
-    setAvatarUploading(true)
-
-    const activeToken = token || localStorage.getItem('authToken')
-    try {
-      const resp = await fetch(apiUrl('/api/users/me/profile-picture'), {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${activeToken}`
-        }
-      })
-
-      if (resp.ok) {
-        const result = await resp.json()
-        const updated = result.profile ?? { ...profile, profilePictureUrl: null }
-        setProfile(updated)
-        onProfileUpdateRef.current && onProfileUpdateRef.current(updated)
-        setShowRemoveConfirm(false)
-        showToast('Profile picture removed.')
-      } else {
-        const errBody = await resp.json().catch(() => ({}))
-        setAvatarError(errBody.message || 'Failed to remove profile picture.')
-      }
-    } catch {
-      setAvatarError('Network error while removing photo.')
-    } finally {
-      setAvatarUploading(false)
-    }
-  }
-
-  return (
-    <div className="pd-account-tab">
-      <ConfirmModal
-        isOpen={showRemoveConfirm}
-        title="Remove Profile Picture"
-        message="Are you sure you want to remove your profile picture?"
-        confirmText="Remove Photo"
-        cancelText="Cancel"
-        confirmVariant="danger"
-        onConfirm={handleRemoveAvatar}
-        onCancel={() => setShowRemoveConfirm(false)}
-        loading={avatarUploading}
-      />
-
-      <div className="pd-page-header">
-        <div className="pd-page-header__left">
-          <h1>Account Settings</h1>
-          <p>Manage your personal profile and account credentials.</p>
-        </div>
-      </div>
-
-      <div className="pd-card">
-        <div className="pd-card__body">
-          {loading && <LoadingState label="Loading profile information…" />}
-          {loadError && !loading && (
-            <div className="pd-form-error" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span>{loadError}</span>
-              <button
-                type="button"
-                onClick={fetchProfile}
-                style={{
-                  background: '#123b5d',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}
-              >
-                Retry
-              </button>
-            </div>
-          )}
-
-          {!loading && profile && !editing && (
-            <>
-              <div className="pd-identity">
-                <div className="pd-avatar-wrapper">
-                  <div className="pd-avatar" aria-hidden="true">
-                    {profile.profilePictureUrl ? (
-                      <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="pd-avatar__img" />
-                    ) : (
-                      initials(profile.firstName, profile.lastName)
-                    )}
-                  </div>
-                  <label className="pd-avatar-upload-btn" title="Upload / Change profile photo">
-                    <PhotoCameraIcon size={14} />
-                    <input
-                      type="file"
-                      accept="image/png, image/jpeg, image/webp"
-                      onChange={handleAvatarChange}
-                      disabled={avatarUploading}
-                      style={{ display: 'none' }}
-                    />
-                  </label>
-                </div>
-
-                <div className="pd-identity__info">
-                  <h2 className="pd-identity__name">{profile.firstName} {profile.lastName}</h2>
-                  <p className="pd-identity__email">{profile.email}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
-                    <span className="pd-identity__badge"><BadgeIcon size={13} style={{ marginRight: 4 }} /> Provider Account</span>
-                    {profile.profilePictureUrl && (
-                      <button
-                        type="button"
-                        className="pd-avatar-remove-text-btn"
-                        onClick={() => setShowRemoveConfirm(true)}
-                        disabled={avatarUploading}
-                      >
-                        <DeleteSweepIcon size={13} style={{ marginRight: 4 }} /> Remove Photo
-                      </button>
-                    )}
-                  </div>
-                  {avatarUploading && <div className="pd-avatar-status">Uploading photo…</div>}
-                  {avatarError && <div className="pd-avatar-error">{avatarError}</div>}
-                </div>
-                <button className="pd-edit-btn" onClick={handleEdit} id="edit-account-profile-btn">
-                  <CreateIcon size={14} style={{ marginRight: 6 }} /> Edit Profile
-                </button>
-              </div>
-
-              <div className="pd-fields">
-                <div className="pd-field">
-                  <span className="pd-field__label">First Name</span>
-                  <span className="pd-field__value">{profile.firstName}</span>
-                </div>
-                <div className="pd-field">
-                  <span className="pd-field__label">Last Name</span>
-                  <span className="pd-field__value">{profile.lastName}</span>
-                </div>
-                <div className="pd-field">
-                  <span className="pd-field__label">Email Address</span>
-                  <span className="pd-field__value">{profile.email}</span>
-                </div>
-                <div className="pd-field">
-                  <span className="pd-field__label">Contact Phone</span>
-                  <span className="pd-field__value">{profile.phoneNumber || '—'}</span>
-                </div>
-                <div className="pd-field">
-                  <span className="pd-field__label">Nationality</span>
-                  <span className="pd-field__value">{profile.nationality || '—'}</span>
-                </div>
-                <div className="pd-field">
-                  <span className="pd-field__label">Member Since</span>
-                  <span className="pd-field__value">{formatDate(profile.createdAt)}</span>
-                </div>
-              </div>
-            </>
-          )}
-
-          {!loading && profile && editing && (
-            <form onSubmit={handleSave} className="pd-edit-form" noValidate>
-              <div className="pd-identity" style={{ marginBottom: '24px' }}>
-                <div className="pd-avatar-wrapper">
-                  <div className="pd-avatar" aria-hidden="true">
-                    {profile.profilePictureUrl ? (
-                      <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="pd-avatar__img" />
-                    ) : (
-                      initials(formData.firstName, formData.lastName)
-                    )}
-                  </div>
-                  <label className="pd-avatar-upload-btn" title="Upload / Change profile photo">
-                    <PhotoCameraIcon size={14} />
-                    <input
-                      type="file"
-                      accept="image/png, image/jpeg, image/webp"
-                      onChange={handleAvatarChange}
-                      disabled={avatarUploading}
-                      style={{ display: 'none' }}
-                    />
-                  </label>
-                </div>
-                <div className="pd-identity__info">
-                  <h2 className="pd-identity__name">{formData.firstName} {formData.lastName}</h2>
-                  <p className="pd-identity__email">{profile.email}</p>
-                  {avatarUploading && <div className="pd-avatar-status">Uploading photo…</div>}
-                  {avatarError && <div className="pd-avatar-error">{avatarError}</div>}
-                </div>
-              </div>
-
-              {saveError && <div className="pd-form-error">{saveError}</div>}
-
-              <div className="pd-form-grid">
-                <div className="pd-form-group">
-                  <label htmlFor="acc-firstName">First Name *</label>
-                  <input
-                    id="acc-firstName"
-                    name="firstName"
-                    type="text"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="pd-form-group">
-                  <label htmlFor="acc-lastName">Last Name *</label>
-                  <input
-                    id="acc-lastName"
-                    name="lastName"
-                    type="text"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="pd-form-group">
-                  <label htmlFor="acc-email">Email Address</label>
-                  <input id="acc-email" type="email" value={profile.email} disabled aria-readonly="true" />
-                  <p className="pd-field-note">Email address cannot be changed.</p>
-                </div>
-                <div className="pd-form-group">
-                  <label htmlFor="acc-phone">Phone Number *</label>
-                  <input
-                    id="acc-phone"
-                    name="phoneNumber"
-                    type="tel"
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="pd-form-group pd-form-group--full">
-                  <label htmlFor="acc-nationality">Nationality *</label>
-                  <input
-                    id="acc-nationality"
-                    name="nationality"
-                    type="text"
-                    value={formData.nationality}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="pd-form-actions">
-                <button type="submit" className="pd-save-btn" disabled={saveLoading}>
-                  {saveLoading ? 'Saving…' : 'Save Changes'}
-                </button>
-                <button type="button" className="pd-cancel-btn" onClick={handleCancel} disabled={saveLoading}>
-                  Cancel
-                </button>
-              </div>
-            </form>
           )}
         </div>
       </div>
@@ -1711,19 +1022,21 @@ function ProviderDashboard({ onLogout }) {
   }, [token])
 
   // Fetch Services & Prices
-  const fetchServices = useCallback(async () => {
-    if (!token) return
-    try {
-      const resp = await fetch(apiUrl('/api/provider/prices'), {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (resp.ok) {
-        setServices(await resp.json())
-      }
-    } catch {
-      // ignore
+  // CORRECT:
+const fetchServices = useCallback(async () => {
+  if (!token) return
+  try {
+    const resp = await fetch(apiUrl('/api/catalog/activity-listings'), {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (resp.ok) {
+      const data = await resp.json()
+      setServices(data)
     }
-  }, [token])
+  } catch (err) {
+    console.error('Failed to load listings', err)
+  }
+}, [token])
 
   useEffect(() => {
     fetchProviderInfo()
