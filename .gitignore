@@ -55,6 +55,7 @@ pnpm-debug.log*
 !.env.production
 appsettings.*.local.json
 appsettings.Development.json
+qa-testing/CeylonQuest.Tests/appsettings.Local.json
 **/secrets.json
 **/credentials.json
 
