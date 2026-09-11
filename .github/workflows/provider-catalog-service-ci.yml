@@ -37,7 +37,7 @@ jobs:
             dotnet build services/provider-catalog-service/ProviderCatalogService.Tests/ProviderCatalogService.Tests.csproj --no-restore --configuration Release
 
       - name: Run Unit Tests
-        run: dotnet test services/provider-catalog-service/ProviderCatalogService.Tests/ProviderCatalogService.Tests.csproj --no-build --verbosity normal
+        run: dotnet test services/provider-catalog-service/ProviderCatalogService.Tests/ProviderCatalogService.Tests.csproj --no-build --configuration Release --verbosity normal
 
       #Feature branches stop here: CI only
 
