@@ -645,13 +645,13 @@ function ListingsTab({
     groupSizeCategory: '',
     // accommodation
     roomType: '',
-    propertyType: 'Boutique Hotel',
+    propertyType: '',
     pricePerNight: '',
     maxGuests: 2,
-    bedDetails: '1 King Bed',
+    bedDetails: '',
     minStayNights: 1,
-    amenities: 'Free WiFi, AC, Breakfast Included',
-    bathroomDetails: 'En-suite Private Bathroom with Hot Water'
+    amenities: '',
+    bathroomDetails: ''
   }
   const [form, setForm] = useState(emptyForm)
 
@@ -725,7 +725,7 @@ function ListingsTab({
       setForm({
         ...emptyForm,
         roomType: item.roomType || '',
-        propertyType: item.propertyType || 'Boutique Hotel',
+        propertyType: item.propertyType || '',
         location: item.location || '',
         pricePerNight: item.pricePerNight ?? '',
         maxGuests: item.maxGuests || 2,
@@ -752,6 +752,7 @@ function ListingsTab({
         openingHoursClose: parsedHours.close,
         setMenuDetails: item.setMenuDetails || '',
         dietaryOptions: item.dietaryOptions || '',
+        groupSizeCategory: item.groupSizeCategory || 'Table for Two',
         seatingCapacity: item.seatingCapacity || 20,
         isActive: item.isActive !== false
       })
@@ -835,6 +836,7 @@ function ListingsTab({
         openingHours: formatOpeningHours(form.openingHoursOpen, form.openingHoursClose),
         setMenuDetails: form.setMenuDetails,
         dietaryOptions: form.dietaryOptions,
+        groupSizeCategory: form.groupSizeCategory || 'Table for Two',
         seatingCapacity: parseInt(form.seatingCapacity, 10) || 1,
         isActive: form.isActive
       }
@@ -945,7 +947,7 @@ function ListingsTab({
         name: item.name, description: item.description, cuisineType: item.cuisineType,
         diningStyle: item.diningStyle, location: item.location, pricePerPerson: item.pricePerPerson,
         priceRange: item.priceRange, openingHours: item.openingHours,
-        setMenuDetails: item.setMenuDetails, dietaryOptions: item.dietaryOptions,
+        setMenuDetails: item.setMenuDetails, dietaryOptions: item.dietaryOptions,groupSizeCategory: item.groupSizeCategory || 'Table for Two',
         seatingCapacity: item.seatingCapacity, isActive: newStatus
       }
     } else {
@@ -1118,6 +1120,39 @@ function ListingsTab({
                   />
                 </div>
 
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="rest-price">Price per Person (LKR) *</label>
+                    <input
+                      id="rest-price"
+                      name="pricePerPerson"
+                      type="number"
+                      min="0.01"
+                      step="100"
+                      value={form.pricePerPerson}
+                      onChange={handleFormChange}
+                      placeholder="e.g. 3500"
+                      required
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div className="pd-form-group">
+                    <label htmlFor="rest-range">Price Range</label>
+                    <select
+                      id="rest-range"
+                      name="priceRange"
+                      value={form.priceRange}
+                      onChange={handleFormChange}
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    >
+                      <option value="Budget">Budget</option>
+                      <option value="Moderate">Moderate</option>
+                      <option value="Upscale">Upscale</option>
+                      <option value="Fine Dining">Fine Dining</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'start' }}>
                   <div className="pd-form-group">
                     <label htmlFor="rest-group-size">Group Size Category *</label>
@@ -1184,7 +1219,7 @@ function ListingsTab({
                   </div>
 
                 <div className="pd-form-group">
-                  <label htmlFor="rest-menu">Set Menu Details</label>
+                  <label htmlFor="rest-menu">Menu Details</label>
                   <textarea
                     id="rest-menu"
                     name="setMenuDetails"
@@ -1276,6 +1311,7 @@ function ListingsTab({
                       step="100"
                       value={form.pricePerNight}
                       onChange={handleFormChange}
+                      placeholder = "e.g. 8500"
                       required
                     />
                   </div>
@@ -1648,8 +1684,22 @@ function ListingsTab({
                           <td>{s.location}</td>
                           <td style={{ fontWeight: 700, color: '#4f8a45' }}>
                             LKR {Number(s.pricePerPerson).toLocaleString()}
+                            {s.priceRange && (
+                              <div style={{ fontSize: '11px', color: '#888', fontWeight: 400 }}>{s.priceRange}</div>
+                            )}
                           </td>
-                          <td>{s.seatingCapacity} seats</td>
+                          <td>
+                            {s.groupSizeCategory === 'Large Group (More than 10)' ? (
+                              <>
+                                Large Group
+                                <div style={{ fontSize: '11px', color: '#888' }}>
+                                  {s.seatingCapacity} seats
+                                </div>
+                              </>
+                            ) : (
+                              s.groupSizeCategory || `${s.seatingCapacity} seats`
+                            )}
+                          </td>
                         </>
                       ) : isHotel ? (
                         <>
