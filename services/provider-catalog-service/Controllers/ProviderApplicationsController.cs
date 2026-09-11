@@ -34,6 +34,7 @@ public class ProviderApplicationsController : ControllerBase
             Id = Guid.NewGuid(),
             BusinessName = request.BusinessName.Trim(),
             Email = request.Email.Trim().ToLowerInvariant(),
+            PhoneNumber = request.PhoneNumber.Trim(),
             ServiceType = request.ServiceType.Trim(),
             Location = request.Location.Trim(),
             Description = request.Description.Trim(),

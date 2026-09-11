@@ -29,4 +29,4 @@ export function catalogUrl(path) {
   return `${CATALOG_BASE}${path}`
 }
 
-export { API_BASE }
+export { API_BASE, CATALOG_BASE }

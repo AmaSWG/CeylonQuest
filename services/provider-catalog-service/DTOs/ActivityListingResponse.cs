@@ -1,31 +1,28 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace ProviderCatalogService.DTOs;
 
-public class CreateActivityListingRequest
+public class ActivityListingResponse
 {
-    [Required]
+    public Guid Id { get; set; }
+
     public string Title { get; set; } = string.Empty;
 
-    [Required]
     public string Description { get; set; } = string.Empty;
 
-    [Range(0.01, double.MaxValue)]
     public decimal Price { get; set; }
 
-    [Required]
     public string Unit { get; set; } = string.Empty;
 
-    [Required]
     public string Location { get; set; } = string.Empty;
-	
-	public int MaxParticipants { get; set; }
 
-    public bool IsActive { get; set; } = true;
+    public int MaxParticipants { get; set; }
 
-    public string Duration { get; set; } = "2 Hours";
+    public bool IsActive { get; set; }
 
-    public string AvailableDays { get; set; } = "Daily";
+    public DateTime CreatedAt { get; set; }
+
+    public string Duration { get; set; } = string.Empty;
+
+    public string AvailableDays { get; set; } = string.Empty;
 
     public string TimeSlots { get; set; } = "[]";
 

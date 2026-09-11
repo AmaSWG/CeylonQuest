@@ -13,6 +13,10 @@ public class CreateProviderApplicationRequest
     public string Email { get; set; } = string.Empty;
 
     [Required]
+    [Phone]
+    public string PhoneNumber { get; set; } = string.Empty;
+
+    [Required]
     public string ServiceType { get; set; } = string.Empty;
 
     [Required]

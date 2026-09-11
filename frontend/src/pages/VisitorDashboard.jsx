@@ -14,7 +14,7 @@ import {
   DeleteSweepIcon
 } from '../components/Icons'
 import ConfirmModal from '../components/ConfirmModal'
-import { apiUrl } from '../api/client'
+import { apiUrl, catalogUrl } from '../api/client'
 
 function SuccessToast({ message, onClose }) {
   useEffect(() => {
@@ -282,6 +282,7 @@ function VisitorDashboard({ onLogout }) {
               <span className="vd-nav-icon"><PermIdentityIcon size={18} /></span> My Profile
             </button>
           </li>
+          
           <li>
             <button disabled title="Coming soon" id="nav-bookings">
               <span className="vd-nav-icon"><CalendarMonthIcon size={18} /></span> My Bookings

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProviderCatalogService.Data;
 
@@ -11,9 +12,11 @@ using ProviderCatalogService.Data;
 namespace ProviderCatalogService.Migrations
 {
     [DbContext(typeof(CatalogDbContext))]
-    partial class CatalogDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260910064110_AddPhoneNumberToProviderAndApplication")]
+    partial class AddPhoneNumberToProviderAndApplication
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -28,18 +31,10 @@ namespace ProviderCatalogService.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("AvailableDays")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Duration")
                         .IsRequired()
                         .HasColumnType("longtext");
 
@@ -60,10 +55,6 @@ namespace ProviderCatalogService.Migrations
                     b.Property<Guid>("ProviderId")
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("TimeSlots")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -71,12 +62,6 @@ namespace ProviderCatalogService.Migrations
                     b.Property<string>("Unit")
                         .IsRequired()
                         .HasColumnType("longtext");
-
-                    b.Property<DateTime?>("ValidFrom")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("ValidUntil")
-                        .HasColumnType("datetime(6)");
 
                     b.HasKey("Id");
 

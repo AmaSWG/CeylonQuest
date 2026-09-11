@@ -27,14 +27,17 @@ jobs:
           dotnet-version: "8.0.x"
 
       - name: Restore dependencies
-        run: dotnet restore services/provider-catalog-service/ProviderCatalogService.csproj
-             # test file go here
+        run:
+            dotnet restore services/provider-catalog-service/ProviderCatalogService.csproj
+            dotnet restore services/provider-catalog-service/ProviderCatalogService.Tests/ProviderCatalogService.Tests.csproj
 
       - name: Build Provider Catalog Service
-        run: dotnet build services/provider-catalog-service/ProviderCatalogService.csproj --no-restore --configuration Release
-             #test file go here
+        run:
+            dotnet build services/provider-catalog-service/ProviderCatalogService.csproj --no-restore --configuration Release
+            dotnet build services/provider-catalog-service/ProviderCatalogService.Tests/ProviderCatalogService.Tests.csproj --no-restore --configuration Release
 
-        #run unittest here
+      - name: Run Unit Tests
+        run: dotnet test services/provider-catalog-service/ProviderCatalogService.Tests/ProviderCatalogService.Tests.csproj --no-build --verbosity normal
 
       #Feature branches stop here: CI only
 

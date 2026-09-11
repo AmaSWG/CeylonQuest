@@ -8,6 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+      <Compile Remove="ProviderCatalogService.Tests\**" />
+      <Content Remove="ProviderCatalogService.Tests\**" />
+      <EmbeddedResource Remove="ProviderCatalogService.Tests\**" />
+      <None Remove="ProviderCatalogService.Tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.30" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.30" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.30" />
