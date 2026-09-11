@@ -142,7 +142,6 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
 
       {/* Metric Cards */}
       <div className="pd-metrics-grid">
-
         <div className="pd-metric-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('services')}>
           <div className="pd-metric-icon pd-metric-icon--teal"><KitesurfingIcon size={24} /></div>
           <div className="pd-metric-info">
@@ -205,13 +204,17 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
                 <span className="pd-field__label">Service Type</span>
                 <span className="pd-field__value">{providerInfo?.serviceType || '—'}</span>
               </div>
-              <div className="pd-field pd-field--full">
-                <span className="pd-field__label">Operating Location</span>
-                <span className="pd-field__value"><MyLocationIcon size={15} style={{ marginRight: 6 }} /> {providerInfo?.location || 'Sri Lanka'}</span>
-              </div>
-              <div className="pd-field pd-field--full">
+              <div className="pd-field">
                 <span className="pd-field__label">Business Contact</span>
-                <span className="pd-field__value"><LocalPhoneIcon size={15} style={{ marginRight: 6 }} /> {providerInfo?.phoneNumber || '—'}</span>
+                <span className="pd-field__value">
+                  <LocalPhoneIcon size={15} style={{ marginRight: 6 }} /> {providerInfo?.phoneNumber || '—'}
+                </span>
+              </div>
+              <div className="pd-field">
+                <span className="pd-field__label">Operating Location</span>
+                <span className="pd-field__value">
+                  <MyLocationIcon size={15} style={{ marginRight: 6 }} /> {providerInfo?.location || 'Sri Lanka'}
+                </span>
               </div>
             </div>
 
@@ -226,8 +229,8 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {activeServices.slice(0, 3).map(s => (
                   <li key={s.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #f3eee4', fontSize: '13.5px' }}>
-                    <span style={{ fontWeight: 600, color: '#123b5d' }}>{s.serviceName}</span>
-                    <span style={{ fontWeight: 700, color: '#168aad' }}>{formatCurrency(s.pricePerUnit)} <small style={{ color: '#888', fontWeight: 400 }}>/{s.unit}</small></span>
+                    <span style={{ fontWeight: 600, color: '#123b5d' }}>{s.title}</span>
+                    <span style={{ fontWeight: 700, color: '#168aad' }}>{formatCurrency(s.price)} <small style={{ color: '#888', fontWeight: 400 }}>/{s.unit}</small></span>
                   </li>
                 ))}
               </ul>
@@ -394,8 +397,7 @@ function BusinessProfileTab({ token, onLogout, providerInfo, onUpdateSuccess, sh
           </div>
 
           <div style={{ background: '#faf8f3', border: '1px solid #ede8dc', borderRadius: '12px', padding: '18px 20px', marginTop: '14px', textAlign: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',gap: '12px', marginBottom: '10px' }}>
-              <span style={{ fontSize: '20px' }}></span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '10px' }}>
               <div>
                 <strong style={{ color: '#123b5d', fontSize: '18px' }}>Officially Verified By</strong>
                 <p style={{ margin: 0, color: '#666', fontSize: '12.5px' }}>CeylonQuest Admin Team</p>
@@ -529,11 +531,58 @@ function BusinessProfileTab({ token, onLogout, providerInfo, onUpdateSuccess, sh
 
 // ── 3. Activity / Service Management Tab ──────────────────────────────────────
 
+const toDisplayTime = (hhmm) => {
+  if (!hhmm) return ''
+  const [hStr, mStr] = hhmm.split(':')
+  let h = parseInt(hStr, 10)
+  const m = mStr || '00'
+  const modifier = h >= 12 ? 'PM' : 'AM'
+  if (h === 0) h = 12
+  else if (h > 12) h -= 12
+  return `${String(h).padStart(2, '0')}:${m} ${modifier}`
+}
+
+const toInputTime = (display) => {
+  if (!display) return '09:00'
+  const parts = display.trim().split(' ')
+  if (parts.length < 2) return display
+  const [timePart, modifier] = parts
+  let [hStr, mStr] = timePart.split(':')
+  let h = parseInt(hStr, 10)
+  if (modifier === 'PM' && h !== 12) h += 12
+  if (modifier === 'AM' && h === 12) h = 0
+  return `${String(h).padStart(2, '0')}:${mStr || '00'}`
+}
+
+// Helper to add duration to a "HH:MM" string and return "HH:MM"
+const addDurationToTime = (startTimeStr, durationStr) => {
+  if (!startTimeStr) return '10:00'
+  const [hStr, mStr] = startTimeStr.split(':')
+  let totalMinutes = parseInt(hStr || 0, 10) * 60 + parseInt(mStr || 0, 10)
+
+  const durLower = (durationStr || '').toLowerCase()
+  const numVal = parseFloat(durLower) || 0
+
+  if (durLower.includes('hour')) {
+    totalMinutes += Math.round(numVal * 60)
+  } else if (durLower.includes('min')) {
+    totalMinutes += Math.round(numVal)
+  } else {
+    totalMinutes += 120 // default 2 hours
+  }
+
+  const endH = Math.floor(totalMinutes / 60) % 24
+  const endM = totalMinutes % 60
+  return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
+}
+
 function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, showToast }) {
   const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all') // all | active | inactive
-  const [modal, setModal] = useState(null) // null | 'add' | 'edit'
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [modal, setModal] = useState(null)
   const [editTarget, setEditTarget] = useState(null)
+
+  const [slotsList, setSlotsList] = useState([{ startTime: '', endTime: '' }])
 
   const [form, setForm] = useState({
     title: '',
@@ -542,6 +591,11 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
     unit: 'Per Person',
     location: '',
     maxParticipants: 10,
+    duration: '',
+    availableDays: '',
+    timeSlots: '',
+    validFrom: '',
+    validUntil: '',
     isActive: true
   })
   const [formError, setFormError] = useState(null)
@@ -550,8 +604,79 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
   const [serviceToDelete, setServiceToDelete] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
+  // Re-chains slots sequentially: slot[i].end becomes slot[i+1].start
+  const recalculateAllSlots = (currentSlots, duration) => {
+    let nextStart = currentSlots[0]?.startTime || '08:00'
+    return currentSlots.map((slot) => {
+      const start = nextStart
+      const end = addDurationToTime(start, duration)
+      nextStart = end // Chain next slot's start to current slot's end
+      return { startTime: start, endTime: end }
+    })
+  }
+
+  const handleSlotCountChange = (count) => {
+    const num = parseInt(count, 10) || 1
+    setSlotsList(prev => {
+      const next = [...prev]
+      while (next.length < num) {
+        const lastSlot = next[next.length - 1] || { startTime: '09:00', endTime: '11:00' }
+        const newStart = lastSlot.endTime
+        const newEnd = addDurationToTime(newStart, form.duration)
+        next.push({ startTime: newStart, endTime: newEnd })
+      }
+      return recalculateAllSlots(next.slice(0, num), form.duration)
+    })
+  }
+
+  const updateSlotStartTime = (index, newStartVal) => {
+    setSlotsList(prev => {
+      const next = [...prev]
+      next[index] = {
+        startTime: newStartVal,
+        endTime: addDurationToTime(newStartVal, form.duration)
+      }
+      // Cascade downstream slots so they cleanly chain from the updated end time
+      for (let i = index + 1; i < next.length; i++) {
+        const prevEnd = next[i - 1].endTime
+        next[i] = {
+          startTime: prevEnd,
+          endTime: addDurationToTime(prevEnd, form.duration)
+        }
+      }
+      return next
+    })
+  }
+
+  const updateSlotEndTime = (index, newEndVal) => {
+    setSlotsList(prev => {
+      const next = [...prev]
+      next[index] = {
+        ...next[index],
+        endTime: newEndVal
+      }
+      // Cascade downstream slots so they start where this slot ends
+      for (let i = index + 1; i < next.length; i++) {
+        const prevEnd = next[i - 1].endTime
+        next[i] = {
+          startTime: prevEnd,
+          endTime: addDurationToTime(prevEnd, form.duration)
+        }
+      }
+      return next
+    })
+  }
+
+  const handleDurationChange = (e) => {
+    const newDur = e.target.value
+    setForm(prev => ({ ...prev, duration: newDur }))
+    setSlotsList(prev => recalculateAllSlots(prev, newDur))
+  }
+
   const openAdd = () => {
     setEditTarget(null)
+    const initialDuration = ''
+    setSlotsList([{ startTime: '08:00', endTime: addDurationToTime('08:00', initialDuration) }])
     setForm({
       title: '',
       description: '',
@@ -559,6 +684,11 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
       unit: 'Per Person',
       location: '',
       maxParticipants: 10,
+      duration: initialDuration,
+      availableDays: '',
+      timeSlots: '',
+      validFrom: '',
+      validUntil: '',
       isActive: true
     })
     setFormError(null)
@@ -566,7 +696,31 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
   }
 
   const openEdit = (service) => {
+    const currentDuration = service.duration || '2 Hours'
+    const parsedSlots = (service.timeSlots || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(s => {
+        const parts = s.split(' - ')
+        if (parts.length === 2) {
+          return {
+            startTime: toInputTime(parts[0]),
+            endTime: toInputTime(parts[1].split(' ')[0])
+          }
+        }
+        const singleTime = toInputTime(s)
+        return {
+          startTime: singleTime,
+          endTime: addDurationToTime(singleTime, currentDuration)
+        }
+      })
+    if (parsedSlots.length === 0) {
+      parsedSlots.push({ startTime: '08:00', endTime: addDurationToTime('08:00', currentDuration) })
+    }
+
     setEditTarget(service)
+    setSlotsList(parsedSlots)
     setForm({
       title: service.title || '',
       description: service.description || '',
@@ -574,6 +728,11 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
       unit: service.unit || 'Per Person',
       location: service.location || '',
       maxParticipants: service.maxParticipants || 10,
+      duration: currentDuration,
+      availableDays: service.availableDays || '',
+      timeSlots: service.timeSlots || '',
+      validFrom: service.validFrom ? service.validFrom.slice(0, 10) : '',
+      validUntil: service.validUntil ? service.validUntil.slice(0, 10) : '',
       isActive: service.isActive !== false
     })
     setFormError(null)
@@ -584,6 +743,7 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
     setModal(null)
     setEditTarget(null)
     setFormError(null)
+    setSlotsList([{ startTime: '08:00', endTime: '10:00' }])
   }
 
   const handleFormChange = (e) => {
@@ -613,7 +773,17 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
       return
     }
 
+    const validSlots = slotsList.filter(s => s.startTime && s.endTime)
+    if (validSlots.length === 0) {
+      setFormError('At least one complete time slot is required.')
+      return
+    }
+
     setFormLoading(true)
+
+    const serializedTimeSlots = validSlots
+      .map(s => `${toDisplayTime(s.startTime)} - ${toDisplayTime(s.endTime)}`)
+      .join(', ')
 
     const payload = {
       title: form.title.trim(),
@@ -622,6 +792,11 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
       unit: form.unit.trim(),
       location: form.location.trim(),
       maxParticipants: parseInt(form.maxParticipants, 10) || 1,
+      duration: form.duration.trim(),
+      availableDays: form.availableDays.trim(),
+      timeSlots: serializedTimeSlots,
+      validFrom: form.validFrom || null,
+      validUntil: form.validUntil || null,
       isActive: form.isActive
     }
 
@@ -676,6 +851,11 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
           unit: service.unit,
           location: service.location,
           maxParticipants: service.maxParticipants,
+          duration: service.duration,
+          availableDays: service.availableDays,
+          timeSlots: service.timeSlots,
+          validFrom: service.validFrom,
+          validUntil: service.validUntil,
           isActive: newStatus
         })
       })
@@ -727,6 +907,31 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
     return true
   })
 
+  const selectedDates = form.availableDays
+    ? form.availableDays.split(',').map(d => d.trim()).filter(Boolean)
+    : []
+
+  const addSelectedDate = (chosen) => {
+    if (!chosen) return
+    if (form.validFrom && chosen < form.validFrom) {
+      alert('Selected date is before the Valid From date.')
+      return
+    }
+    if (form.validUntil && chosen > form.validUntil) {
+      alert('Selected date is after the Valid Until date.')
+      return
+    }
+    if (!selectedDates.includes(chosen)) {
+      const updated = [...selectedDates, chosen].sort().join(', ')
+      setForm(prev => ({ ...prev, availableDays: updated }))
+    }
+  }
+
+  const removeSelectedDate = (dateToRemove) => {
+    const remaining = selectedDates.filter(x => x !== dateToRemove).join(', ')
+    setForm(prev => ({ ...prev, availableDays: remaining }))
+  }
+
   return (
     <div className="pd-activities-tab">
       <ConfirmModal
@@ -752,7 +957,7 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
       </div>
 
       {modal && (
-        <Modal title={modal === 'edit' ? 'Edit Experience Listing' : 'Create New Experience'} onClose={closeModal}>
+        <Modal title={modal === 'edit' ? 'Edit Experience Listing' : 'Create New Experience'} onClose={closeModal} wide>
           <form onSubmit={handleSubmit} className="pd-modal__form" noValidate>
             {formError && <div className="pd-form-error">{formError}</div>}
 
@@ -815,13 +1020,14 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
                 <label htmlFor="exp-unit">Pricing Unit *</label>
                 <select id="exp-unit" name="unit" value={form.unit} onChange={handleFormChange}>
                   <option value="Per Person">Per Person</option>
+                  <option value="Per Pair">Per Two Persons</option>
                   <option value="Per Group">Per Group</option>
                   <option value="Per Hour">Per Hour</option>
                   <option value="Per Day">Per Day</option>
                 </select>
               </div>
 
-              <div className="pd-form-group">
+              <div style={{ maxWidth: 90 }} className="pd-form-group">
                 <label htmlFor="exp-max">Max Guests</label>
                 <input
                   id="exp-max"
@@ -835,6 +1041,110 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
               </div>
             </div>
 
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="pd-form-group">
+                <label htmlFor="exp-valid-from">Valid From</label>
+                <input
+                  id="exp-valid-from"
+                  name="validFrom"
+                  type="date"
+                  value={form.validFrom}
+                  onChange={handleFormChange}
+                />
+              </div>
+
+              <div className="pd-form-group">
+                <label htmlFor="exp-valid-until">Valid Until</label>
+                <input
+                  id="exp-valid-until"
+                  name="validUntil"
+                  type="date"
+                  value={form.validUntil}
+                  onChange={handleFormChange}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '4px' }}>
+              <div className="pd-form-group">
+                <label htmlFor="exp-duration">Duration *</label>
+                <input
+                  id="exp-duration"
+                  name="duration"
+                  type="text"
+                  value={form.duration}
+                  onChange={handleDurationChange}
+                  placeholder="e.g. 2 Hours or 45 Mins"
+                  required
+                />
+              </div>
+
+              <div className="pd-form-group">
+                <label htmlFor="exp-days">Available Days *</label>
+                <input
+                  id="exp-days"
+                  name="availableDays"
+                  type="text"
+                  value={form.availableDays}
+                  onChange={handleFormChange}
+                  placeholder="e.g. Daily / Mon–Fri"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Dynamic Time Slots Section with sequential continuity logic */}
+            <div style={{ marginTop: '16px', background: '#faf8f3', padding: '16px', borderRadius: '10px', border: '1px solid #ede8dc' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <label style={{ fontWeight: 600, fontSize: '13.5px', color: '#123b5d' }}>Daily Time Slots Configuration</label>
+                <select
+                  value={slotsList.length}
+                  onChange={(e) => handleSlotCountChange(e.target.value)}
+                  style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}
+                >
+                  {[1, 2, 3, 4, 5, 6].map(n => (
+                    <option key={n} value={n}>{n} {n === 1 ? 'Slot' : 'Slots'}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '10px' }}>
+                {slotsList.map((slot, idx) => (
+                  <div key={idx} style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '10px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#168aad' }}>Slot {idx + 1}</span>
+                      <span style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>{form.duration || 'Duration not set'}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: '10px', color: '#888', display: 'block', marginBottom: '2px' }}>Start</label>
+                        <input
+                          type="time"
+                          value={slot.startTime}
+                          onChange={(e) => updateSlotStartTime(idx, e.target.value)}
+                          style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                          required
+                        />
+                      </div>
+                      <span style={{ color: '#888', fontSize: '12px', paddingBottom: '6px', marginLeft: '12px', marginTop: '30px'}}>to</span>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: '10px', color: '#888', display: 'block', marginBottom: '2px' }}>End</label>
+                        <input
+                          type="time"
+                          value={slot.endTime}
+                          onChange={(e) => updateSlotEndTime(idx, e.target.value)}
+                          style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            
             <div className="pd-checkbox-group" style={{ marginTop: '8px' }}>
               <label className="pd-checkbox-label">
                 <input
@@ -848,10 +1158,10 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
             </div>
 
             <div className="pd-modal__actions">
-              <button type="button" className="pd-btn pd-btn--secondary" onClick={closeModal} disabled={formLoading}>
+              <button type="button" className="pd-cancel-btn" onClick={closeModal} disabled={formLoading}>
                 Cancel
               </button>
-              <button type="submit" className="pd-btn pd-btn--primary" disabled={formLoading}>
+              <button type="submit" className="pd-quick-btn pd-quick-btn--primary" disabled={formLoading}>
                 {formLoading ? 'Saving…' : (modal === 'edit' ? 'Save Changes' : 'Publish Experience')}
               </button>
             </div>
@@ -905,6 +1215,7 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
                     <th>Experience Title</th>
                     <th>Location</th>
                     <th>Price</th>
+                    <th>Time Slots</th>
                     <th>Max Guests</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -920,6 +1231,17 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
                       <td>{s.location}</td>
                       <td style={{ fontWeight: 700, color: '#4f8a45' }}>
                         LKR {Number(s.price).toLocaleString()} <span style={{ fontSize: '11px', color: '#777', fontWeight: 400 }}>/ {s.unit}</span>
+                      </td>
+                      <td style={{ fontSize: '12px', color: '#475569', maxWidth: '180px' }}>
+                        {s.timeSlots ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                            {s.timeSlots.split(',').map((slot, i) => (
+                              <span key={i} style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                                {slot.trim()}
+                              </span>
+                            ))}
+                          </div>
+                        ) : '—'}
                       </td>
                       <td>{s.maxParticipants} guests</td>
                       <td>
@@ -979,71 +1301,58 @@ function ProviderDashboard({ onLogout }) {
   const token = localStorage.getItem('authToken')
   const role = localStorage.getItem('userRole')
 
-  // Auth Guard
   useEffect(() => {
     if (!token || role !== 'Provider') {
       onLogout && onLogout()
     }
   }, [token, role, onLogout])
 
-  // Sync Bookings to LocalStorage
   useEffect(() => {
     try {
       localStorage.setItem('ceylonquest_provider_bookings', JSON.stringify(bookings))
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, [bookings])
 
-  // Sync Notifications to LocalStorage
   useEffect(() => {
     try {
       localStorage.setItem('ceylonquest_provider_notifications', JSON.stringify(notifications))
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, [notifications])
 
   const showToast = useCallback((msg) => setToast(msg), [])
 
-  // Fetch Provider Info
   const fetchProviderInfo = useCallback(async () => {
     if (!token) return
     try {
-      const resp = await fetch(apiUrl('/api/provider/info'), {
+      const resp = await fetch(catalogUrl('/api/catalog/provider/profile'), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
         setProviderInfo(await resp.json())
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, [token])
 
-  // Fetch Services & Prices
-  // CORRECT:
-const fetchServices = useCallback(async () => {
-  if (!token) return
-  try {
-    const resp = await fetch(apiUrl('/api/catalog/activity-listings'), {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    if (resp.ok) {
-      const data = await resp.json()
-      setServices(data)
+  const fetchServices = useCallback(async () => {
+    if (!token) return
+    try {
+      const resp = await fetch(catalogUrl('/api/catalog/activity-listings'), {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (resp.ok) {
+        const data = await resp.json()
+        setServices(data)
+      }
+    } catch (err) {
+      console.error('Failed to load listings', err)
     }
-  } catch (err) {
-    console.error('Failed to load listings', err)
-  }
-}, [token])
+  }, [token])
 
   useEffect(() => {
     fetchProviderInfo()
     fetchServices()
   }, [fetchProviderInfo, fetchServices])
 
-  // Handlers for Bookings & Notifications
   const handleUpdateBookingStatus = (bookingId, newStatus) => {
     setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b))
     showToast(`Booking ${bookingId} marked as ${newStatus}.`)
@@ -1080,7 +1389,7 @@ const fetchServices = useCallback(async () => {
       if (resp.ok) {
         setUserProfile(await resp.json())
       }
-    } catch { }
+    } catch {}
   }, [token])
 
   useEffect(() => {
@@ -1090,10 +1399,10 @@ const fetchServices = useCallback(async () => {
   const unreadNotifCount = notifications.filter(n => !n.read).length
 
   const navItems = [
-    { key: 'overview',      icon: <DashboardIcon size={18} />,          label: 'Overview' },
-    { key: 'business',      icon: <StorefrontIcon size={18} />,         label: 'Business Profile' },
-    { key: 'services',      icon: <KitesurfingIcon size={18} />,        label: 'Activities & Services' },
-    { key: 'bookings',      icon: <CalendarMonthIcon size={18} />,       label: 'Bookings' },
+    { key: 'overview',      icon: <DashboardIcon size={18} />,         label: 'Overview' },
+    { key: 'business',      icon: <StorefrontIcon size={18} />,        label: 'Business Profile' },
+    { key: 'services',      icon: <KitesurfingIcon size={18} />,       label: 'Activities & Services' },
+    { key: 'bookings',      icon: <CalendarMonthIcon size={18} />,      label: 'Bookings' },
     { key: 'notifications', icon: <NotificationsActiveIcon size={18} />, label: 'Notifications', badge: unreadNotifCount > 0 ? unreadNotifCount : null },
     { key: 'account',       icon: <PermIdentityIcon size={18} />,        label: 'Account' }
   ]
@@ -1102,7 +1411,6 @@ const fetchServices = useCallback(async () => {
     <div className="pd-page">
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
 
-      {/* ── Sidebar ── */}
       <aside className="pd-sidebar">
         <div className="pd-sidebar__brand">
           <img src="/dashboard-logo.png" alt="CeylonQuest" className="pd-sidebar__logo-img" />
@@ -1141,13 +1449,12 @@ const fetchServices = useCallback(async () => {
               </div>
             </div>
           )}
-          <button className="pd-logout-btn" onClick={handleLogout} id="pd-logout-btn">
+          <button className="pd-logout-btn" onClick5={handleLogout} id="pd-logout-btn" onClick={handleLogout}>
             <span className="pd-nav-icon"><LogoutIcon size={18} /></span> Log Out
           </button>
         </div>
       </aside>
 
-      {/* ── Main Content Body ── */}
       <main className="pd-main">
         {activeTab === 'overview' && (
           <OverviewTab

@@ -20,8 +20,26 @@ public class ActivityListingsController : ControllerBase
         _db = db;
     }
 
+     private static ActivityListingResponse ToDto(ActivityListing a) => new()
+    {
+        Id = a.Id,
+        Title = a.Title,
+        Description = a.Description,
+        Price = a.Price,
+        Unit = a.Unit,
+        Location = a.Location,
+        MaxParticipants = a.MaxParticipants,
+        IsActive = a.IsActive,
+        CreatedAt = a.CreatedAt,
+        Duration = a.Duration,
+        AvailableDays = a.AvailableDays,
+        TimeSlots = a.TimeSlots,
+        ValidFrom = a.ValidFrom,
+        ValidUntil = a.ValidUntil
+    };
+
     
-    // Create Listing 
+    // Create
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateActivityListingRequest request)
     {
@@ -45,16 +63,21 @@ public class ActivityListingsController : ControllerBase
             Location = request.Location.Trim(),
             MaxParticipants = request.MaxParticipants > 0 ? request.MaxParticipants : 1,
             IsActive = request.IsActive,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            Duration = request.Duration?.Trim(),
+            AvailableDays = request.AvailableDays?.Trim(),
+            TimeSlots = request.TimeSlots?.Trim(),
+            ValidFrom = request.ValidFrom,
+            ValidUntil = request.ValidUntil
         };
 
         _db.ActivityListings.Add(listing);
         await _db.SaveChangesAsync();
 
-        return Created($"/api/catalog/activity-listings/{listing.Id}", listing);
+        return Created($"/api/catalog/activity-listings/{listing.Id}", ToDto(listing));
     }
 
-    // Get provider's own listings
+    // Get My Listing
     [HttpGet]
     public async Task<IActionResult> GetMyListings()
     {
@@ -68,13 +91,30 @@ public class ActivityListingsController : ControllerBase
             .AsNoTracking()
             .Where(l => l.ProviderId == provider.Id)
             .OrderByDescending(l => l.CreatedAt)
+            .Select(l => new ActivityListingResponse
+            {
+                Id = l.Id,
+                Title = l.Title,
+                Description = l.Description,
+                Price = l.Price,
+                Unit = l.Unit,
+                Location = l.Location,
+                MaxParticipants = l.MaxParticipants,
+                IsActive = l.IsActive,
+                CreatedAt = l.CreatedAt,
+                Duration = l.Duration,
+                AvailableDays = l.AvailableDays,
+                TimeSlots = l.TimeSlots,
+                ValidFrom = l.ValidFrom,
+                ValidUntil = l.ValidUntil
+            })
             .ToListAsync();
 
         return Ok(listings);
     }
 
     
-    // Get listing by Id 
+    // Get by Id
     
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
@@ -95,7 +135,7 @@ public class ActivityListingsController : ControllerBase
         if (listing.ProviderId != provider.Id)
             return StatusCode(403, new { message = "You do not have permission to view this listing." });
 
-        return Ok(listing);
+        return Ok(ToDto(listing));
     }
 
     // Update 
@@ -127,13 +167,18 @@ public class ActivityListingsController : ControllerBase
         listing.Location = request.Location.Trim();
         listing.MaxParticipants = request.MaxParticipants > 0 ? request.MaxParticipants : 1;
         listing.IsActive = request.IsActive;
+        listing.Duration = request.Duration?.Trim() ?? listing.Duration;
+        listing.AvailableDays = request.AvailableDays?.Trim() ?? "";
+        listing.TimeSlots = request.TimeSlots ?? "[]";
+        listing.ValidFrom = request.ValidFrom;
+        listing.ValidUntil = request.ValidUntil;
 
         await _db.SaveChangesAsync();
 
-        return Ok(listing);
+        return Ok(ToDto(listing));
     }
 
-    // CEYQ-85: Delete Own Listing (DELETE)
+    // Delete
 	
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
@@ -196,5 +241,60 @@ public class ActivityListingsController : ControllerBase
                ?? User.FindFirstValue("sub");
 
         return Guid.TryParse(raw, out var id) ? id : null;
+    }
+
+    // Visitor activity listings
+    [AllowAnonymous]
+    [HttpGet("public")]
+    public async Task<IActionResult> GetPublicListings(
+        [FromQuery] string? search,
+        [FromQuery] string? location,
+        [FromQuery] decimal? maxPrice)
+    {
+        var query = _db.ActivityListings
+            .Include(l => l.Provider)
+            .AsNoTracking()
+            .Where(l => l.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var q = search.Trim().ToLower();
+            query = query.Where(l => l.Title.ToLower().Contains(q) || l.Description.ToLower().Contains(q));
+        }
+
+        if (!string.IsNullOrWhiteSpace(location))
+        {
+            var loc = location.Trim().ToLower();
+            query = query.Where(l => l.Location.ToLower().Contains(loc));
+        }
+
+        if (maxPrice.HasValue && maxPrice > 0)
+        {
+            query = query.Where(l => l.Price <= maxPrice.Value);
+        }
+
+        var listings = await query
+            .OrderByDescending(l => l.CreatedAt)
+            .Select(l => new
+            {
+                l.Id,
+                l.Title,
+                l.Description,
+                l.Price,
+                l.Unit,
+                l.Location,
+                l.MaxParticipants,
+                l.CreatedAt,
+                l.Duration,
+                l.AvailableDays,
+                l.TimeSlots,
+                l.ValidFrom,
+                l.ValidUntil,
+                ProviderBusinessName = l.Provider.BusinessName,
+                ProviderEmail = l.Provider.Email
+            })
+            .ToListAsync();
+
+        return Ok(listings);
     }
 }

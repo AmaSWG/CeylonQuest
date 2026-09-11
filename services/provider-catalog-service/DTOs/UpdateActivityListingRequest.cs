@@ -23,4 +23,14 @@ public class UpdateActivityListingRequest
     public int MaxParticipants { get; set; } = 1;
 
     public bool IsActive { get; set; } = true;
+
+    public string Duration { get; set; } = "2 Hours";
+
+    public string AvailableDays { get; set; } = "Daily";
+
+    public string TimeSlots { get; set; } = "[]";
+
+    public DateTime? ValidFrom { get; set; }
+
+    public DateTime? ValidUntil { get; set; }
 }

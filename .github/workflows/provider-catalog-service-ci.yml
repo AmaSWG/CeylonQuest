@@ -1,0 +1,61 @@
+name: provider-catalog-service-ci.yml
+
+on:
+  push:
+    branches: [ main, development, "feature/**" ]
+    paths:
+      - "services/provider-catalog-service/**"
+      - "shared/**"
+
+  pull_request:
+    branches: [ development, main ]
+    paths:
+      - "services/provider-catalog-service/**"
+      - "shared/**"
+
+jobs:
+  buiild-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run:
+            dotnet restore services/provider-catalog-service/ProviderCatalogService.csproj
+            dotnet restore services/provider-catalog-service/ProviderCatalogService.Tests/ProviderCatalogService.Tests.csproj
+
+      - name: Build Provider Catalog Service
+        run:
+            dotnet build services/provider-catalog-service/ProviderCatalogService.csproj --no-restore --configuration Release
+            dotnet build services/provider-catalog-service/ProviderCatalogService.Tests/ProviderCatalogService.Tests.csproj --no-restore --configuration Release
+
+      - name: Run Unit Tests
+        run: dotnet test services/provider-catalog-service/ProviderCatalogService.Tests/ProviderCatalogService.Tests.csproj --no-build --verbosity normal
+
+      #Feature branches stop here: CI only
+
+      - name: Login to Azure Container Registry
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/development' || github.ref == 'refs/heads/main')
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME}}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push Docker image to ACR
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/development' || github.ref == 'refs/heads/main')
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/provider-catalog-service/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/provider-catalog-service:${{ github.sha }}
+            ${{ secrets.ACR_LOGIN_SERVER }}/provider-catalog-service:latest

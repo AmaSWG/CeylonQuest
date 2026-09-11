@@ -23,4 +23,14 @@ public class ActivityListing
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 	
 	public Provider Provider { get; set; } = null!;
+
+	public string Duration { get; set; } = "2 Hours";
+
+	public string TimeSlots { get; set; } = "[]";
+
+	public string AvailableDays { get; set; } = "Daily";
+
+	public DateTime? ValidFrom { get; set; }
+
+	public DateTime? ValidUntil { get; set; }
 }

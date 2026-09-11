@@ -143,6 +143,11 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
             </div>
 
             <div className="form-group">
+              <label htmlFor="p-phone"><span className="provider-app-required-star">*</span> Business Contact Number</label>
+              <input id="p-phone" name="phoneNumber" type="tel" placeholder="e.g. +94 77 123 4567" required />
+            </div>
+
+            <div className="form-group">
               <label htmlFor="pa-location"><span className="provider-app-required-star">*</span> Business Location</label>
               <div className="field-wrap">
                 <input
