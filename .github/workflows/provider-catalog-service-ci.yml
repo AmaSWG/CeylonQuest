@@ -14,7 +14,7 @@ on:
       - "shared/**"
 
 jobs:
-  buiild-and-deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -27,12 +27,12 @@ jobs:
           dotnet-version: "8.0.x"
 
       - name: Restore dependencies
-        run:
+        run: |
             dotnet restore services/provider-catalog-service/ProviderCatalogService.csproj
             dotnet restore services/provider-catalog-service/ProviderCatalogService.Tests/ProviderCatalogService.Tests.csproj
 
       - name: Build Provider Catalog Service
-        run:
+        run: |
             dotnet build services/provider-catalog-service/ProviderCatalogService.csproj --no-restore --configuration Release
             dotnet build services/provider-catalog-service/ProviderCatalogService.Tests/ProviderCatalogService.Tests.csproj --no-restore --configuration Release
 
