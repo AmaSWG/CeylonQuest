@@ -53,6 +53,21 @@ services:
       Jwt__Key: ${Jwt__Key:-}
     depends_on:
       - kafka
-      
+
+  provider-catalog-service:
+    container_name: ceylonquest-provider-catalog-service
+    build:
+      context: .
+      dockerfile: services/provider-catalog-service/Dockerfile
+    ports:
+      - "8082:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Kafka__BootstrapServers: kafka:29092
+      ConnectionStrings__ProviderCatalogDb: ${PROVIDER_CATALOG_DB}
+      #Jwt__Key: ${Jwt__Key:-}
+    depends_on:
+      - kafka
+
 volumes:
   kafka-data:
