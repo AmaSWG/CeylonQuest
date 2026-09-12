@@ -872,8 +872,18 @@ function ListingsTab({
     }
     if (isRestaurant) {
       if (!form.name.trim()) return 'Restaurant / item name is required.'
+      if (!form.cuisineType.trim()) {
+        return 'Cuisine type is required.'
+      }
       if (!form.location.trim()) return 'Location is required.'
       if (!form.description.trim()) return 'Description is required.'
+      if (description.length < 10) {
+        return 'Description must be at least 10 characters long.'
+      }
+
+      if (description.length > 2000) {
+        return 'Description must not exceed 2000 characters.'
+      }
       const p = parseFloat(form.pricePerPerson)
       if (isNaN(p) || p <= 0) return 'Price per person must be a positive amount.'
       return null

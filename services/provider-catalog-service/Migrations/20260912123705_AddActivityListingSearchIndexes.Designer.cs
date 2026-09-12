@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProviderCatalogService.Data;
 
@@ -11,9 +12,11 @@ using ProviderCatalogService.Data;
 namespace ProviderCatalogService.Migrations
 {
     [DbContext(typeof(CatalogDbContext))]
-    partial class CatalogDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260912123705_AddActivityListingSearchIndexes")]
+    partial class AddActivityListingSearchIndexes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,66 +24,6 @@ namespace ProviderCatalogService.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
-
-            modelBuilder.Entity("ProviderCatalogService.Models.AccommodationListing", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("Amenities")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("BathroomDetails")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("BedDetails")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("Location")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("MaxGuests")
-                        .HasColumnType("int");
-
-                    b.Property<int>("MinStayNights")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("PricePerNight")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("PropertyType")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<Guid>("ProviderId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("RoomType")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProviderId");
-
-                    b.ToTable("AccommodationListings");
-                });
 
             modelBuilder.Entity("ProviderCatalogService.Models.ActivityListing", b =>
                 {
@@ -254,86 +197,6 @@ namespace ProviderCatalogService.Migrations
                     b.ToTable("ProviderApplications");
                 });
 
-            modelBuilder.Entity("ProviderCatalogService.Models.RestaurantListing", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("CuisineType")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("DietaryOptions")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("DiningStyle")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("GroupSizeCategory")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("Location")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("OpeningHours")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<decimal>("PricePerPerson")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("PriceRange")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<Guid>("ProviderId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<int>("SeatingCapacity")
-                        .HasColumnType("int");
-
-                    b.Property<string>("SetMenuDetails")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProviderId");
-
-                    b.ToTable("RestaurantListings");
-                });
-
-            modelBuilder.Entity("ProviderCatalogService.Models.AccommodationListing", b =>
-                {
-                    b.HasOne("ProviderCatalogService.Models.Provider", "Provider")
-                        .WithMany("AccommodationListings")
-                        .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Provider");
-                });
-
             modelBuilder.Entity("ProviderCatalogService.Models.ActivityListing", b =>
                 {
                     b.HasOne("ProviderCatalogService.Models.Provider", "Provider")
@@ -345,24 +208,9 @@ namespace ProviderCatalogService.Migrations
                     b.Navigation("Provider");
                 });
 
-            modelBuilder.Entity("ProviderCatalogService.Models.RestaurantListing", b =>
-                {
-                    b.HasOne("ProviderCatalogService.Models.Provider", "Provider")
-                        .WithMany("RestaurantListings")
-                        .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Provider");
-                });
-
             modelBuilder.Entity("ProviderCatalogService.Models.Provider", b =>
                 {
-                    b.Navigation("AccommodationListings");
-
                     b.Navigation("ActivityListings");
-
-                    b.Navigation("RestaurantListings");
                 });
 #pragma warning restore 612, 618
         }
