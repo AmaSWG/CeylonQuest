@@ -20,8 +20,13 @@ import {
   HotelIcon,
   HourglassTopIcon,
   AccessTimeFilledIcon,
+  MyLocationIcon,
   LocationOnIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  MoneyIcon,
+  RangeIcon,
+  HouseIcon,
+  DiningIcon
 } from '../components/Icons'
 import ConfirmModal from '../components/ConfirmModal'
 import { apiUrl, catalogUrl } from '../api/client'
@@ -576,10 +581,19 @@ function VisitorDashboard({ onLogout }) {
 
 function ExploreTab() {
   const [keywordInput, setKeywordInput] = useState('')
+  const [locationInput, setLocationInput] = useState('')
+  const [minPriceInput, setMinPriceInput] = useState('')
+  const [maxPriceInput, setMaxPriceInput] = useState('')
+  const [sortInput, setSortInput] = useState('') 
   
   // Search state sent to backend
   const [appliedFilters, setAppliedFilters] = useState({
     q: '',
+    type: 'all',
+    location: '',
+    minPrice: '',
+    maxPrice: '',
+    sort: '',
     page: 1
   })
   
@@ -591,23 +605,33 @@ function ExploreTab() {
       setAppliedFilters(prev => ({
         ...prev,
         q: keywordInput.trim(),
+        location: locationInput,
+        minPrice: minPriceInput,
+        maxPrice: maxPriceInput,
+        sort: sortInput,
         page: 1
       }))
-    }, 300)
+    }, 350)
 
     return () => clearTimeout(timer)
-  }, [keywordInput])
+  }, [keywordInput, locationInput, minPriceInput, maxPriceInput, sortInput])
 
   useEffect(() => {
     let isMounted = true
     const fetchResults = async () => {
       setLoading(true)
       try {
-        const params = new URLSearchParams({
-          q: appliedFilters.q,
-          page: appliedFilters.page,
-          pageSize: 8
-        })
+        const params = new URLSearchParams()
+
+        if (appliedFilters.q) params.append('q', appliedFilters.q)
+        if (appliedFilters.type && appliedFilters.type !== 'all') params.append('type', appliedFilters.type)
+        if (appliedFilters.location) params.append('location', appliedFilters.location)
+        if (appliedFilters.minPrice) params.append('minPrice', appliedFilters.minPrice)
+        if (appliedFilters.maxPrice) params.append('maxPrice', appliedFilters.maxPrice)
+        if (appliedFilters.sort) params.append('sort', appliedFilters.sort)
+
+        params.append('page', appliedFilters.page)
+        params.append('pageSize', 8)
         const resp = await fetch(catalogUrl(`/api/catalog/search?${params.toString()}`))
         if (resp.ok && isMounted) {
           const result = await resp.json()
@@ -622,6 +646,36 @@ function ExploreTab() {
     fetchResults()
     return () => { isMounted = false }
   }, [appliedFilters])
+
+  const handleTypeChange = (type) => {
+    setAppliedFilters(prev => ({ ...prev, type, page: 1 }))
+  }
+  const handlePricePreset = (min, max) => {
+    setMinPriceInput(min ? String(min) : '')
+    setMaxPriceInput(max ? String(max) : '')
+  }
+  const handleLocationPreset = (loc) => {
+    setLocationInput(loc)
+  }
+
+  const clearAllFilters = () => {
+    setKeywordInput('')
+    setLocationInput('')
+    setMinPriceInput('')
+    setMaxPriceInput('')
+    setSortInput('')
+    setAppliedFilters({
+      q: '',
+      type: 'all',
+      location: '',
+      minPrice: '',
+      maxPrice: '',
+      sort: '',
+      page: 1
+    })
+  }
+
+  const hasActiveFilters = appliedFilters.q || (appliedFilters.type && appliedFilters.type !== 'all') || appliedFilters.location || appliedFilters.minPrice || appliedFilters.maxPrice || appliedFilters.sort
 
   // ── Search button or Enter submit ──
   const handleSearchSubmit = (e) => {
@@ -641,6 +695,12 @@ function ExploreTab() {
       page: 1
     })
   }
+
+  const KEY_DETAIL_ICONS = {
+  experience:    [HourglassTopIcon, GroupIcon],
+  restaurant:    [RestaurantIcon, DiningIcon, GroupIcon],   
+  accommodation: [HouseIcon, GroupIcon, HotelIcon],        
+}
 
   return (
     <div className="vd-explore">
@@ -699,6 +759,130 @@ function ExploreTab() {
         </div>
       </form>
 
+      <div className="vd-filter-panel">
+        {/* Category Pills */}
+        <div className="vd-filter-section">
+          <label className="vd-filter-label">Category</label>
+          <div className="vd-type-pills">
+            {[
+              { key: 'all', label: 'All Listings' },
+              { key: 'experience', label: <><KitesurfingIcon size={14} /> Experiences</> },
+              { key: 'restaurant', label: <><RestaurantIcon size={14} /> Dining</> },
+              { key: 'accommodation', label: <><HotelIcon size={14} /> Stays</> }
+            ].map(t => (
+              <button
+                key={t.key}
+                type="button"
+                className={`vd-type-pill ${appliedFilters.type === t.key ? 'active' : ''}`}
+                onClick={() => handleTypeChange(t.key)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="vd-filter-section">
+          <label className="vd-filter-label">Location</label>
+          <div className="vd-location-pills">
+            {['', 'Colombo', 'Kandy', 'Galle', 'Trincomalee', 'Mirissa', 'Ella'].map((loc) => (
+              <button
+                key={loc}
+                type="button"
+                className={`vd-loc-pill ${locationInput === loc ? 'active' : ''}`}
+                onClick={() => handleLocationPreset(loc)}
+              >
+                {loc === '' ? <> <LocationOnIcon size={14}/>All Locations</> : loc}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="vd-filter-section vd-filter-section--price">
+          <label className="vd-filter-label">Price Range (LKR) and Sort</label>
+          <div className="vd-price-controls">
+            <input
+              type="number"
+              min="0"
+              placeholder="Min LKR"
+              className="vd-price-input"
+              value={minPriceInput}
+              onChange={(e) => setMinPriceInput(e.target.value)}
+            />
+            <span className="vd-price-separator">–</span>
+            <input
+              type="number"
+              min="0"
+              placeholder="Max LKR"
+              className="vd-price-input"
+              value={maxPriceInput}
+              onChange={(e) => setMaxPriceInput(e.target.value)}
+            />
+
+            <div className="vd-price-presets">
+
+            <select
+              className="vd-sort-select"
+              value={sortInput}
+              onChange={(e) => setSortInput(e.target.value)}
+            >
+              <option value="">Sort: Default</option>
+              <option value="price_asc">Price: Low to High</option>
+              <option value="price_desc">Price: High to Low</option>
+            </select>
+
+              <button type="button" className="vd-preset-btn" onClick={() => handlePricePreset(0, 5000)}>
+                Under 5k
+              </button>
+              <button type="button" className="vd-preset-btn" onClick={() => handlePricePreset(5000, 15000)}>
+                5k – 15k
+              </button>
+              <button type="button" className="vd-preset-btn" onClick={() => handlePricePreset(15000, '')}>
+                15k+
+              </button>
+            </div>
+            
+          </div>
+        </div>
+      </div>
+
+        <div className="vd-active-filter-bar">
+          <div className="vd-active-tags">
+            {appliedFilters.q && (
+              <span className="vd-filter-tag">
+                <> <SearchIcon/>&quot;{appliedFilters.q}&quot;</> <button type="button" onClick={() => setKeywordInput('')}>✕</button>
+              </span>
+            )}
+            {appliedFilters.type && appliedFilters.type !== 'all' && (
+              <span className="vd-filter-tag">
+                 {appliedFilters.type} <button type="button" onClick={() => handleTypeChange('all')}>✕</button>
+              </span>
+            )}
+            {appliedFilters.location && (
+              <span className="vd-filter-tag">
+                <><LocationOnIcon/> {appliedFilters.location} </><button type="button" onClick={() => setLocationInput('')}>✕</button>
+              </span>
+            )}
+            {(appliedFilters.minPrice || appliedFilters.maxPrice) && (
+              <span className="vd-filter-tag">
+                <><MoneyIcon/> LKR {appliedFilters.minPrice || '0'} – {appliedFilters.maxPrice || 'Any'}</>
+                <button type="button" onClick={() => { setMinPriceInput(''); setMaxPriceInput('') }}>✕</button>
+              </span>
+            )}
+            {appliedFilters.sort && (
+              <span className="vd-filter-tag">
+                <><RangeIcon/> {appliedFilters.sort === 'price_asc' ? 'Price: Low to High' : 'Price: High to Low'}</>
+                <button type="button" onClick={() => setSortInput('')}>✕</button>
+              </span>
+            )}
+            {hasActiveFilters && (
+              <button type="button" className="vd-clear-all-btn" onClick={clearAllFilters}>
+                Clear All Filters
+              </button>
+            )}
+          </div>
+      </div>
+
       {/* Results Count Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
         <span className="vd-results-count">
@@ -742,11 +926,17 @@ function ExploreTab() {
                 </p>
                 <div className="vd-service-card__details">
                   <div className="vd-card__details">
-                    {item.keyDetail && item.keyDetail.split('•').map((detail, idx) => (
-                      <div key={idx} className="vd-service-card__detail-item">
-                        {idx === 0 ? <HourglassTopIcon size={14} /> : <GroupIcon size={14} />} {detail.trim()}
-                      </div>
-                    ))}
+                    {item.keyDetail && (() => {
+                      const icons = KEY_DETAIL_ICONS[item.type?.toLowerCase()] || []
+                      return item.keyDetail.split('•').map((detail, idx) => {
+                        const Icon = icons[idx] || GroupIcon  // fallback
+                        return (
+                          <div key={idx} className="vd-service-card__detail-item">
+                            <Icon size={14} /> {detail.trim()}
+                          </div>
+                        )
+                      })
+                    })()}
                   </div>
                   {item.scheduleInfo && (
                     <div className="vd-service-card__detail-item">
@@ -780,30 +970,100 @@ function ExploreTab() {
       )}
 
       {/* ── Pagination Controls ── */}
-      {data.totalPages > 1 && (
-        <div className="vd-pagination">
-          <button
-            type="button"
-            className="vd-page-btn"
-            disabled={!data.hasPreviousPage}
-            onClick={() => setAppliedFilters(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
-          >
-            ← Previous
-          </button>
-          <span className="vd-page-indicator">
-            Page {data.page} of {data.totalPages}
-          </span>
-          <button
-            type="button"
-            className="vd-page-btn"
-            disabled={!data.hasNextPage}
-            onClick={() => setAppliedFilters(prev => ({ ...prev, page: Math.min(data.totalPages, prev.page + 1) }))}
-          >
-            Next →
-          </button>
-        </div>
-      )}
+      {data.totalPages > 1 && (() => {
+  const goToPage = (p) => {
+    setAppliedFilters(prev => {
+      const next = Math.min(Math.max(1, p), data.totalPages)
+      if (next === prev.page) return prev
+      return { ...prev, page: next }
+    })
+  }
+
+  const pageNumbers = getPageNumbers(data.page, data.totalPages)
+
+  return (
+    <div className="vd-pagination">
+      <button
+        type="button"
+        className="vd-page-btn"
+        disabled={!data.hasPreviousPage}
+        onClick={() => goToPage(data.page - 1)}
+        aria-label="Previous page"
+      >
+        ← Previous
+      </button>
+
+      <div className="vd-page-numbers">
+        {pageNumbers.map((p, idx) => {
+          if (p === 'left-ellipsis' || p === 'right-ellipsis') {
+            return (
+              <span key={`${p}-${idx}`} className="vd-page-ellipsis" aria-hidden="true">
+                …
+              </span>
+            )
+          }
+
+          const isActive = p === data.page
+          return (
+            <button
+              key={p}
+              type="button"
+              className={`vd-page-num ${isActive ? 'active' : ''}`}
+              onClick={() => goToPage(p)}
+              disabled={isActive}
+              aria-label={`Go to page ${p}`}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              {p}
+            </button>
+          )
+        })}
+      </div>
+
+      <button
+        type="button"
+        className="vd-page-btn"
+        disabled={!data.hasNextPage}
+        onClick={() => goToPage(data.page + 1)}
+        aria-label="Next page"
+      >
+        Next →
+      </button>
     </div>
   )
+})()}
+    </div>
+  )
+}
+
+// Builds a compact page list, e.g. [1, '...', 4, 5, 6, '...', 12]
+function getPageNumbers(current, total, maxVisible = 5) {
+  const pages = []
+
+  if (total <= maxVisible + 2) {
+    for (let i = 1; i <= total; i++) pages.push(i)
+    return pages
+  }
+
+  pages.push(1)
+
+  let start = Math.max(2, current - 1)
+  let end   = Math.min(total - 1, current + 1)
+
+  // shift window when near edges
+  if (current <= 3) {
+    start = 2
+    end   = maxVisible - 1
+  } else if (current >= total - 2) {
+    start = total - (maxVisible - 2)
+    end   = total - 1
+  }
+
+  if (start > 2) pages.push('left-ellipsis')
+  for (let i = start; i <= end; i++) pages.push(i)
+  if (end < total - 1) pages.push('right-ellipsis')
+
+  pages.push(total)
+  return pages
 }
 export default VisitorDashboard

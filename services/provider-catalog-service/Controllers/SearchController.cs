@@ -24,9 +24,14 @@ public class SearchController : ControllerBase
 
     [HttpGet]
     public async Task<IActionResult> Search(
-        [FromQuery] string? q,
-        [FromQuery] string? type, // "all" | "experience" | "restaurant" | "accommodation"
-        [FromQuery] string? location,
+        [FromQuery] string? q = null,
+        [FromQuery] string? type = null,
+        [FromQuery] string? location = null,
+        [FromQuery] decimal? minPrice = null,
+        [FromQuery] decimal? maxPrice = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? sortOrder = null,
+        [FromQuery] string? availableDay = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 8)
     {
@@ -37,6 +42,8 @@ public class SearchController : ControllerBase
         var keyword = q?.Trim().ToLower() ?? "";
         var filterType = type?.Trim().ToLower() ?? "all";
         var locFilter = location?.Trim().ToLower() ?? "";
+        var dayFilter = availableDay?.Trim().ToLower() ?? "";
+        var activeSort = (sort ?? sortOrder)?.Trim().ToLower() ?? "";
 
         var results = new List<SearchResultItemDto>();
 
@@ -60,6 +67,20 @@ public class SearchController : ControllerBase
             if (!string.IsNullOrEmpty(locFilter))
             {
                 expQuery = expQuery.Where(a => a.Location.ToLower().Contains(locFilter));
+            }
+
+            if (minPrice.HasValue && minPrice.Value > 0)
+            {
+                expQuery = expQuery.Where(a => a.Price >= minPrice.Value);
+            }
+            if (maxPrice.HasValue && maxPrice.Value > 0)
+            {
+                expQuery = expQuery.Where(a => a.Price <= maxPrice.Value);
+            }
+
+            if (!string.IsNullOrEmpty(dayFilter))
+            {
+                expQuery = expQuery.Where(a => a.AvailableDays != null && a.AvailableDays.ToLower().Contains(dayFilter));
             }
 
             var experiences = await expQuery.Select(a => new SearchResultItemDto
@@ -104,6 +125,15 @@ public class SearchController : ControllerBase
                 restQuery = restQuery.Where(r => r.Location.ToLower().Contains(locFilter));
             }
 
+            if (minPrice.HasValue && minPrice.Value > 0)
+            {
+                restQuery = restQuery.Where(r => r.PricePerPerson >= minPrice.Value);
+            }
+            if (maxPrice.HasValue && maxPrice.Value > 0)
+            {
+                restQuery = restQuery.Where(r => r.PricePerPerson <= maxPrice.Value);
+            }
+
             var restaurants = await restQuery.Select(r => new SearchResultItemDto
             {
                 Id = r.Id,
@@ -145,6 +175,15 @@ public class SearchController : ControllerBase
                 accQuery = accQuery.Where(a => a.Location.ToLower().Contains(locFilter));
             }
 
+            if (minPrice.HasValue && minPrice.Value > 0)
+            {
+                accQuery = accQuery.Where(a => a.PricePerNight >= minPrice.Value);
+            }
+            if (maxPrice.HasValue && maxPrice.Value > 0)
+            {
+                accQuery = accQuery.Where(a => a.PricePerNight <= maxPrice.Value);
+            }
+
             var accommodations = await accQuery.Select(a => new SearchResultItemDto
             {
                 Id = a.Id,
@@ -165,8 +204,15 @@ public class SearchController : ControllerBase
 
         // Pagination
         var totalCount = results.Count;
-        var pagedItems = results
-            .OrderByDescending(x => x.CreatedAt)
+
+        IEnumerable<SearchResultItemDto> ordered = activeSort switch
+        {
+            "price_asc"  => results.OrderBy(x => x.Price),
+            "price_desc" => results.OrderByDescending(x => x.Price),
+            _            => results.OrderByDescending(x => x.CreatedAt)
+        };
+
+        var pagedItems = ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToList();

@@ -386,4 +386,184 @@ public class SearchControllerTests
         Assert.Equal(0, paged.TotalCount);
         Assert.Empty(paged.Items);
     }
+
+    [Fact]
+    public async Task Search_CombinedFilters_LocationCategoryAndPrice_ReturnsMatchingIntersection()
+    {
+        using var db = CreateInMemoryDbContext();
+        await SeedSampleListingsAsync(db);
+        var controller = new SearchController(db);
+        // Filter: Type = Experience, Location = Trincomalee, Price between 5,000 and 8,000 LKR
+        var result = await controller.Search(
+            q: null,
+            type: "experience",
+            location: "Trincomalee",
+            minPrice: 5000,
+            maxPrice: 8000
+        );
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var paged = Assert.IsType<PaginatedResponse<SearchResultItemDto>>(ok.Value);
+        // Matches Pigeon Island Diving (Price: 7,500, Location: Trincomalee, Type: Experience)
+        Assert.Equal(1, paged.TotalCount);
+        var item = paged.Items.First();
+        Assert.Equal("Pigeon Island Coral Diving", item.Title);
+        Assert.Equal("Trincomalee", item.Location);
+        Assert.Equal(7500, item.Price);
+    }
+
+    [Fact]
+    public async Task Search_ClearFilters_ReturnsFullUnfilteredList()
+    {
+        using var db = CreateInMemoryDbContext();
+        await SeedSampleListingsAsync(db);
+        var controller = new SearchController(db);
+        // First apply restrictive filter
+        var filteredResult = await controller.Search(q: null, type: "experience", location: "Kalpitiya", minPrice: 1000, maxPrice: 10000);
+        var filteredPaged = Assert.IsType<PaginatedResponse<SearchResultItemDto>>(((OkObjectResult)filteredResult).Value);
+        Assert.Equal(1, filteredPaged.TotalCount);
+        // Now clear all filters (q: null, type: "all", location: null, minPrice: null, maxPrice: null)
+        var clearedResult = await controller.Search(q: null, type: "all", location: null, minPrice: null, maxPrice: null);
+        var clearedPaged = Assert.IsType<PaginatedResponse<SearchResultItemDto>>(((OkObjectResult)clearedResult).Value);
+        // Returns all 4 active listings
+        Assert.Equal(4, clearedPaged.TotalCount);
+    }
+
+    [Fact]
+    public async Task Search_MinPriceFilter_ExcludesItemsBelowThreshold()
+    {
+        using var db = CreateInMemoryDbContext();
+        await SeedSampleListingsAsync(db);
+        var controller = new SearchController(db);
+        // Only listings >= 8,000 LKR (Kite Surfing: 9000, Villa: 25000)
+        var result = await controller.Search(q: null, type: "all", location: null, minPrice: 8000);
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var paged = Assert.IsType<PaginatedResponse<SearchResultItemDto>>(ok.Value);
+        Assert.Equal(2, paged.TotalCount);
+        Assert.All(paged.Items, item => Assert.True(item.Price >= 8000));
+    }
+
+    [Fact]
+    public async Task Search_MaxPriceFilter_ExcludesItemsAboveThreshold()
+    {
+        using var db = CreateInMemoryDbContext();
+        await SeedSampleListingsAsync(db);
+        var controller = new SearchController(db);
+        // Only listings <= 5,000 LKR (The Lagoon Seafood Feast: 4500)
+        var result = await controller.Search(q: null, type: "all", location: null, maxPrice: 5000);
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var paged = Assert.IsType<PaginatedResponse<SearchResultItemDto>>(ok.Value);
+        Assert.Equal(1, paged.TotalCount);
+        Assert.Equal("The Lagoon Seafood Feast", paged.Items.First().Title);
+        Assert.Equal(4500, paged.Items.First().Price);
+    }
+
+    [Fact]
+    public async Task Search_CombinedFilters_NoIntersection_ReturnsZeroResults()
+    {
+        using var db = CreateInMemoryDbContext();
+        await SeedSampleListingsAsync(db);
+        var controller = new SearchController(db);
+        // Type = Restaurant, Location = Trincomalee (Seafood restaurant is in Colombo)
+        var result = await controller.Search(q: null, type: "restaurant", location: "Trincomalee");
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var paged = Assert.IsType<PaginatedResponse<SearchResultItemDto>>(ok.Value);
+        Assert.Equal(0, paged.TotalCount);
+        Assert.Empty(paged.Items);
+    }
+
+    [Fact]
+    public async Task Search_SortByPriceAsc_ReturnsCheapestFirst()
+    {
+        using var db = CreateInMemoryDbContext();
+        await SeedSampleListingsAsync(db);
+        var controller = new SearchController(db);
+
+        var result = await controller.Search(q: null, type: "all", location: null, sortOrder: "price_asc");
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var paged = Assert.IsType<PaginatedResponse<SearchResultItemDto>>(ok.Value);
+
+        var prices = paged.Items.Select(x => x.Price).ToList();
+
+        // Assert prices are in strictly non-decreasing order: 4500 <= 7500 <= 9000 <= 25000
+        for (int i = 0; i < prices.Count - 1; i++)
+        {
+            Assert.True(prices[i] <= prices[i + 1], $"Price {prices[i]} should be <= {prices[i + 1]}");
+        }
+    }
+
+    [Fact]
+    public async Task Search_SortByPriceDesc_ReturnsMostExpensiveFirst()
+    {
+        using var db = CreateInMemoryDbContext();
+        await SeedSampleListingsAsync(db);
+        var controller = new SearchController(db);
+
+        var result = await controller.Search(q: null, type: "all", location: null, sortOrder: "price_desc");
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var paged = Assert.IsType<PaginatedResponse<SearchResultItemDto>>(ok.Value);
+
+        var prices = paged.Items.Select(x => x.Price).ToList();
+
+        // Assert prices are in strictly non-increasing order: 25000 >= 9000 >= 7500 >= 4500
+        for (int i = 0; i < prices.Count - 1; i++)
+        {
+            Assert.True(prices[i] >= prices[i + 1], $"Price {prices[i]} should be >= {prices[i + 1]}");
+        }
+    }
+
+    [Fact]
+    public async Task Search_SortByDefault_ReturnsNewestCreatedFirst()
+    {
+        using var db = CreateInMemoryDbContext();
+        await SeedSampleListingsAsync(db);
+        var controller = new SearchController(db);
+
+        var result = await controller.Search(q: null, type: "all", location: null, sortOrder: null);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var paged = Assert.IsType<PaginatedResponse<SearchResultItemDto>>(ok.Value);
+
+        var dates = paged.Items.Select(x => x.CreatedAt).ToList();
+        for (int i = 0; i < dates.Count - 1; i++)
+        {
+            Assert.True(dates[i] >= dates[i + 1]);
+        }
+    }
+
+    [Fact]
+    public async Task Search_UnrecognizedSortOrder_FallsBackToDefaultOrder()
+    {
+        using var db = CreateInMemoryDbContext();
+        await SeedSampleListingsAsync(db);
+        var controller = new SearchController(db);
+
+        var result = await controller.Search(q: null, type: "all", location: null, sortOrder: "unsupported_sort");
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var paged = Assert.IsType<PaginatedResponse<SearchResultItemDto>>(ok.Value);
+
+        Assert.Equal(4, paged.TotalCount);
+        Assert.NotEmpty(paged.Items);
+    }
+
+    [Fact]
+    public async Task Search_SortAndFilterCombined_FiltersAndSortsCorrectly()
+    {
+        using var db = CreateInMemoryDbContext();
+        await SeedSampleListingsAsync(db);
+        var controller = new SearchController(db);
+
+        // Experiences sorted by price ascending (Pigeon Island: 7500, Kite Surfing: 9000)
+        var result = await controller.Search(q: null, type: "experience", location: null, sortOrder: "price_asc");
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var paged = Assert.IsType<PaginatedResponse<SearchResultItemDto>>(ok.Value);
+
+        Assert.Equal(2, paged.TotalCount);
+        Assert.Equal(7500, paged.Items.First().Price);
+        Assert.Equal(9000, paged.Items.Last().Price);
+    }
+
 }
