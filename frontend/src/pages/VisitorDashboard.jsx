@@ -11,7 +11,17 @@ import {
   CreateIcon,
   BadgeIcon,
   PhotoCameraIcon,
-  DeleteSweepIcon
+  DeleteSweepIcon,
+  CloseIcon,
+  SearchIcon,
+  GroupIcon,
+  KitesurfingIcon,
+  RestaurantIcon,
+  HotelIcon,
+  HourglassTopIcon,
+  AccessTimeFilledIcon,
+  LocationOnIcon,
+  CheckCircleIcon
 } from '../components/Icons'
 import ConfirmModal from '../components/ConfirmModal'
 import { apiUrl, catalogUrl } from '../api/client'
@@ -24,7 +34,7 @@ function SuccessToast({ message, onClose }) {
 
   return (
     <div className="vd-toast" role="alert" aria-live="polite">
-      <div className="vd-toast__icon"></div>
+      <div className="vd-toast__icon"><CheckCircleIcon/></div>
       <div className="vd-toast__body">
         <p className="vd-toast__title">Profile Updated</p>
         <p className="vd-toast__msg">{message}</p>
@@ -275,6 +285,15 @@ function VisitorDashboard({ onLogout }) {
         <ul className="vd-sidebar__nav">
           <li>
             <button
+              className={activePage === 'explore' ? 'active' : ''}
+              onClick={() => setActivePage('explore')}
+              id="nav-explore"
+            >
+              <span className="vd-nav-icon"><PublicIcon size={18} /></span> Explore & Search
+            </button>
+          </li>
+          <li>
+            <button
               className={activePage === 'profile' ? 'active' : ''}
               onClick={() => setActivePage('profile')}
               id="nav-profile"
@@ -320,231 +339,471 @@ function VisitorDashboard({ onLogout }) {
       </aside>
 
       {/* ── Main ── */}
-      <main className="vd-main">
-        <div className="vd-page-header">
-          <h1>My Profile</h1>
-          <p>View and manage your personal information.</p>
-        </div>
+<main className="vd-main">
+  {activePage === 'explore' ? (
+    <ExploreTab />
+  ) : (
+    <>
+      <div className="vd-page-header">
+        <h1>My Profile</h1>
+        <p>View and manage your personal information.</p>
+      </div>
 
-        <div className="vd-profile-card">
-          <div className="vd-profile-card__accent" />
-          <div className="vd-profile-card__body">
+      <div className="vd-profile-card">
+        <div className="vd-profile-card__accent" />
+        <div className="vd-profile-card__body">
 
-            {loading && (
-              <div className="vd-loading">
-                <div className="vd-spinner" />
-                <span>Loading your profile…</span>
+          {loading && (
+            <div className="vd-loading">
+              <div className="vd-spinner" />
+              <span>Loading your profile…</span>
+            </div>
+          )}
+
+          {loadError && !loading && (
+            <div className="vd-form-error">{loadError}</div>
+          )}
+
+          {!loading && profile && !editing && (
+            <>
+              {/* Identity row */}
+              <div className="vd-identity">
+                <div className="vd-avatar-wrapper">
+                  <div className="vd-avatar">
+                    {profile.profilePictureUrl ? (
+                      <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="vd-avatar__img" />
+                    ) : (
+                      initials(profile.firstName, profile.lastName)
+                    )}
+                  </div>
+                  <label className="vd-avatar-upload-btn" title="Upload / Change profile photo">
+                    <PhotoCameraIcon size={14} />
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      onChange={handleAvatarChange}
+                      disabled={avatarUploading}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
+
+                <div className="vd-identity__info">
+                  <h2 className="vd-identity__name">{profile.firstName} {profile.lastName}</h2>
+                  <p className="vd-identity__email">{profile.email}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                    <span className="vd-identity__badge"><BadgeIcon size={13} style={{ marginRight: 4 }} /> Visitor</span>
+                    {profile.profilePictureUrl && (
+                      <button
+                        type="button"
+                        className="vd-avatar-remove-text-btn"
+                        onClick={() => setShowRemoveConfirm(true)}
+                        disabled={avatarUploading}
+                      >
+                        <DeleteSweepIcon size={13} style={{ marginRight: 4 }} /> Remove Photo
+                      </button>
+                    )}
+                  </div>
+                  {avatarUploading && <div className="vd-avatar-status">Uploading photo…</div>}
+                  {avatarError && <div className="vd-avatar-error">{avatarError}</div>}
+                </div>
+                <button className="vd-edit-btn" onClick={handleEdit} id="edit-profile-btn">
+                  <CreateIcon size={14} style={{ marginRight: 6 }} /> Edit Profile
+                </button>
               </div>
-            )}
 
-            {loadError && !loading && (
-              <div className="vd-form-error">{loadError}</div>
-            )}
-
-            {!loading && profile && !editing && (
-              <>
-                {/* Identity row */}
-                <div className="vd-identity">
-                  <div className="vd-avatar-wrapper">
-                    <div className="vd-avatar">
-                      {profile.profilePictureUrl ? (
-                        <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="vd-avatar__img" />
-                      ) : (
-                        initials(profile.firstName, profile.lastName)
-                      )}
-                    </div>
-                    <label className="vd-avatar-upload-btn" title="Upload / Change profile photo">
-                      <PhotoCameraIcon size={14} />
-                      <input
-                        type="file"
-                        accept="image/png, image/jpeg, image/webp"
-                        onChange={handleAvatarChange}
-                        disabled={avatarUploading}
-                        style={{ display: 'none' }}
-                      />
-                    </label>
-                  </div>
-
-                  <div className="vd-identity__info">
-                    <h2 className="vd-identity__name">{profile.firstName} {profile.lastName}</h2>
-                    <p className="vd-identity__email">{profile.email}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
-                      <span className="vd-identity__badge"><BadgeIcon size={13} style={{ marginRight: 4 }} /> Visitor</span>
-                      {profile.profilePictureUrl && (
-                        <button
-                          type="button"
-                          className="vd-avatar-remove-text-btn"
-                          onClick={() => setShowRemoveConfirm(true)}
-                          disabled={avatarUploading}
-                        >
-                          <DeleteSweepIcon size={13} style={{ marginRight: 4 }} /> Remove Photo
-                        </button>
-                      )}
-                    </div>
-                    {avatarUploading && <div className="vd-avatar-status">Uploading photo…</div>}
-                    {avatarError && <div className="vd-avatar-error">{avatarError}</div>}
-                  </div>
-                  <button className="vd-edit-btn" onClick={handleEdit} id="edit-profile-btn">
-                    <CreateIcon size={14} style={{ marginRight: 6 }} /> Edit Profile
-                  </button>
+              {/* Fields */}
+              <div className="vd-fields">
+                <div className="vd-field">
+                  <span className="vd-field__label">First Name</span>
+                  <span className="vd-field__value">{profile.firstName}</span>
                 </div>
-
-                {/* Fields */}
-                <div className="vd-fields">
-                  <div className="vd-field">
-                    <span className="vd-field__label">First Name</span>
-                    <span className="vd-field__value">{profile.firstName}</span>
-                  </div>
-                  <div className="vd-field">
-                    <span className="vd-field__label">Last Name</span>
-                    <span className="vd-field__value">{profile.lastName}</span>
-                  </div>
-                  <div className="vd-field">
-                    <span className="vd-field__label">Email Address</span>
-                    <span className="vd-field__value"><EmailIcon size={14} style={{ marginRight: 6 }} /> {profile.email}</span>
-                  </div>
-                  <div className="vd-field">
-                    <span className="vd-field__label">Phone Number</span>
-                    <span className="vd-field__value"><LocalPhoneIcon size={14} style={{ marginRight: 6 }} /> {profile.phoneNumber || '—'}</span>
-                  </div>
-                  <div className="vd-field">
-                    <span className="vd-field__label">Nationality</span>
-                    <span className="vd-field__value"><PublicIcon size={14} style={{ marginRight: 6 }} /> {profile.nationality || '—'}</span>
-                  </div>
+                <div className="vd-field">
+                  <span className="vd-field__label">Last Name</span>
+                  <span className="vd-field__value">{profile.lastName}</span>
                 </div>
-
-                <div className="vd-member-since">
-                  <CalendarMonthIcon size={14} style={{ marginRight: 6 }} /> Member since {formatDate(profile.createdAt)}
+                <div className="vd-field">
+                  <span className="vd-field__label">Email Address</span>
+                  <span className="vd-field__value"><EmailIcon size={14} style={{ marginRight: 6 }} /> {profile.email}</span>
                 </div>
-              </>
-            )}
-
-            {!loading && profile && editing && (
-              <form onSubmit={handleSave} className="vd-edit-form" noValidate>
-                {/* Identity row (read-only header stays visible) */}
-                <div className="vd-identity" style={{ marginBottom: 24 }}>
-                  <div className="vd-avatar-wrapper">
-                    <div className="vd-avatar">
-                      {profile.profilePictureUrl ? (
-                        <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="vd-avatar__img" />
-                      ) : (
-                        initials(formData.firstName, formData.lastName)
-                      )}
-                    </div>
-                    <label className="vd-avatar-upload-btn" title="Upload / Change profile photo">
-                      <PhotoCameraIcon size={14} />
-                      <input
-                        type="file"
-                        accept="image/png, image/jpeg, image/webp"
-                        onChange={handleAvatarChange}
-                        disabled={avatarUploading}
-                        style={{ display: 'none' }}
-                      />
-                    </label>
-                  </div>
-                  <div className="vd-identity__info">
-                    <h2 className="vd-identity__name">{formData.firstName} {formData.lastName}</h2>
-                    <p className="vd-identity__email">{profile.email}</p>
-                    {avatarUploading && <div className="vd-avatar-status">Uploading photo…</div>}
-                    {avatarError && <div className="vd-avatar-error">{avatarError}</div>}
-                  </div>
+                <div className="vd-field">
+                  <span className="vd-field__label">Phone Number</span>
+                  <span className="vd-field__value"><LocalPhoneIcon size={14} style={{ marginRight: 6 }} /> {profile.phoneNumber || '—'}</span>
                 </div>
+                <div className="vd-field">
+                  <span className="vd-field__label">Nationality</span>
+                  <span className="vd-field__value"><PublicIcon size={14} style={{ marginRight: 6 }} /> {profile.nationality || '—'}</span>
+                </div>
+              </div>
 
-                {saveError && <div className="vd-form-error">{saveError}</div>}
+              <div className="vd-member-since">
+                <CalendarMonthIcon size={14} style={{ marginRight: 6 }} /> Member since {formatDate(profile.createdAt)}
+              </div>
+            </>
+          )}
 
-                <div className="vd-form-grid">
-                  <div className="vd-form-group">
-                    <label htmlFor="edit-firstName">First Name *</label>
+          {!loading && profile && editing && (
+            <form onSubmit={handleSave} className="vd-edit-form" noValidate>
+              {/* Identity row (read-only header stays visible) */}
+              <div className="vd-identity" style={{ marginBottom: 24 }}>
+                <div className="vd-avatar-wrapper">
+                  <div className="vd-avatar">
+                    {profile.profilePictureUrl ? (
+                      <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="vd-avatar__img" />
+                    ) : (
+                      initials(formData.firstName, formData.lastName)
+                    )}
+                  </div>
+                  <label className="vd-avatar-upload-btn" title="Upload / Change profile photo">
+                    <PhotoCameraIcon size={14} />
                     <input
-                      id="edit-firstName"
-                      name="firstName"
-                      type="text"
-                      value={formData.firstName}
-                      onChange={handleChange}
-                      placeholder="First name"
-                      required
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      onChange={handleAvatarChange}
+                      disabled={avatarUploading}
+                      style={{ display: 'none' }}
                     />
-                  </div>
+                  </label>
+                </div>
+                <div className="vd-identity__info">
+                  <h2 className="vd-identity__name">{formData.firstName} {formData.lastName}</h2>
+                  <p className="vd-identity__email">{profile.email}</p>
+                  {avatarUploading && <div className="vd-avatar-status">Uploading photo…</div>}
+                  {avatarError && <div className="vd-avatar-error">{avatarError}</div>}
+                </div>
+              </div>
 
-                  <div className="vd-form-group">
-                    <label htmlFor="edit-lastName">Last Name *</label>
-                    <input
-                      id="edit-lastName"
-                      name="lastName"
-                      type="text"
-                      value={formData.lastName}
-                      onChange={handleChange}
-                      placeholder="Last name"
-                      required
-                    />
-                  </div>
+              {saveError && <div className="vd-form-error">{saveError}</div>}
 
-                  <div className="vd-form-group">
-                    <label htmlFor="edit-email">Email Address</label>
-                    <input
-                      id="edit-email"
-                      type="email"
-                      value={profile.email}
-                      disabled
-                      aria-readonly="true"
-                    />
-                    <p className="vd-field-note">Email cannot be changed.</p>
-                  </div>
-
-                  <div className="vd-form-group">
-                    <label htmlFor="edit-phone">Phone Number *</label>
-                    <input
-                      id="edit-phone"
-                      name="phoneNumber"
-                      type="tel"
-                      value={formData.phoneNumber}
-                      onChange={handleChange}
-                      placeholder="Phone number"
-                      required
-                    />
-                  </div>
-
-                  <div className="vd-form-group vd-form-group--full">
-                    <label htmlFor="edit-nationality">Nationality *</label>
-                    <input
-                      id="edit-nationality"
-                      name="nationality"
-                      type="text"
-                      value={formData.nationality}
-                      onChange={handleChange}
-                      placeholder="Your nationality"
-                      required
-                    />
-                  </div>
+              <div className="vd-form-grid">
+                <div className="vd-form-group">
+                  <label htmlFor="edit-firstName">First Name *</label>
+                  <input
+                    id="edit-firstName"
+                    name="firstName"
+                    type="text"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    placeholder="First name"
+                    required
+                  />
                 </div>
 
-                <div className="vd-form-actions">
-                  <button
-                    type="submit"
-                    className="vd-save-btn"
-                    id="save-profile-btn"
-                    disabled={saveLoading}
-                  >
-                    {saveLoading ? 'Saving…' : 'Save Changes'}
-                  </button>
-                  <button
-                    type="button"
-                    className="vd-cancel-btn"
-                    id="cancel-edit-btn"
-                    onClick={handleCancel}
-                    disabled={saveLoading}
-                  >
-                    Cancel
-                  </button>
+                <div className="vd-form-group">
+                  <label htmlFor="edit-lastName">Last Name *</label>
+                  <input
+                    id="edit-lastName"
+                    name="lastName"
+                    type="text"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    placeholder="Last name"
+                    required
+                  />
                 </div>
-              </form>
-            )}
 
-          </div>
+                <div className="vd-form-group">
+                  <label htmlFor="edit-email">Email Address</label>
+                  <input
+                    id="edit-email"
+                    type="email"
+                    value={profile.email}
+                    disabled
+                    aria-readonly="true"
+                  />
+                  <p className="vd-field-note">Email cannot be changed.</p>
+                </div>
+
+                <div className="vd-form-group">
+                  <label htmlFor="edit-phone">Phone Number *</label>
+                  <input
+                    id="edit-phone"
+                    name="phoneNumber"
+                    type="tel"
+                    value={formData.phoneNumber}
+                    onChange={handleChange}
+                    placeholder="Phone number"
+                    required
+                  />
+                </div>
+
+                <div className="vd-form-group vd-form-group--full">
+                  <label htmlFor="edit-nationality">Nationality *</label>
+                  <input
+                    id="edit-nationality"
+                    name="nationality"
+                    type="text"
+                    value={formData.nationality}
+                    onChange={handleChange}
+                    placeholder="Your nationality"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="vd-form-actions">
+                <button
+                  type="submit"
+                  className="vd-save-btn"
+                  id="save-profile-btn"
+                  disabled={saveLoading}
+                >
+                  {saveLoading ? 'Saving…' : 'Save Changes'}
+                </button>
+                <button
+                  type="button"
+                  className="vd-cancel-btn"
+                  id="cancel-edit-btn"
+                  onClick={handleCancel}
+                  disabled={saveLoading}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+
         </div>
-      </main>
+      </div>
+    </>
+  )}
+</main>
     </div>
   )
 }
 
+// ── Explore / Search & Browse Tab ─────────────────────────────────
+
+function ExploreTab() {
+  const [keywordInput, setKeywordInput] = useState('')
+  
+  // Search state sent to backend
+  const [appliedFilters, setAppliedFilters] = useState({
+    q: '',
+    page: 1
+  })
+  
+  const [data, setData] = useState({ items: [], totalCount: 0, totalPages: 1, page: 1, hasPreviousPage: false, hasNextPage: false })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAppliedFilters(prev => ({
+        ...prev,
+        q: keywordInput.trim(),
+        page: 1
+      }))
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [keywordInput])
+
+  useEffect(() => {
+    let isMounted = true
+    const fetchResults = async () => {
+      setLoading(true)
+      try {
+        const params = new URLSearchParams({
+          q: appliedFilters.q,
+          page: appliedFilters.page,
+          pageSize: 8
+        })
+        const resp = await fetch(catalogUrl(`/api/catalog/search?${params.toString()}`))
+        if (resp.ok && isMounted) {
+          const result = await resp.json()
+          setData(result)
+        }
+      } catch (err) {
+        console.error('Failed to search listings:', err)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+    fetchResults()
+    return () => { isMounted = false }
+  }, [appliedFilters])
+
+  // ── Search button or Enter submit ──
+  const handleSearchSubmit = (e) => {
+    e.preventDefault()
+    setAppliedFilters(prev => ({
+      ...prev,
+      q: keywordInput.trim(),
+      page: 1
+    }))
+  }
+
+  // ── 2. Clear Button (Clears input AND resets search results immediately) ──
+  const handleClear = () => {
+    setKeywordInput('')
+    setAppliedFilters({
+      q: '',
+      page: 1
+    })
+  }
+
+  return (
+    <div className="vd-explore">
+      <div className="vd-page-header">
+        <div className="vd-page-header__left">
+          <h1>Explore Sri Lanka</h1>
+          <p>Discover verified tours, authentic dining experiences, and island stays.</p>
+        </div>
+      </div>
+
+      {/* ── Search Bar with Live Clear + Search Button ── */}
+      <form onSubmit={handleSearchSubmit} className="vd-search-hero">
+        <div className="vd-search-input-wrap">
+          <input
+            type="text"
+            className="vd-search-input vd-search-input--single"
+            placeholder="Search experiences, restaurants, or locations (e.g. diving, Kandy, seafood)..."
+            value={keywordInput}
+            onChange={(e) => setKeywordInput(e.target.value)}
+            aria-label="Search listings"
+          />
+          {keywordInput && (
+            <>
+            <button
+              type="button"
+              className="vd-search-clear"
+              onClick={handleClear}
+              aria-label="Clear search"
+              title="Clear search"
+            >
+              <CloseIcon size={25}/>
+            </button>
+
+            <button
+              type="button"
+              className="vd-search-btn"
+              onClick={handleSearchSubmit}
+              aria-label="Search"
+              title="Search"
+            >
+              <SearchIcon size={25}/>
+            </button>
+            </>
+          )}
+          {!keywordInput && (
+            <button
+              type="button"
+              className="vd-search-btn"
+              onClick={handleSearchSubmit}
+              aria-label="Search"
+              title="Search"
+            >
+              <SearchIcon/>
+            </button>
+          )}
+        </div>
+      </form>
+
+      {/* Results Count Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+        <span className="vd-results-count">
+          {data.totalCount > 0 ? `Showing ${data.items.length} of ${data.totalCount} listings` : ''}
+        </span>
+      </div>
+
+      {/* ── Listings Grid / Loading / No Results State ── */}
+      {loading ? (
+        <div className="vd-loading-card">
+          <div className="vd-spinner" />
+          <span>Searching verified listings across Sri Lanka...</span>
+        </div>
+      ) : data.items.length === 0 ? (
+        <div className="vd-empty-search">
+          <div className="vd-empty-icon"><SearchIcon size={40} /></div>
+          <h3>No listings matched your search</h3>
+          <p>
+            {appliedFilters.q
+              ? `We couldn't find any listings matching "${appliedFilters.q}".`
+              : "No active listings are currently available."}
+          </p>
+          <button type="button" className="vd-clear-btn" onClick={handleClear}>
+            Clear Search & Browse All
+          </button>
+        </div>
+      ) : (
+        <div className="vd-grid">
+          {data.items.map((item) => (
+            <div key={item.id} className="vd-service-card">
+              <div className="vd-service-card__header">
+                <span className={`vd-type-badge vd-type-badge--${item.type.toLowerCase()}`}>
+                  {item.type}
+                </span>
+              </div>
+              
+              <div className="vd-service-card__body">
+                <h3 className="vd-service-card__title">{item.title}</h3>
+                <p className="vd-service-card__desc">
+                  {item.description?.length > 110 ? `${item.description.slice(0, 160)}…` : item.description}
+                </p>
+                <div className="vd-service-card__details">
+                  <div className="vd-card__details">
+                    {item.keyDetail && item.keyDetail.split('•').map((detail, idx) => (
+                      <div key={idx} className="vd-service-card__detail-item">
+                        {idx === 0 ? <HourglassTopIcon size={14} /> : <GroupIcon size={14} />} {detail.trim()}
+                      </div>
+                    ))}
+                  </div>
+                  {item.scheduleInfo && (
+                    <div className="vd-service-card__detail-item">
+                      <AccessTimeFilledIcon size={14} /> {item.scheduleInfo}
+                    </div>
+                  )}
+                  {item.location && (
+                    <div className="vd-service-card__detail-item">
+                      <LocationOnIcon size={14} /> {item.location}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="vd-service-card__footer">
+                <div>
+                  <div className="vd-service-card__price">{item.priceFormatted}</div>
+                  <div className="vd-service-card__provider">By {item.providerBusinessName}</div>
+                </div>
+                <button
+                  type="button"
+                  className="vd-book-btn"
+                  onClick={() => alert(`Selected: ${item.title}`)}
+                >
+                  View Details
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Pagination Controls ── */}
+      {data.totalPages > 1 && (
+        <div className="vd-pagination">
+          <button
+            type="button"
+            className="vd-page-btn"
+            disabled={!data.hasPreviousPage}
+            onClick={() => setAppliedFilters(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+          >
+            ← Previous
+          </button>
+          <span className="vd-page-indicator">
+            Page {data.page} of {data.totalPages}
+          </span>
+          <button
+            type="button"
+            className="vd-page-btn"
+            disabled={!data.hasNextPage}
+            onClick={() => setAppliedFilters(prev => ({ ...prev, page: Math.min(data.totalPages, prev.page + 1) }))}
+          >
+            Next →
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 export default VisitorDashboard
