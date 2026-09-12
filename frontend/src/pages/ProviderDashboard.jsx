@@ -229,8 +229,11 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {activeServices.slice(0, 3).map(s => (
                   <li key={s.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #f3eee4', fontSize: '13.5px' }}>
-                    <span style={{ fontWeight: 600, color: '#123b5d' }}>{s.title}</span>
-                    <span style={{ fontWeight: 700, color: '#168aad' }}>{formatCurrency(s.price)} <small style={{ color: '#888', fontWeight: 400 }}>/{s.unit}</small></span>
+                    <span style={{ fontWeight: 600, color: '#123b5d' }}>{s.title || s.name || s.roomType}</span>
+                    <span style={{ fontWeight: 700, color: '#168aad' }}>
+                      {formatCurrency(s.price || s.pricePerPerson || s.pricePerNight)}
+                      <small style={{ color: '#888', fontWeight: 400 }}>/{s.unit || (s.pricePerPerson ? 'person' : 'night')}</small>
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -529,7 +532,7 @@ function BusinessProfileTab({ token, onLogout, providerInfo, onUpdateSuccess, sh
   )
 }
 
-// ── 3. Activity / Service Management Tab ──────────────────────────────────────
+// ── 3. Listing Management Tab (Activity / Restaurant / Accommodation) ─────────
 
 const toDisplayTime = (hhmm) => {
   if (!hhmm) return ''
@@ -554,7 +557,6 @@ const toInputTime = (display) => {
   return `${String(h).padStart(2, '0')}:${mStr || '00'}`
 }
 
-// Helper to add duration to a "HH:MM" string and return "HH:MM"
 const addDurationToTime = (startTimeStr, durationStr) => {
   if (!startTimeStr) return '10:00'
   const [hStr, mStr] = startTimeStr.split(':')
@@ -568,7 +570,7 @@ const addDurationToTime = (startTimeStr, durationStr) => {
   } else if (durLower.includes('min')) {
     totalMinutes += Math.round(numVal)
   } else {
-    totalMinutes += 120 // default 2 hours
+    totalMinutes += 120
   }
 
   const endH = Math.floor(totalMinutes / 60) % 24
@@ -576,15 +578,46 @@ const addDurationToTime = (startTimeStr, durationStr) => {
   return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
 }
 
-function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, showToast }) {
+
+const parseOpeningHours = (str) => {
+  const fallback = { open: '11:30', close: '22:00' }
+  if (!str) return fallback
+  const parts = str.split(' - ').map(s => s.trim())
+  if (parts.length !== 2) return fallback
+  return {
+    open: toInputTime(parts[0]),
+    close: toInputTime(parts[1])
+  }
+}
+
+
+const formatOpeningHours = (open, close) => {
+  if (!open || !close) return ''
+  return `${toDisplayTime(open)} - ${toDisplayTime(close)}`
+}
+
+function ListingsTab({
+  token,
+  onLogout,
+  services = [],
+  isHotel = false,
+  isRestaurant = false,
+  catalogEndpoint,
+  onRefreshServices,
+  showToast
+}) {
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [modal, setModal] = useState(null)
   const [editTarget, setEditTarget] = useState(null)
-
   const [slotsList, setSlotsList] = useState([{ startTime: '', endTime: '' }])
+  const [formError, setFormError] = useState(null)
+  const [formLoading, setFormLoading] = useState(false)
+  const [serviceToDelete, setServiceToDelete] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
-  const [form, setForm] = useState({
+  const emptyForm = {
+    // shared / activity
     title: '',
     description: '',
     price: '',
@@ -596,21 +629,39 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
     timeSlots: '',
     validFrom: '',
     validUntil: '',
-    isActive: true
-  })
-  const [formError, setFormError] = useState(null)
-  const [formLoading, setFormLoading] = useState(false)
+    isActive: true,
+    // restaurant
+    name: '',
+    cuisineType: '',
+    diningStyle: '',
+    pricePerPerson: '',
+    priceRange: '',
+    openingHours: '',
+    openingHoursOpen: '09:00',   
+    openingHoursClose: '22:00',   
+    setMenuDetails: '',
+    dietaryOptions: '',
+    seatingCapacity: 20,
+    groupSizeCategory: '',
+    // accommodation
+    roomType: '',
+    propertyType: '',
+    pricePerNight: '',
+    maxGuests: 2,
+    bedDetails: '',
+    minStayNights: 1,
+    amenities: '',
+    bathroomDetails: ''
+  }
+  const [form, setForm] = useState(emptyForm)
 
-  const [serviceToDelete, setServiceToDelete] = useState(null)
-  const [deleteLoading, setDeleteLoading] = useState(false)
-
-  // Re-chains slots sequentially: slot[i].end becomes slot[i+1].start
+  // ── Time slot helpers (activities only) ──
   const recalculateAllSlots = (currentSlots, duration) => {
     let nextStart = currentSlots[0]?.startTime || '08:00'
-    return currentSlots.map((slot) => {
+    return currentSlots.map(() => {
       const start = nextStart
       const end = addDurationToTime(start, duration)
-      nextStart = end // Chain next slot's start to current slot's end
+      nextStart = end
       return { startTime: start, endTime: end }
     })
   }
@@ -620,10 +671,11 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
     setSlotsList(prev => {
       const next = [...prev]
       while (next.length < num) {
-        const lastSlot = next[next.length - 1] || { startTime: '09:00', endTime: '11:00' }
-        const newStart = lastSlot.endTime
-        const newEnd = addDurationToTime(newStart, form.duration)
-        next.push({ startTime: newStart, endTime: newEnd })
+        const last = next[next.length - 1] || { startTime: '09:00', endTime: '11:00' }
+        next.push({
+          startTime: last.endTime,
+          endTime: addDurationToTime(last.endTime, form.duration)
+        })
       }
       return recalculateAllSlots(next.slice(0, num), form.duration)
     })
@@ -632,17 +684,10 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
   const updateSlotStartTime = (index, newStartVal) => {
     setSlotsList(prev => {
       const next = [...prev]
-      next[index] = {
-        startTime: newStartVal,
-        endTime: addDurationToTime(newStartVal, form.duration)
-      }
-      // Cascade downstream slots so they cleanly chain from the updated end time
+      next[index] = { startTime: newStartVal, endTime: addDurationToTime(newStartVal, form.duration) }
       for (let i = index + 1; i < next.length; i++) {
         const prevEnd = next[i - 1].endTime
-        next[i] = {
-          startTime: prevEnd,
-          endTime: addDurationToTime(prevEnd, form.duration)
-        }
+        next[i] = { startTime: prevEnd, endTime: addDurationToTime(prevEnd, form.duration) }
       }
       return next
     })
@@ -651,17 +696,10 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
   const updateSlotEndTime = (index, newEndVal) => {
     setSlotsList(prev => {
       const next = [...prev]
-      next[index] = {
-        ...next[index],
-        endTime: newEndVal
-      }
-      // Cascade downstream slots so they start where this slot ends
+      next[index] = { ...next[index], endTime: newEndVal }
       for (let i = index + 1; i < next.length; i++) {
         const prevEnd = next[i - 1].endTime
-        next[i] = {
-          startTime: prevEnd,
-          endTime: addDurationToTime(prevEnd, form.duration)
-        }
+        next[i] = { startTime: prevEnd, endTime: addDurationToTime(prevEnd, form.duration) }
       }
       return next
     })
@@ -675,66 +713,83 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
 
   const openAdd = () => {
     setEditTarget(null)
-    const initialDuration = ''
-    setSlotsList([{ startTime: '08:00', endTime: addDurationToTime('08:00', initialDuration) }])
-    setForm({
-      title: '',
-      description: '',
-      price: '',
-      unit: 'Per Person',
-      location: '',
-      maxParticipants: 10,
-      duration: initialDuration,
-      availableDays: '',
-      timeSlots: '',
-      validFrom: '',
-      validUntil: '',
-      isActive: true
-    })
+    setForm(emptyForm)
+    setSlotsList([{ startTime: '08:00', endTime: addDurationToTime('08:00', '') }])
     setFormError(null)
     setModal('add')
   }
 
-  const openEdit = (service) => {
-    const currentDuration = service.duration || '2 Hours'
-    const parsedSlots = (service.timeSlots || '')
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean)
-      .map(s => {
-        const parts = s.split(' - ')
-        if (parts.length === 2) {
-          return {
-            startTime: toInputTime(parts[0]),
-            endTime: toInputTime(parts[1].split(' ')[0])
-          }
-        }
-        const singleTime = toInputTime(s)
-        return {
-          startTime: singleTime,
-          endTime: addDurationToTime(singleTime, currentDuration)
-        }
+  const openEdit = (item) => {
+    setEditTarget(item)
+    if (isHotel) {
+      setForm({
+        ...emptyForm,
+        roomType: item.roomType || '',
+        propertyType: item.propertyType || '',
+        location: item.location || '',
+        pricePerNight: item.pricePerNight ?? '',
+        maxGuests: item.maxGuests || 2,
+        bedDetails: item.bedDetails || '',
+        minStayNights: item.minStayNights || 1,
+        amenities: item.amenities || '',
+        bathroomDetails: item.bathroomDetails || '',
+        description: item.description || '',
+        isActive: item.isActive !== false
       })
-    if (parsedSlots.length === 0) {
-      parsedSlots.push({ startTime: '08:00', endTime: addDurationToTime('08:00', currentDuration) })
+    } else if (isRestaurant) {
+      const parsedHours = parseOpeningHours(item.openingHours || '')
+      setForm({
+        ...emptyForm,
+        name: item.name || '',
+        description: item.description || '',
+        cuisineType: item.cuisineType || '',
+        diningStyle: item.diningStyle || 'Casual Dining',
+        location: item.location || '',
+        pricePerPerson: item.pricePerPerson ?? '',
+        priceRange: item.priceRange || '',
+        openingHours: item.openingHours || '',
+        openingHoursOpen: parsedHours.open,
+        openingHoursClose: parsedHours.close,
+        setMenuDetails: item.setMenuDetails || '',
+        dietaryOptions: item.dietaryOptions || '',
+        groupSizeCategory: item.groupSizeCategory || 'Table for Two',
+        seatingCapacity: item.seatingCapacity || 20,
+        isActive: item.isActive !== false
+      })
+    } else {
+      const currentDuration = item.duration || '2 Hours'
+      const parsedSlots = (item.timeSlots || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(s => {
+          const parts = s.split(' - ')
+          if (parts.length === 2) {
+            return { startTime: toInputTime(parts[0]), endTime: toInputTime(parts[1].split(' ')[0]) }
+          }
+          const single = toInputTime(s)
+          return { startTime: single, endTime: addDurationToTime(single, currentDuration) }
+        })
+      if (parsedSlots.length === 0) {
+        parsedSlots.push({ startTime: '08:00', endTime: addDurationToTime('08:00', currentDuration) })
+      }
+      setSlotsList(parsedSlots)
+      setForm({
+        ...emptyForm,
+        title: item.title || '',
+        description: item.description || '',
+        price: item.price ?? '',
+        unit: item.unit || 'Per Person',
+        location: item.location || '',
+        maxParticipants: item.maxParticipants || 10,
+        duration: currentDuration,
+        availableDays: item.availableDays || '',
+        timeSlots: item.timeSlots || '',
+        validFrom: item.validFrom ? item.validFrom.slice(0, 10) : '',
+        validUntil: item.validUntil ? item.validUntil.slice(0, 10) : '',
+        isActive: item.isActive !== false
+      })
     }
-
-    setEditTarget(service)
-    setSlotsList(parsedSlots)
-    setForm({
-      title: service.title || '',
-      description: service.description || '',
-      price: service.price ?? '',
-      unit: service.unit || 'Per Person',
-      location: service.location || '',
-      maxParticipants: service.maxParticipants || 10,
-      duration: currentDuration,
-      availableDays: service.availableDays || '',
-      timeSlots: service.timeSlots || '',
-      validFrom: service.validFrom ? service.validFrom.slice(0, 10) : '',
-      validUntil: service.validUntil ? service.validUntil.slice(0, 10) : '',
-      isActive: service.isActive !== false
-    })
     setFormError(null)
     setModal('edit')
   }
@@ -743,52 +798,57 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
     setModal(null)
     setEditTarget(null)
     setFormError(null)
+    setForm(emptyForm)
     setSlotsList([{ startTime: '08:00', endTime: '10:00' }])
   }
 
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target
-    setForm(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }))
+    setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
     if (formError) setFormError(null)
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setFormError(null)
-
-    if (!form.title.trim()) {
-      setFormError('Experience title is required.')
-      return
+  const buildPayload = () => {
+    if (isHotel) {
+      return {
+        roomType: form.roomType.trim(),
+        propertyType: form.propertyType,
+        location: form.location.trim(),
+        pricePerNight: parseFloat(form.pricePerNight) || 0,
+        maxGuests: parseInt(form.maxGuests, 10) || 1,
+        bedDetails: form.bedDetails,
+        minStayNights: parseInt(form.minStayNights, 10) || 1,
+        amenities: form.amenities,
+        bathroomDetails: form.bathroomDetails,
+        description: form.description.trim(),
+        isActive: form.isActive
+      }
     }
-    if (!form.location.trim()) {
-      setFormError('Operating location is required.')
-      return
+    if (isRestaurant) {
+      return {
+        name: form.name.trim(),
+        description: form.description.trim(),
+        cuisineType: form.cuisineType,
+        diningStyle: form.diningStyle,
+        location: form.location.trim(),
+        pricePerPerson: parseFloat(form.pricePerPerson) || 0,
+        priceRange: form.priceRange,
+        openingHours: formatOpeningHours(form.openingHoursOpen, form.openingHoursClose),
+        setMenuDetails: form.setMenuDetails,
+        dietaryOptions: form.dietaryOptions,
+        groupSizeCategory: form.groupSizeCategory || 'Table for Two',
+        seatingCapacity: parseInt(form.seatingCapacity, 10) || 1,
+        isActive: form.isActive
+      }
     }
-    const numPrice = parseFloat(form.price)
-    if (isNaN(numPrice) || numPrice <= 0) {
-      setFormError('Price must be a valid positive amount.')
-      return
-    }
-
     const validSlots = slotsList.filter(s => s.startTime && s.endTime)
-    if (validSlots.length === 0) {
-      setFormError('At least one complete time slot is required.')
-      return
-    }
-
-    setFormLoading(true)
-
     const serializedTimeSlots = validSlots
       .map(s => `${toDisplayTime(s.startTime)} - ${toDisplayTime(s.endTime)}`)
       .join(', ')
-
-    const payload = {
+    return {
       title: form.title.trim(),
       description: form.description.trim(),
-      price: numPrice,
+      price: parseFloat(form.price) || 0,
       unit: form.unit.trim(),
       location: form.location.trim(),
       maxParticipants: parseInt(form.maxParticipants, 10) || 1,
@@ -799,11 +859,48 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
       validUntil: form.validUntil || null,
       isActive: form.isActive
     }
+  }
+
+  const validate = () => {
+    if (isHotel) {
+      if (!form.roomType.trim()) return 'Room type is required.'
+      if (!form.location.trim()) return 'Location is required.'
+      if (!form.description.trim()) return 'Description is required.'
+      const p = parseFloat(form.pricePerNight)
+      if (isNaN(p) || p <= 0) return 'Price per night must be a positive amount.'
+      return null
+    }
+    if (isRestaurant) {
+      if (!form.name.trim()) return 'Restaurant / item name is required.'
+      if (!form.location.trim()) return 'Location is required.'
+      if (!form.description.trim()) return 'Description is required.'
+      const p = parseFloat(form.pricePerPerson)
+      if (isNaN(p) || p <= 0) return 'Price per person must be a positive amount.'
+      return null
+    }
+    if (!form.title.trim()) return 'Experience title is required.'
+    if (!form.location.trim()) return 'Operating location is required.'
+    const p = parseFloat(form.price)
+    if (isNaN(p) || p <= 0) return 'Price must be a valid positive amount.'
+    if (slotsList.filter(s => s.startTime && s.endTime).length === 0)
+      return 'At least one complete time slot is required.'
+    return null
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    const err = validate()
+    if (err) { setFormError(err); return }
+
+    setFormError(null)
+    setFormLoading(true)
+
+    const payload = buildPayload()
 
     try {
       const url = modal === 'edit'
-        ? catalogUrl(`/api/catalog/activity-listings/${editTarget.id}`)
-        : catalogUrl('/api/catalog/activity-listings')
+        ? catalogUrl(`${catalogEndpoint}/${editTarget.id}`)
+        : catalogUrl(catalogEndpoint)
       const method = modal === 'edit' ? 'PUT' : 'POST'
 
       const resp = await fetch(url, {
@@ -817,13 +914,13 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
 
       if (resp.ok || resp.status === 201) {
         closeModal()
-        showToast(modal === 'edit' ? 'Experience listing updated.' : 'New experience listing created.')
+        showToast(modal === 'edit' ? 'Listing updated.' : 'Listing created.')
         onRefreshServices && onRefreshServices()
+      } else if (resp.status === 401) {
+        onLogout && onLogout()
       } else if (resp.status === 403) {
         const body = await resp.json().catch(() => ({}))
         setFormError(body.message || 'Only approved providers can manage listings.')
-      } else if (resp.status === 401) {
-        onLogout && onLogout()
       } else {
         const body = await resp.json().catch(() => ({}))
         setFormError(body.message || 'Error saving listing. Check your input.')
@@ -835,51 +932,55 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
     }
   }
 
-  const handleToggleStatus = async (service) => {
-    const newStatus = !service.isActive
+  const handleToggleStatus = async (item) => {
+    const newStatus = !item.isActive
+    let payload
+    if (isHotel) {
+      payload = {
+        roomType: item.roomType, propertyType: item.propertyType, location: item.location,
+        pricePerNight: item.pricePerNight, maxGuests: item.maxGuests, bedDetails: item.bedDetails,
+        minStayNights: item.minStayNights, amenities: item.amenities,
+        bathroomDetails: item.bathroomDetails, description: item.description, isActive: newStatus
+      }
+    } else if (isRestaurant) {
+      payload = {
+        name: item.name, description: item.description, cuisineType: item.cuisineType,
+        diningStyle: item.diningStyle, location: item.location, pricePerPerson: item.pricePerPerson,
+        priceRange: item.priceRange, openingHours: item.openingHours,
+        setMenuDetails: item.setMenuDetails, dietaryOptions: item.dietaryOptions,groupSizeCategory: item.groupSizeCategory || 'Table for Two',
+        seatingCapacity: item.seatingCapacity, isActive: newStatus
+      }
+    } else {
+      payload = {
+        title: item.title, description: item.description, price: item.price, unit: item.unit,
+        location: item.location, maxParticipants: item.maxParticipants, duration: item.duration,
+        availableDays: item.availableDays, timeSlots: item.timeSlots,
+        validFrom: item.validFrom, validUntil: item.validUntil, isActive: newStatus
+      }
+    }
     try {
-      const resp = await fetch(catalogUrl(`/api/catalog/activity-listings/${service.id}`), {
+      const resp = await fetch(catalogUrl(`${catalogEndpoint}/${item.id}`), {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          title: service.title,
-          description: service.description,
-          price: service.price,
-          unit: service.unit,
-          location: service.location,
-          maxParticipants: service.maxParticipants,
-          duration: service.duration,
-          availableDays: service.availableDays,
-          timeSlots: service.timeSlots,
-          validFrom: service.validFrom,
-          validUntil: service.validUntil,
-          isActive: newStatus
-        })
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload)
       })
       if (resp.ok) {
         showToast(`Listing ${newStatus ? 'activated' : 'deactivated'}.`)
         onRefreshServices && onRefreshServices()
-      } else {
-        showToast('Failed to update status.')
-      }
-    } catch {
-      showToast('Network error. Please check connection.')
-    }
+      } else showToast('Failed to update status.')
+    } catch { showToast('Network error.') }
   }
 
-  const executeDeleteService = async () => {
+  const executeDelete = async () => {
     if (!serviceToDelete) return
     setDeleteLoading(true)
     try {
-      const resp = await fetch(catalogUrl(`/api/catalog/activity-listings/${serviceToDelete}`), {
+      const resp = await fetch(catalogUrl(`${catalogEndpoint}/${serviceToDelete}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.status === 204 || resp.ok) {
-        showToast('Listing deleted successfully.')
+        showToast('Listing deleted.')
         setServiceToDelete(null)
         onRefreshServices && onRefreshServices()
       } else if (resp.status === 401) {
@@ -888,17 +989,16 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
         const body = await resp.json().catch(() => ({}))
         showToast(body.message || 'Failed to delete listing.')
       }
-    } catch {
-      showToast('Network error. Please check connection.')
-    } finally {
-      setDeleteLoading(false)
-    }
+    } catch { showToast('Network error.') }
+    finally { setDeleteLoading(false) }
   }
+
+  const primaryName = (item) => isRestaurant ? item.name : isHotel ? item.roomType : item.title
 
   const filtered = services.filter(s => {
     const q = search.toLowerCase().trim()
     const matchSearch = !q ||
-      (s.title || '').toLowerCase().includes(q) ||
+      (primaryName(s) || '').toLowerCase().includes(q) ||
       (s.description || '').toLowerCase().includes(q) ||
       (s.location || '').toLowerCase().includes(q)
     if (!matchSearch) return false
@@ -907,244 +1007,568 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
     return true
   })
 
-  const selectedDates = form.availableDays
-    ? form.availableDays.split(',').map(d => d.trim()).filter(Boolean)
-    : []
-
-  const addSelectedDate = (chosen) => {
-    if (!chosen) return
-    if (form.validFrom && chosen < form.validFrom) {
-      alert('Selected date is before the Valid From date.')
-      return
-    }
-    if (form.validUntil && chosen > form.validUntil) {
-      alert('Selected date is after the Valid Until date.')
-      return
-    }
-    if (!selectedDates.includes(chosen)) {
-      const updated = [...selectedDates, chosen].sort().join(', ')
-      setForm(prev => ({ ...prev, availableDays: updated }))
-    }
-  }
-
-  const removeSelectedDate = (dateToRemove) => {
-    const remaining = selectedDates.filter(x => x !== dateToRemove).join(', ')
-    setForm(prev => ({ ...prev, availableDays: remaining }))
-  }
+  const pageTitle = isHotel ? 'Rooms and Accommodations'
+                  : isRestaurant ? 'Menu and Dining'
+                  : 'Experience Listings'
+  const createLabel = isHotel ? 'Create New Accommodation'
+                    : isRestaurant ? 'Create New Dining Listing'
+                    : 'Create New Experience'
+  const editLabel = isHotel ? 'Edit Accommodation Listing'
+                  : isRestaurant ? 'Edit Dining Listing'
+                  : 'Edit Experience Listing'
+  const emptyLabel = isHotel ? 'No accommodation listings found'
+                   : isRestaurant ? 'No dining listing found'
+                   : 'No experience listings found'
+  const emptyMsg = isHotel ? 'Create Your First Accommodation Listing'
+                 : isRestaurant ? 'Create Your First Dining Listing'
+                 : 'Create Your First Tourism Experience Listing'
 
   return (
     <div className="pd-activities-tab">
       <ConfirmModal
         isOpen={Boolean(serviceToDelete)}
-        title="Delete Experience Listing"
+        title="Delete Listing"
         message="Are you sure you want to delete this listing? It will no longer be discoverable by visitors."
-        confirmText="Delete Listing"
+        confirmText="Delete"
         cancelText="Cancel"
         confirmVariant="danger"
-        onConfirm={executeDeleteService}
+        onConfirm={executeDelete}
         onCancel={() => setServiceToDelete(null)}
         loading={deleteLoading}
       />
 
       <div className="pd-page-header">
         <div className="pd-page-header__left">
-          <h1>Experience Listings</h1>
-          <p>Create, edit, activate, or remove tourism experiences you offer to visitors.</p>
+          <h1>{pageTitle}</h1>
+          <p>Create, edit, activate, or remove listings you offer to visitors.</p>
         </div>
-        <button className="pd-quick-btn pd-quick-btn--primary" onClick={openAdd} id="add-activity-btn">
-          <AddIcon size={16} /> Create New Experience
+        <button className="pd-quick-btn pd-quick-btn--primary" onClick={openAdd} id="add-listing-btn">
+          <AddIcon size={16} /> {createLabel}
         </button>
       </div>
 
       {modal && (
-        <Modal title={modal === 'edit' ? 'Edit Experience Listing' : 'Create New Experience'} onClose={closeModal} wide>
+        <Modal title={modal === 'edit' ? editLabel : createLabel} onClose={closeModal} wide>
           <form onSubmit={handleSubmit} className="pd-modal__form" noValidate>
             {formError && <div className="pd-form-error">{formError}</div>}
 
-            <div className="pd-form-group">
-              <label htmlFor="exp-title">Experience Title *</label>
-              <input
-                id="exp-title"
-                name="title"
-                type="text"
-                value={form.title}
-                onChange={handleFormChange}
-                placeholder="e.g. Guided Snorkeling at Pigeon Island"
-                required
-              />
-            </div>
+            {/* ───────── RESTAURANT FORM ───────── */}
+            {isRestaurant && (
+              <>
+                <div className="pd-form-group">
+                  <label htmlFor="rest-name">Menu Item / Restaurant Name *</label>
+                  <input
+                    id="rest-name"
+                    name="name"
+                    type="text"
+                    value={form.name}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Seafood Platter for Two"
+                    required
+                  />
+                </div>
 
-            <div className="pd-form-group">
-              <label htmlFor="exp-location">Operating Location *</label>
-              <input
-                id="exp-location"
-                name="location"
-                type="text"
-                value={form.location}
-                onChange={handleFormChange}
-                placeholder="e.g. Nilaveli, Trincomalee"
-                required
-              />
-            </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="rest-cuisine">Cuisine Type *</label>
+                    <input
+                      id="rest-cuisine"
+                      name="cuisineType"
+                      type="text"
+                      value={form.cuisineType}
+                      onChange={handleFormChange}
+                      placeholder="e.g. Sri Lankan & Seafood"
+                      required
+                    />
+                  </div>
+                  <div className="pd-form-group">
+                    <label htmlFor="rest-style">Dining Style *</label>
+                    <select id="rest-style" name="diningStyle" value={form.diningStyle} onChange={handleFormChange}>
+                      <option>Casual Dining</option>
+                      <option>Fine Dining</option>
+                      <option>Set Menu</option>
+                      <option>Buffet</option>
+                      <option>Street Food</option>
+                      <option>Cafe / Bistro</option>
+                    </select>
+                  </div>
+                </div>
 
-            <div className="pd-form-group">
-              <label htmlFor="exp-desc">Description & Inclusions *</label>
-              <textarea
-                id="exp-desc"
-                name="description"
-                rows="3"
-                value={form.description}
-                onChange={handleFormChange}
-                placeholder="Describe the experience, itinerary, gear provided, and meeting point..."
-                required
-              />
-            </div>
+                <div className="pd-form-group">
+                  <label htmlFor="rest-location">Location *</label>
+                  <input
+                    id="rest-location"
+                    name="location"
+                    type="text"
+                    value={form.location}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Galle Fort, Galle"
+                    required
+                  />
+                </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-              <div className="pd-form-group">
-                <label htmlFor="exp-price">Price (LKR) *</label>
-                <input
-                  id="exp-price"
-                  name="price"
-                  type="number"
-                  min="0.01"
-                  step="100"
-                  value={form.price}
-                  onChange={handleFormChange}
-                  placeholder="e.g. 8500"
-                  required
-                />
-              </div>
+                <div className="pd-form-group">
+                  <label htmlFor="rest-desc">Description *</label>
+                  <textarea
+                    id="rest-desc"
+                    name="description"
+                    rows="3"
+                    value={form.description}
+                    onChange={handleFormChange}
+                    placeholder="Describe the menu, ambiance, signature dishes..."
+                    required
+                  />
+                </div>
 
-              <div className="pd-form-group">
-                <label htmlFor="exp-unit">Pricing Unit *</label>
-                <select id="exp-unit" name="unit" value={form.unit} onChange={handleFormChange}>
-                  <option value="Per Person">Per Person</option>
-                  <option value="Per Pair">Per Two Persons</option>
-                  <option value="Per Group">Per Group</option>
-                  <option value="Per Hour">Per Hour</option>
-                  <option value="Per Day">Per Day</option>
-                </select>
-              </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="rest-price">Price per Person (LKR) *</label>
+                    <input
+                      id="rest-price"
+                      name="pricePerPerson"
+                      type="number"
+                      min="0.01"
+                      step="100"
+                      value={form.pricePerPerson}
+                      onChange={handleFormChange}
+                      placeholder="e.g. 3500"
+                      required
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div className="pd-form-group">
+                    <label htmlFor="rest-range">Price Range</label>
+                    <select
+                      id="rest-range"
+                      name="priceRange"
+                      value={form.priceRange}
+                      onChange={handleFormChange}
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    >
+                      <option value="Budget">Budget</option>
+                      <option value="Moderate">Moderate</option>
+                      <option value="Upscale">Upscale</option>
+                      <option value="Fine Dining">Fine Dining</option>
+                    </select>
+                  </div>
+                </div>
 
-              <div style={{ maxWidth: 90 }} className="pd-form-group">
-                <label htmlFor="exp-max">Max Guests</label>
-                <input
-                  id="exp-max"
-                  name="maxParticipants"
-                  type="number"
-                  min="1"
-                  value={form.maxParticipants}
-                  onChange={handleFormChange}
-                  required
-                />
-              </div>
-            </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'start' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="rest-group-size">Group Size Category *</label>
+                    <select
+                      id="rest-group-size"
+                      name="groupSizeCategory"
+                      value={form.groupSizeCategory}
+                      onChange={handleFormChange}
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    >
+                      <option value="Table for One">Table for One</option>
+                      <option value="Table for Two">Table for Two</option>
+                      <option value="Small Group (4 or Less)">Small Group (4 or Less)</option>
+                      <option value="Moderate Group (10 or Less)">Moderate Group (10 or Less)</option>
+                      <option value="Large Group (More than 10)">Large Group (More than 10)</option>
+                    </select>
+                  </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div className="pd-form-group">
-                <label htmlFor="exp-valid-from">Valid From</label>
-                <input
-                  id="exp-valid-from"
-                  name="validFrom"
-                  type="date"
-                  value={form.validFrom}
-                  onChange={handleFormChange}
-                />
-              </div>
-
-              <div className="pd-form-group">
-                <label htmlFor="exp-valid-until">Valid Until</label>
-                <input
-                  id="exp-valid-until"
-                  name="validUntil"
-                  type="date"
-                  value={form.validUntil}
-                  onChange={handleFormChange}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '4px' }}>
-              <div className="pd-form-group">
-                <label htmlFor="exp-duration">Duration *</label>
-                <input
-                  id="exp-duration"
-                  name="duration"
-                  type="text"
-                  value={form.duration}
-                  onChange={handleDurationChange}
-                  placeholder="e.g. 2 Hours or 45 Mins"
-                  required
-                />
-              </div>
-
-              <div className="pd-form-group">
-                <label htmlFor="exp-days">Available Days *</label>
-                <input
-                  id="exp-days"
-                  name="availableDays"
-                  type="text"
-                  value={form.availableDays}
-                  onChange={handleFormChange}
-                  placeholder="e.g. Daily / Mon–Fri"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Dynamic Time Slots Section with sequential continuity logic */}
-            <div style={{ marginTop: '16px', background: '#faf8f3', padding: '16px', borderRadius: '10px', border: '1px solid #ede8dc' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <label style={{ fontWeight: 600, fontSize: '13.5px', color: '#123b5d' }}>Daily Time Slots Configuration</label>
-                <select
-                  value={slotsList.length}
-                  onChange={(e) => handleSlotCountChange(e.target.value)}
-                  style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}
-                >
-                  {[1, 2, 3, 4, 5, 6].map(n => (
-                    <option key={n} value={n}>{n} {n === 1 ? 'Slot' : 'Slots'}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '10px' }}>
-                {slotsList.map((slot, idx) => (
-                  <div key={idx} style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '10px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#168aad' }}>Slot {idx + 1}</span>
-                      <span style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>{form.duration || 'Duration not set'}</span>
+                  {/* Only render the second column when Large Group is selected */}
+                  {form.groupSizeCategory === 'Large Group (More than 10)' && (
+                    <div className="pd-form-group">
+                      <label htmlFor="rest-seats">Exact Seating Capacity *</label>
+                      <input
+                        id="rest-seats"
+                        name="seatingCapacity"
+                        type="number"
+                        min="11"
+                        max="1000"
+                        value={form.seatingCapacity}
+                        onChange={handleFormChange}
+                        placeholder="e.g. 42"
+                        required
+                        style={{ width: '100%', boxSizing: 'border-box' }}
+                      />
                     </div>
+                  )}
+                </div>
 
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <div style={{ flex: 1 }}>
-                        <label style={{ fontSize: '10px', color: '#888', display: 'block', marginBottom: '2px' }}>Start</label>
-                        <input
-                          type="time"
-                          value={slot.startTime}
-                          onChange={(e) => updateSlotStartTime(idx, e.target.value)}
-                          style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}
-                          required
-                        />
-                      </div>
-                      <span style={{ color: '#888', fontSize: '12px', paddingBottom: '6px', marginLeft: '12px', marginTop: '30px'}}>to</span>
-                      <div style={{ flex: 1 }}>
-                        <label style={{ fontSize: '10px', color: '#888', display: 'block', marginBottom: '2px' }}>End</label>
-                        <input
-                          type="time"
-                          value={slot.endTime}
-                          onChange={(e) => updateSlotEndTime(idx, e.target.value)}
-                          style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}
-                          required
-                        />
-                      </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="pd-form-group">
+                      <label htmlFor="rest-hours-open">Opening Time *</label>
+                      <input
+                        id="rest-hours-open"
+                        name="openingHoursOpen"
+                        type="time"
+                        value={form.openingHoursOpen}
+                        onChange={handleFormChange}
+                        required
+                        style={{ width: '100%', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div className="pd-form-group">
+                      <label htmlFor="rest-hours-close">Closing Time *</label>
+                      <input
+                        id="rest-hours-close"
+                        name="openingHoursClose"
+                        type="time"
+                        value={form.openingHoursClose}
+                        onChange={handleFormChange}
+                        required
+                        style={{ width: '100%', boxSizing: 'border-box' }}
+                      />
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            
+                <div className="pd-form-group">
+                  <label htmlFor="rest-menu">Menu Details</label>
+                  <textarea
+                    id="rest-menu"
+                    name="setMenuDetails"
+                    rows="3"
+                    value={form.setMenuDetails}
+                    onChange={handleFormChange}
+                    placeholder="Courses included, fixed price menus, tasting menus..."
+                  />
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="rest-diet">Dietary Options</label>
+                  <input
+                    id="rest-diet"
+                    name="dietaryOptions"
+                    type="text"
+                    value={form.dietaryOptions}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Halal, Vegetarian, Vegan"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* ───────── ACCOMMODATION FORM ───────── */}
+            {isHotel && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="hotel-room">Room Type *</label>
+                    <input
+                      id="hotel-room"
+                      name="roomType"
+                      type="text"
+                      value={form.roomType}
+                      onChange={handleFormChange}
+                      placeholder="e.g. Deluxe Ocean View Suite"
+                      required
+                    />
+                  </div>
+                  <div className="pd-form-group">
+                    <label htmlFor="hotel-prop">Property Type *</label>
+                    <select id="hotel-prop" name="propertyType" value={form.propertyType} onChange={handleFormChange}>
+                      <option>Boutique Hotel</option>
+                      <option>Luxury Resort</option>
+                      <option>Villa</option>
+                      <option>Guesthouse</option>
+                      <option>Bungalow</option>
+                      <option>Hostel</option>
+                      <option>Homestay</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="hotel-location">Location *</label>
+                  <input
+                    id="hotel-location"
+                    name="location"
+                    type="text"
+                    value={form.location}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Unawatuna, Southern Province"
+                    required
+                  />
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="hotel-desc">Description *</label>
+                  <textarea
+                    id="hotel-desc"
+                    name="description"
+                    rows="3"
+                    value={form.description}
+                    onChange={handleFormChange}
+                    placeholder="Describe the room, view, amenities, house rules..."
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="hotel-price">Price per Night (LKR) *</label>
+                    <input
+                      id="hotel-price"
+                      name="pricePerNight"
+                      type="number"
+                      min="0.01"
+                      step="100"
+                      value={form.pricePerNight}
+                      onChange={handleFormChange}
+                      placeholder = "e.g. 8500"
+                      required
+                    />
+                  </div>
+                  <div className="pd-form-group">
+                    <label htmlFor="hotel-guests">Max Guests *</label>
+                    <input
+                      id="hotel-guests"
+                      name="maxGuests"
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={form.maxGuests}
+                      onChange={handleFormChange}
+                      required
+                    />
+                  </div>
+                  <div className="pd-form-group">
+                    <label htmlFor="hotel-minstay">Min Stay (nights)</label>
+                    <input
+                      id="hotel-minstay"
+                      name="minStayNights"
+                      type="number"
+                      min="1"
+                      max="365"
+                      value={form.minStayNights}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="hotel-bed">Bed Details *</label>
+                  <input
+                    id="hotel-bed"
+                    name="bedDetails"
+                    type="text"
+                    value={form.bedDetails}
+                    onChange={handleFormChange}
+                    placeholder="e.g. 1 King Bed + 1 Sofa Bed"
+                    required
+                  />
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="hotel-amenities">Amenities</label>
+                  <input
+                    id="hotel-amenities"
+                    name="amenities"
+                    type="text"
+                    value={form.amenities}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Free WiFi, AC, Breakfast, Pool"
+                  />
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="hotel-bath">Bathroom Details</label>
+                  <input
+                    id="hotel-bath"
+                    name="bathroomDetails"
+                    type="text"
+                    value={form.bathroomDetails}
+                    onChange={handleFormChange}
+                    placeholder="e.g. En-suite with hot water"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* ───────── ACTIVITY FORM ───────── */}
+            {!isHotel && !isRestaurant && (
+              <>
+                <div className="pd-form-group">
+                  <label htmlFor="exp-title">Experience Title *</label>
+                  <input
+                    id="exp-title"
+                    name="title"
+                    type="text"
+                    value={form.title}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Guided Snorkeling at Pigeon Island"
+                    required
+                  />
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="exp-location">Operating Location *</label>
+                  <input
+                    id="exp-location"
+                    name="location"
+                    type="text"
+                    value={form.location}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Nilaveli, Trincomalee"
+                    required
+                  />
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="exp-desc">Description & Inclusions *</label>
+                  <textarea
+                    id="exp-desc"
+                    name="description"
+                    rows="3"
+                    value={form.description}
+                    onChange={handleFormChange}
+                    placeholder="Describe the experience, itinerary, gear provided, and meeting point..."
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="exp-price">Price (LKR) *</label>
+                    <input
+                      id="exp-price"
+                      name="price"
+                      type="number"
+                      min="0.01"
+                      step="100"
+                      value={form.price}
+                      onChange={handleFormChange}
+                      placeholder="e.g. 8500"
+                      required
+                    />
+                  </div>
+
+                  <div className="pd-form-group">
+                    <label htmlFor="exp-unit">Pricing Unit *</label>
+                    <select id="exp-unit" name="unit" value={form.unit} onChange={handleFormChange}>
+                      <option value="Per Person">Per Person</option>
+                      <option value="Per Pair">Per Two Persons</option>
+                      <option value="Per Group">Per Group</option>
+                      <option value="Per Hour">Per Hour</option>
+                      <option value="Per Day">Per Day</option>
+                    </select>
+                  </div>
+
+                  <div style={{ maxWidth: 90 }} className="pd-form-group">
+                    <label htmlFor="exp-max">Max Guests</label>
+                    <input
+                      id="exp-max"
+                      name="maxParticipants"
+                      type="number"
+                      min="1"
+                      value={form.maxParticipants}
+                      onChange={handleFormChange}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="exp-valid-from">Valid From</label>
+                    <input
+                      id="exp-valid-from"
+                      name="validFrom"
+                      type="date"
+                      value={form.validFrom}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+
+                  <div className="pd-form-group">
+                    <label htmlFor="exp-valid-until">Valid Until</label>
+                    <input
+                      id="exp-valid-until"
+                      name="validUntil"
+                      type="date"
+                      value={form.validUntil}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '4px' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="exp-duration">Duration *</label>
+                    <input
+                      id="exp-duration"
+                      name="duration"
+                      type="text"
+                      value={form.duration}
+                      onChange={handleDurationChange}
+                      placeholder="e.g. 2 Hours or 45 Mins"
+                      required
+                    />
+                  </div>
+
+                  <div className="pd-form-group">
+                    <label htmlFor="exp-days">Available Days *</label>
+                    <input
+                      id="exp-days"
+                      name="availableDays"
+                      type="text"
+                      value={form.availableDays}
+                      onChange={handleFormChange}
+                      placeholder="e.g. Daily / Mon–Fri"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Dynamic Time Slots Section */}
+                <div style={{ marginTop: '16px', background: '#faf8f3', padding: '16px', borderRadius: '10px', border: '1px solid #ede8dc' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <label style={{ fontWeight: 600, fontSize: '13.5px', color: '#123b5d' }}>Daily Time Slots Configuration</label>
+                    <select
+                      value={slotsList.length}
+                      onChange={(e) => handleSlotCountChange(e.target.value)}
+                      style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}
+                    >
+                      {[1, 2, 3, 4, 5, 6].map(n => (
+                        <option key={n} value={n}>{n} {n === 1 ? 'Slot' : 'Slots'}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '10px' }}>
+                    {slotsList.map((slot, idx) => (
+                      <div key={idx} style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '10px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#168aad' }}>Slot {idx + 1}</span>
+                          <span style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>{form.duration || 'Duration not set'}</span>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ fontSize: '10px', color: '#888', display: 'block', marginBottom: '2px' }}>Start</label>
+                            <input
+                              type="time"
+                              value={slot.startTime}
+                              onChange={(e) => updateSlotStartTime(idx, e.target.value)}
+                              style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                              required
+                            />
+                          </div>
+                          <span style={{ color: '#888', fontSize: '12px', paddingBottom: '6px', marginLeft: '12px', marginTop: '30px' }}>to</span>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ fontSize: '10px', color: '#888', display: 'block', marginBottom: '2px' }}>End</label>
+                            <input
+                              type="time"
+                              value={slot.endTime}
+                              onChange={(e) => updateSlotEndTime(idx, e.target.value)}
+                              style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className="pd-checkbox-group" style={{ marginTop: '8px' }}>
               <label className="pd-checkbox-label">
                 <input
@@ -1162,7 +1586,7 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
                 Cancel
               </button>
               <button type="submit" className="pd-quick-btn pd-quick-btn--primary" disabled={formLoading}>
-                {formLoading ? 'Saving…' : (modal === 'edit' ? 'Save Changes' : 'Publish Experience')}
+                {formLoading ? 'Saving…' : (modal === 'edit' ? 'Save Changes' : createLabel)}
               </button>
             </div>
           </form>
@@ -1201,49 +1625,124 @@ function ActivitiesTab({ token, onLogout, services = [], onRefreshServices, show
           {filtered.length === 0 ? (
             <div className="pd-empty">
               <div className="pd-empty__icon"><KitesurfingIcon size={32} /></div>
-              <p className="pd-empty__title">No experience listings found</p>
-              <p className="pd-empty__msg">Create your first tourism experience listing to start receiving visitor bookings.</p>
+              <p className="pd-empty__title">{emptyLabel}</p>
               <button className="pd-quick-btn pd-quick-btn--primary" onClick={openAdd} style={{ marginTop: '12px' }}>
-                <AddIcon size={16} /> Add Your First Listing
+                <AddIcon size={16} /> {emptyMsg}
               </button>
             </div>
           ) : (
             <div className="pd-table-wrap" style={{ border: 'none', borderRadius: 0 }}>
               <table className="pd-table">
                 <thead>
-                  <tr>
-                    <th>Experience Title</th>
-                    <th>Location</th>
-                    <th>Price</th>
-                    <th>Time Slots</th>
-                    <th>Max Guests</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
+                  {isRestaurant ? (
+                    <tr>
+                      <th>Name</th>
+                      <th>Cuisine</th>
+                      <th>Location</th>
+                      <th>Price / Person</th>
+                      <th>Seating</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  ) : isHotel ? (
+                    <tr>
+                      <th>Room Type</th>
+                      <th>Property</th>
+                      <th>Location</th>
+                      <th>Price / Night</th>
+                      <th>Max Guests</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <th>Experience Title</th>
+                      <th>Location</th>
+                      <th>Price (LKR)</th>
+                      <th>Time Slots</th>
+                      <th>Max Guests</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  )}
                 </thead>
                 <tbody>
                   {filtered.map(s => (
                     <tr key={s.id}>
-                      <td style={{ fontWeight: 600, color: '#123b5d' }}>
-                        <div>{s.title}</div>
-                        <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 400 }}>{s.description?.slice(0, 60)}{s.description?.length > 60 ? '…' : ''}</div>
-                      </td>
-                      <td>{s.location}</td>
-                      <td style={{ fontWeight: 700, color: '#4f8a45' }}>
-                        LKR {Number(s.price).toLocaleString()} <span style={{ fontSize: '11px', color: '#777', fontWeight: 400 }}>/ {s.unit}</span>
-                      </td>
-                      <td style={{ fontSize: '12px', color: '#475569', maxWidth: '180px' }}>
-                        {s.timeSlots ? (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                            {s.timeSlots.split(',').map((slot, i) => (
-                              <span key={i} style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
-                                {slot.trim()}
-                              </span>
-                            ))}
-                          </div>
-                        ) : '—'}
-                      </td>
-                      <td>{s.maxParticipants} guests</td>
+                      {isRestaurant ? (
+                        <>
+                          <td style={{ fontWeight: 600, color: '#123b5d' }}>
+                            <div>{s.name}</div>
+                            <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 400 }}>
+                              {s.description?.slice(0, 60)}{s.description?.length > 60 ? '…' : ''}
+                            </div>
+                          </td>
+                          <td>
+                            {s.cuisineType}
+                            <div style={{ fontSize: '11px', color: '#888' }}>{s.diningStyle}</div>
+                          </td>
+                          <td>{s.location}</td>
+                          <td style={{ fontWeight: 700, color: '#4f8a45' }}>
+                            LKR {Number(s.pricePerPerson).toLocaleString()}
+                            {s.priceRange && (
+                              <div style={{ fontSize: '11px', color: '#888', fontWeight: 400 }}>{s.priceRange}</div>
+                            )}
+                          </td>
+                          <td>
+                            {s.groupSizeCategory === 'Large Group (More than 10)' ? (
+                              <>
+                                Large Group
+                                <div style={{ fontSize: '11px', color: '#888' }}>
+                                  {s.seatingCapacity} seats
+                                </div>
+                              </>
+                            ) : (
+                              s.groupSizeCategory || `${s.seatingCapacity} seats`
+                            )}
+                          </td>
+                        </>
+                      ) : isHotel ? (
+                        <>
+                          <td style={{ fontWeight: 600, color: '#123b5d' }}>
+                            <div>{s.roomType}</div>
+                            <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 400 }}>
+                              {s.description?.slice(0, 60)}{s.description?.length > 60 ? '…' : ''}
+                            </div>
+                          </td>
+                          <td>{s.propertyType}</td>
+                          <td>{s.location}</td>
+                          <td style={{ fontWeight: 700, color: '#4f8a45' }}>
+                            LKR {Number(s.pricePerNight).toLocaleString()}
+                          </td>
+                          <td>{s.maxGuests} guests</td>
+                        </>
+                      ) : (
+                        <>
+                          <td style={{ fontWeight: 600, color: '#123b5d' }}>
+                            <div>{s.title}</div>
+                            <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 400 }}>
+                              {s.description?.slice(0, 60)}{s.description?.length > 60 ? '…' : ''}
+                            </div>
+                          </td>
+                          <td>{s.location}</td>
+                          <td style={{ fontWeight: 700, color: '#4f8a45' }}>
+                            LKR {Number(s.price).toLocaleString()}{' '}
+                            <span style={{ fontSize: '11px', color: '#777', fontWeight: 400 }}>/ {s.unit}</span>
+                          </td>
+                          <td style={{ fontSize: '12px', color: '#475569', maxWidth: '180px' }}>
+                            {s.timeSlots ? (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {s.timeSlots.split(',').map((slot, i) => (
+                                  <span key={i} style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                                    {slot.trim()}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : '—'}
+                          </td>
+                          <td>{s.maxParticipants} guests</td>
+                        </>
+                      )}
                       <td>
                         <button
                           type="button"
@@ -1333,10 +1832,32 @@ function ProviderDashboard({ onLogout }) {
     } catch {}
   }, [token])
 
+  // ── Category detection ──
+  const serviceTypeLower = (providerInfo?.serviceType || '').toLowerCase()
+  const isHotel =
+    serviceTypeLower.includes('hotel') ||
+    serviceTypeLower.includes('accommodat') ||
+    serviceTypeLower.includes('villa') ||
+    serviceTypeLower.includes('resort') ||
+    serviceTypeLower.includes('room')
+  const isRestaurant =
+    serviceTypeLower.includes('restaurant') ||
+    serviceTypeLower.includes('dining') ||
+    serviceTypeLower.includes('dinner') ||
+    serviceTypeLower.includes('food') ||
+    serviceTypeLower.includes('cafe') ||
+    serviceTypeLower.includes('catering')
+
+  const catalogEndpoint = isHotel
+    ? '/api/catalog/accommodation-listings'
+    : isRestaurant
+    ? '/api/catalog/restaurant-listings'
+    : '/api/catalog/activity-listings'
+
   const fetchServices = useCallback(async () => {
-    if (!token) return
+    if (!token || !providerInfo) return
     try {
-      const resp = await fetch(catalogUrl('/api/catalog/activity-listings'), {
+      const resp = await fetch(catalogUrl(catalogEndpoint), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
@@ -1346,12 +1867,15 @@ function ProviderDashboard({ onLogout }) {
     } catch (err) {
       console.error('Failed to load listings', err)
     }
-  }, [token])
+  }, [token, catalogEndpoint, providerInfo])
 
   useEffect(() => {
     fetchProviderInfo()
+  }, [fetchProviderInfo])
+
+  useEffect(() => {
     fetchServices()
-  }, [fetchProviderInfo, fetchServices])
+  }, [fetchServices])
 
   const handleUpdateBookingStatus = (bookingId, newStatus) => {
     setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b))
@@ -1399,10 +1923,16 @@ function ProviderDashboard({ onLogout }) {
   const unreadNotifCount = notifications.filter(n => !n.read).length
 
   const navItems = [
-    { key: 'overview',      icon: <DashboardIcon size={18} />,         label: 'Overview' },
-    { key: 'business',      icon: <StorefrontIcon size={18} />,        label: 'Business Profile' },
-    { key: 'services',      icon: <KitesurfingIcon size={18} />,       label: 'Activities & Services' },
-    { key: 'bookings',      icon: <CalendarMonthIcon size={18} />,      label: 'Bookings' },
+    { key: 'overview',      icon: <DashboardIcon size={18} />,          label: 'Overview' },
+    { key: 'business',      icon: <StorefrontIcon size={18} />,         label: 'Business Profile' },
+    {
+      key: 'services',
+      icon: <KitesurfingIcon size={18} />,
+      label: isHotel ? 'Rooms & Accommodations'
+           : isRestaurant ? 'Menu & Dining'
+           : 'Activities & Services'
+    },
+    { key: 'bookings',      icon: <CalendarMonthIcon size={18} />,       label: 'Bookings' },
     { key: 'notifications', icon: <NotificationsActiveIcon size={18} />, label: 'Notifications', badge: unreadNotifCount > 0 ? unreadNotifCount : null },
     { key: 'account',       icon: <PermIdentityIcon size={18} />,        label: 'Account' }
   ]
@@ -1449,7 +1979,7 @@ function ProviderDashboard({ onLogout }) {
               </div>
             </div>
           )}
-          <button className="pd-logout-btn" onClick5={handleLogout} id="pd-logout-btn" onClick={handleLogout}>
+          <button className="pd-logout-btn" id="pd-logout-btn" onClick={handleLogout}>
             <span className="pd-nav-icon"><LogoutIcon size={18} /></span> Log Out
           </button>
         </div>
@@ -1477,10 +2007,13 @@ function ProviderDashboard({ onLogout }) {
         )}
 
         {activeTab === 'services' && (
-          <ActivitiesTab
+          <ListingsTab
             token={token}
             onLogout={handleLogout}
             services={services}
+            isHotel={isHotel}
+            isRestaurant={isRestaurant}
+            catalogEndpoint={catalogEndpoint}
             onRefreshServices={fetchServices}
             showToast={showToast}
           />

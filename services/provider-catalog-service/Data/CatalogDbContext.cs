@@ -11,6 +11,8 @@ public class CatalogDbContext : DbContext
     }
 
     public DbSet<ActivityListing> ActivityListings { get; set; }
+    public DbSet<RestaurantListing> RestaurantListings { get; set; }
+    public DbSet<AccommodationListing> AccommodationListings { get; set; }
 	public DbSet<ProviderApplication> ProviderApplications { get; set; }
 	public DbSet<Provider> Providers { get; set; }
 	
@@ -21,6 +23,14 @@ public class CatalogDbContext : DbContext
     modelBuilder.Entity<ActivityListing>()
         .Property(l => l.Price)
         .HasPrecision(18, 2);
+
+    modelBuilder.Entity<RestaurantListing>()
+                .Property(l => l.PricePerPerson)
+                .HasPrecision(18, 2);
+
+    modelBuilder.Entity<AccommodationListing>()
+                .Property(l => l.PricePerNight)
+                .HasPrecision(18, 2);
 	
 	modelBuilder.Entity<ProviderApplication>()
             .Property(p => p.Status)

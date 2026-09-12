@@ -26,4 +26,10 @@ public class Provider
 
     public ICollection<ActivityListing> ActivityListings { get; set; }
         = new List<ActivityListing>();
+
+    public ICollection<RestaurantListing> RestaurantListings { get; set; }
+            = new List<RestaurantListing>();
+
+    public ICollection<AccommodationListing> AccommodationListings { get; set; }
+            = new List<AccommodationListing>();
 }
