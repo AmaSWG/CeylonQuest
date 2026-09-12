@@ -24,7 +24,6 @@ public class CatalogDbContext : DbContext
         .Property(l => l.Price)
         .HasPrecision(18, 2);
 
-<<<<<<< Updated upstream
     modelBuilder.Entity<RestaurantListing>()
                 .Property(l => l.PricePerPerson)
                 .HasPrecision(18, 2);
@@ -32,14 +31,13 @@ public class CatalogDbContext : DbContext
     modelBuilder.Entity<AccommodationListing>()
                 .Property(l => l.PricePerNight)
                 .HasPrecision(18, 2);
-=======
+
     // Indexes for public search and browsing performance
     modelBuilder.Entity<ActivityListing>()
         .HasIndex(l => new { l.IsActive, l.CreatedAt });
 
     modelBuilder.Entity<ActivityListing>()
         .HasIndex(l => new { l.IsActive, l.Price });
->>>>>>> Stashed changes
 	
 	modelBuilder.Entity<ProviderApplication>()
             .Property(p => p.Status)
