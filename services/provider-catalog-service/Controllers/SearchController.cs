@@ -33,10 +33,10 @@ public class SearchController : ControllerBase
         [FromQuery] string? sortOrder = null,
         [FromQuery] string? availableDay = null,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 8)
+        [FromQuery] int pageSize = 9)
     {
         if (page < 1) page = 1;
-        if (pageSize < 1) pageSize = 8;
+        if (pageSize < 1) pageSize = 9;
         if (pageSize > 50) pageSize = 50;
 
         var keyword = q?.Trim().ToLower() ?? "";
