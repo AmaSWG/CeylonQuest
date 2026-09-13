@@ -577,6 +577,87 @@ function VisitorDashboard({ onLogout }) {
   )
 }
 
+function ServiceDetailModal({ item, onClose }) {
+  if (!item) return null
+
+  const icons = {
+    experience:    [HourglassTopIcon, GroupIcon],
+    restaurant:    [RestaurantIcon, DiningIcon, GroupIcon],
+    accommodation: [HouseIcon, GroupIcon, HotelIcon],
+  }[item.type?.toLowerCase()] || []
+
+  return (
+    <div className="vd-modal-overlay" onClick={onClose}>
+      <div className="vd-detail-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="vd-detail-modal__header">
+          <button className="vd-detail-modal__close" onClick={onClose} aria-label="Close">
+            <CloseIcon size={16} />
+          </button>
+          <span className={`vd-type-badge vd-type-badge--${item.type.toLowerCase()}`}>
+            {item.type}
+          </span>
+          <h2 className="vd-detail-modal__title">{item.title}</h2>
+          <p className="vd-detail-modal__provider">By {item.providerBusinessName}</p>
+        </div>
+
+        <div className="vd-detail-modal__body">
+          <p className="vd-detail-modal__desc">{item.description}</p>
+
+          <div className="vd-detail-modal__grid">
+            {item.keyDetail && item.keyDetail.split('•').map((detail, idx) => {
+              const Icon = icons[idx] || GroupIcon
+              return (
+                <div key={idx} className="vd-detail-modal__item">
+                  <Icon size={16} />
+                  <div className="vd-detail-modal__item-text">
+                    <span className="vd-detail-modal__item-value">{detail.trim()}</span>
+                  </div>
+                </div>
+              )
+            })}
+            {item.scheduleInfo && (
+              <div className="vd-detail-modal__item">
+                <AccessTimeFilledIcon size={16} />
+                <div className="vd-detail-modal__item-text">
+                  <span className="vd-detail-modal__item-label">Schedule</span>
+                  <span className="vd-detail-modal__item-value">{item.scheduleInfo}</span>
+                </div>
+              </div>
+            )}
+            {item.location && (
+              <div className="vd-detail-modal__item">
+                <LocationOnIcon size={16} />
+                <div className="vd-detail-modal__item-text">
+                  <span className="vd-detail-modal__item-label">Location</span>
+                  <span className="vd-detail-modal__item-value">{item.location}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="vd-detail-modal__price-row">
+            <span className="vd-detail-modal__price-label">Price</span>
+            <span className="vd-detail-modal__price-value">{item.priceFormatted}</span>
+          </div>
+        </div>
+
+        <div className="vd-detail-modal__footer">
+          <button type="button" className="vd-cancel-btn" onClick={onClose}>
+            Close
+          </button>
+          <button
+            type="button"
+            className="vd-save-btn"
+            onClick={() => alert(`Booking: ${item.title}`)}
+          >
+            Book Now
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Explore / Search & Browse Tab ─────────────────────────────────
 
 function ExploreTab() {
@@ -585,6 +666,7 @@ function ExploreTab() {
   const [minPriceInput, setMinPriceInput] = useState('')
   const [maxPriceInput, setMaxPriceInput] = useState('')
   const [sortInput, setSortInput] = useState('') 
+  const [selectedItem, setSelectedItem] = useState(null)
   
   // Search state sent to backend
   const [appliedFilters, setAppliedFilters] = useState({
@@ -631,7 +713,7 @@ function ExploreTab() {
         if (appliedFilters.sort) params.append('sort', appliedFilters.sort)
 
         params.append('page', appliedFilters.page)
-        params.append('pageSize', 8)
+        params.append('pageSize', 9)
         const resp = await fetch(catalogUrl(`/api/catalog/search?${params.toString()}`))
         if (resp.ok && isMounted) {
           const result = await resp.json()
@@ -801,47 +883,37 @@ function ExploreTab() {
         <div className="vd-filter-section vd-filter-section--price">
           <label className="vd-filter-label">Price Range (LKR) and Sort</label>
           <div className="vd-price-controls">
-            <input
-              type="number"
-              min="0"
-              placeholder="Min LKR"
-              className="vd-price-input"
-              value={minPriceInput}
-              onChange={(e) => setMinPriceInput(e.target.value)}
-            />
-            <span className="vd-price-separator">–</span>
-            <input
-              type="number"
-              min="0"
-              placeholder="Max LKR"
-              className="vd-price-input"
-              value={maxPriceInput}
-              onChange={(e) => setMaxPriceInput(e.target.value)}
-            />
-
-            <div className="vd-price-presets">
-
-            <select
-              className="vd-sort-select"
-              value={sortInput}
-              onChange={(e) => setSortInput(e.target.value)}
-            >
+            <select className="vd-sort-select" value={sortInput} onChange={(e) => setSortInput(e.target.value)}>
               <option value="">Sort: Default</option>
               <option value="price_asc">Price: Low to High</option>
               <option value="price_desc">Price: High to Low</option>
             </select>
 
-              <button type="button" className="vd-preset-btn" onClick={() => handlePricePreset(0, 5000)}>
-                Under 5k
-              </button>
-              <button type="button" className="vd-preset-btn" onClick={() => handlePricePreset(5000, 15000)}>
-                5k – 15k
-              </button>
-              <button type="button" className="vd-preset-btn" onClick={() => handlePricePreset(15000, '')}>
-                15k+
-              </button>
+            <div className="vd-price-input-group">
+              <input
+                type="number"
+                min="0"
+                placeholder="Min LKR"
+                className="vd-price-input"
+                value={minPriceInput}
+                onChange={(e) => setMinPriceInput(e.target.value)}
+              />
+              <span className="vd-price-separator">–</span>
+              <input
+                type="number"
+                min="0"
+                placeholder="Max LKR"
+                className="vd-price-input"
+                value={maxPriceInput}
+                onChange={(e) => setMaxPriceInput(e.target.value)}
+              />
             </div>
-            
+
+            <div className="vd-price-presets">
+              <button type="button" className="vd-preset-btn" onClick={() => handlePricePreset(0, 5000)}>Under 5k</button>
+              <button type="button" className="vd-preset-btn" onClick={() => handlePricePreset(5000, 15000)}>5k – 15k</button>
+              <button type="button" className="vd-preset-btn" onClick={() => handlePricePreset(15000, '')}>15k+</button>
+            </div>
           </div>
         </div>
       </div>
@@ -917,6 +989,7 @@ function ExploreTab() {
                 <span className={`vd-type-badge vd-type-badge--${item.type.toLowerCase()}`}>
                   {item.type}
                 </span>
+                <span className="vd-service-card__provider">By {item.providerBusinessName}</span>
               </div>
               
               <div className="vd-service-card__body">
@@ -952,17 +1025,23 @@ function ExploreTab() {
               </div>
 
               <div className="vd-service-card__footer">
-                <div>
-                  <div className="vd-service-card__price">{item.priceFormatted}</div>
-                  <div className="vd-service-card__provider">By {item.providerBusinessName}</div>
+                <div className="vd-service-card__price">{item.priceFormatted}</div>
+                <div className="vd-service-card__actions">
+                  <button
+                    type="button"
+                    className="vd-view-btn"
+                    onClick={() => setSelectedItem(item)}
+                  >
+                    View Details
+                  </button>
+                  <button
+                    type="button"
+                    className="vd-book-btn"
+                    onClick={() => alert(`Booking: ${item.title}`)}
+                  >
+                    Book Now
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="vd-book-btn"
-                  onClick={() => alert(`Selected: ${item.title}`)}
-                >
-                  View Details
-                </button>
               </div>
             </div>
           ))}
@@ -1027,11 +1106,14 @@ function ExploreTab() {
         onClick={() => goToPage(data.page + 1)}
         aria-label="Next page"
       >
-        Next →
+        Next
       </button>
     </div>
   )
 })()}
+      {selectedItem && (
+        <ServiceDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} />
+      )}
     </div>
   )
 }
