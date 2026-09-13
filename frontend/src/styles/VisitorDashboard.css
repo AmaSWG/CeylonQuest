@@ -6,7 +6,8 @@
 
 /* ── Layout ── */
 .vd-page {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   background-color: #f7f3e8;
   font-family: 'Inter', system-ui, sans-serif;
