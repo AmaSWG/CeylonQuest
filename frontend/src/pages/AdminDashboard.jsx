@@ -24,6 +24,7 @@ import {
   CreateIcon
 } from '../components/Icons'
 import ConfirmModal from '../components/ConfirmModal'
+import InventoryReportView from '../components/InventoryReportView'
 import { apiUrl, catalogUrl } from '../api/client'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -1908,7 +1909,7 @@ function AdminAccountTab({ token, onLogout, showToast, onProfileUpdate }) {
 
 // ── 8. Reports Tab ───────────────────────────────────────────────────────────
 
-function ReportsTab({ token, onLogout }) {
+function RegistrationReportsSection({ token, onLogout }) {
   const emptyFilters = { dateFrom: '', dateTo: '', role: '', applicationStatus: '' }
   const [filters, setFilters] = useState(emptyFilters)
   const [appliedFilters, setAppliedFilters] = useState({})
@@ -2236,6 +2237,37 @@ function ReportsTab({ token, onLogout }) {
             </div>
           )}
         </>
+      )}
+    </div>
+  )
+}
+
+function ReportsTab({ token, onLogout }) {
+  const [reportSubTab, setReportSubTab] = useState('inventory')
+
+  return (
+    <div className="ad-report">
+      {/* ── Sub Tab Selector ── */}
+      <div className="cq-report-subtabs">
+        <button
+          type="button"
+          className={`cq-report-subtab-btn ${reportSubTab === 'inventory' ? 'active' : ''}`}
+          onClick={() => setReportSubTab('inventory')}
+        >
+          Listings & Inventory Availability Report
+        </button>
+        <button
+          type="button"
+          className={`cq-report-subtab-btn ${reportSubTab === 'registrations' ? 'active' : ''}`}
+          onClick={() => setReportSubTab('registrations')}
+        >
+          User & Provider Registrations Report
+        </button>
+      </div>
+      {reportSubTab === 'inventory' ? (
+        <InventoryReportView token={token} onLogout={onLogout} isAdmin={true} />
+      ) : (
+        <RegistrationReportsSection token={token} onLogout={onLogout} />
       )}
     </div>
   )

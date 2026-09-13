@@ -26,7 +26,8 @@ import {
   MoneyIcon,
   RangeIcon,
   HouseIcon,
-  DiningIcon
+  DiningIcon,
+  DangerIcon
 } from '../components/Icons'
 import ConfirmModal from '../components/ConfirmModal'
 import { apiUrl, catalogUrl } from '../api/client'
@@ -293,7 +294,7 @@ function BookingAvailabilityModal({ item, onClose }) {
               <span style={{ fontSize: 13, color: '#64748b' }}>Checking real-time capacity…</span>
             ) : !availability?.isOperatingDay ? (
               <div style={{ color: '#dc2626', fontWeight: 600, fontSize: 13 }}>
-                ⚠️ The provider does not operate on this selected day of the week.
+                <DangerIcon/> The provider does not operate on this selected day of the week.
               </div>
             ) : currentSlotObj?.isFullyBooked ? (
               <div style={{ color: '#dc2626', fontWeight: 700, fontSize: 13 }}>
@@ -301,7 +302,7 @@ function BookingAvailabilityModal({ item, onClose }) {
               </div>
             ) : (
               <div style={{ color: '#166534', fontWeight: 600, fontSize: 13 }}>
-                ✓ <strong>{currentSlotObj?.remainingCapacity}</strong> of {currentSlotObj?.totalCapacity} spots available
+                <><CheckIcon/> <strong>{currentSlotObj?.remainingCapacity}</strong> of {currentSlotObj?.totalCapacity} spots available</>
               </div>
             )}
           </div>
@@ -1093,29 +1094,29 @@ function ExploreTab() {
         <div className="vd-active-tags">
           {appliedFilters.q && (
             <span className="vd-filter-tag">
-              <> <SearchIcon/>&quot;{appliedFilters.q}&quot;</> <button type="button" onClick={() => setKeywordInput('')}>✕</button>
+              <> <SearchIcon/>&quot;{appliedFilters.q}&quot;</> <button type="button" onClick={() => setKeywordInput('')}><CloseIcon/></button>
             </span>
           )}
           {appliedFilters.type && appliedFilters.type !== 'all' && (
             <span className="vd-filter-tag">
-               {appliedFilters.type} <button type="button" onClick={() => handleTypeChange('all')}>✕</button>
+               {appliedFilters.type} <button type="button" onClick={() => handleTypeChange('all')}><CloseIcon/></button>
             </span>
           )}
           {appliedFilters.location && (
             <span className="vd-filter-tag">
-              <><LocationOnIcon/> {appliedFilters.location} </><button type="button" onClick={() => setLocationInput('')}>✕</button>
+              <><LocationOnIcon/> {appliedFilters.location} </><button type="button" onClick={() => setLocationInput('')}><CloseIcon/></button>
             </span>
           )}
           {(appliedFilters.minPrice || appliedFilters.maxPrice) && (
             <span className="vd-filter-tag">
               <><MoneyIcon/> LKR {appliedFilters.minPrice || '0'} – {appliedFilters.maxPrice || 'Any'}</>
-              <button type="button" onClick={() => { setMinPriceInput(''); setMaxPriceInput('') }}>✕</button>
+              <button type="button" onClick={() => { setMinPriceInput(''); setMaxPriceInput('') }}><CloseIcon/></button>
             </span>
           )}
           {appliedFilters.sort && (
             <span className="vd-filter-tag">
               <><RangeIcon/> {appliedFilters.sort === 'price_asc' ? 'Price: Low to High' : 'Price: High to Low'}</>
-              <button type="button" onClick={() => setSortInput('')}>✕</button>
+              <button type="button" onClick={() => setSortInput('')}><CloseIcon/></button>
             </span>
           )}
           {hasActiveFilters && (

@@ -26,6 +26,7 @@ import {
   BadgeIcon
 } from '../components/Icons'
 import ConfirmModal from '../components/ConfirmModal'
+import InventoryReportView from '../components/InventoryReportView' 
 import { apiUrl, catalogUrl } from '../api/client'
 
 // ── Helpers & Formatting ──────────────────────────────────────────────────────
@@ -1943,6 +1944,7 @@ function ProviderDashboard({ onLogout }) {
            : 'Activities & Services'
     },
     { key: 'bookings',      icon: <CalendarMonthIcon size={18} />,       label: 'Bookings' },
+    { key: 'reports',       icon: <CalendarMonthIcon size={18} />,            label: 'Inventory Reports' },
     { key: 'notifications', icon: <NotificationsActiveIcon size={18} />, label: 'Notifications', badge: unreadNotifCount > 0 ? unreadNotifCount : null },
     { key: 'account',       icon: <PermIdentityIcon size={18} />,        label: 'Account' }
   ]
@@ -2033,6 +2035,14 @@ function ProviderDashboard({ onLogout }) {
           <BookingsTab
             bookings={bookings}
             onUpdateBookingStatus={handleUpdateBookingStatus}
+          />
+        )}
+
+        {activeTab === 'reports' && (
+          <InventoryReportView
+            token={token}
+            onLogout={handleLogout}
+            isAdmin={false}
           />
         )}
 
