@@ -67,6 +67,265 @@ function formatAvatarUrl(url) {
   return url
 }
 
+// ── 1. Service Detail Modal ───────────────────────────────────────
+function ServiceDetailModal({ item, onClose, onOpenBooking }) {
+  if (!item) return null
+
+  const icons = {
+    experience:    [HourglassTopIcon, GroupIcon],
+    restaurant:    [RestaurantIcon, DiningIcon, GroupIcon],
+    accommodation: [HouseIcon, GroupIcon, HotelIcon],
+  }[item.type?.toLowerCase()] || []
+
+  return (
+    <div className="vd-modal-overlay" onClick={onClose}>
+      <div className="vd-detail-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="vd-detail-modal__header">
+          <button className="vd-detail-modal__close" onClick={onClose} aria-label="Close">
+            <CloseIcon size={16} />
+          </button>
+          <span className={`vd-type-badge vd-type-badge--${item.type.toLowerCase()}`}>
+            {item.type}
+          </span>
+          <span className="vd-service-card__provider">By {item.providerBusinessName}</span>
+          <h2 className="vd-detail-modal__title">{item.title}</h2>
+          <p className="vd-detail-modal__provider">By {item.providerBusinessName}</p>
+        </div>
+
+        <div className="vd-detail-modal__body">
+          <p className="vd-detail-modal__desc">{item.description}</p>
+
+          <div className="vd-detail-modal__grid">
+            {item.keyDetail && item.keyDetail.split('•').map((detail, idx) => {
+              const Icon = icons[idx] || GroupIcon
+              return (
+                <div key={idx} className="vd-detail-modal__item">
+                  <Icon size={16} />
+                  <div className="vd-detail-modal__item-text">
+                    <span className="vd-detail-modal__item-value">{detail.trim()}</span>
+                  </div>
+                </div>
+              )
+            })}
+            {item.scheduleInfo && (
+              <div className="vd-detail-modal__item">
+                <AccessTimeFilledIcon size={16} />
+                <div className="vd-detail-modal__item-text">
+                  <span className="vd-detail-modal__item-label">Schedule</span>
+                  <span className="vd-detail-modal__item-value">{item.scheduleInfo}</span>
+                </div>
+              </div>
+            )}
+            {item.location && (
+              <div className="vd-detail-modal__item">
+                <LocationOnIcon size={16} />
+                <div className="vd-detail-modal__item-text">
+                  <span className="vd-detail-modal__item-label">Location</span>
+                  <span className="vd-detail-modal__item-value">{item.location}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="vd-detail-modal__price-row">
+            <span className="vd-detail-modal__price-label">Price</span>
+            <span className="vd-detail-modal__price-value">{item.priceFormatted}</span>
+          </div>
+        </div>
+
+        <div className="vd-detail-modal__footer">
+          <button type="button" className="vd-cancel-btn" onClick={onClose}>
+            Close
+          </button>
+          <button
+            type="button"
+            className="vd-save-btn"
+            onClick={() => {
+              onClose()
+              onOpenBooking(item)
+            }}
+          >
+            Check Availability & Book
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── 2. Availability & Booking Slot Picker Modal (Story 6.1) ────────
+function BookingAvailabilityModal({ item, onClose }) {
+  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedSlot, setSelectedSlot] = useState('')
+  const [availability, setAvailability] = useState(null)
+  const [loadingSlots, setLoadingSlots] = useState(false)
+
+  // Initialize date to today
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0]
+    setSelectedDate(today)
+  }, [])
+
+  // Fetch real-time slot capacity whenever date changes
+  useEffect(() => {
+    if (!item?.id || !selectedDate) return
+
+    let isMounted = true
+    const fetchSlots = async () => {
+      setLoadingSlots(true)
+      try {
+        const resp = await fetch(catalogUrl(`/api/catalog/availability/${item.id}?date=${selectedDate}`))
+        if (resp.ok && isMounted) {
+          const data = await resp.json()
+          setAvailability(data)
+          if (data.slots?.length > 0) {
+            setSelectedSlot(data.slots[0].timeSlot)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch availability:', err)
+      } finally {
+        if (isMounted) setLoadingSlots(false)
+      }
+    }
+
+    fetchSlots()
+    return () => { isMounted = false }
+  }, [item?.id, selectedDate])
+
+  const currentSlotObj = availability?.slots?.find(s => s.timeSlot === selectedSlot)
+
+  return (
+    <div className="vd-modal-overlay" onClick={onClose}>
+      <div className="vd-detail-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 580 }}>
+        <div className="vd-detail-modal__header">
+          <button className="vd-detail-modal__close" onClick={onClose} aria-label="Close">
+            <CloseIcon size={16} />
+          </button>
+          <span className={`vd-type-badge vd-type-badge--${item.type.toLowerCase()}`}>
+            {item.type}
+          </span>
+          <h2 className="vd-detail-modal__title">Book: {item.title}</h2>
+          <p className="vd-detail-modal__provider">By {item.providerBusinessName}</p>
+        </div>
+
+        <div className="vd-detail-modal__body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Price & Location Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px 14px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: 13, color: '#475569', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <LocationOnIcon size={14} /> {item.location}
+            </span>
+            <span style={{ fontSize: 16, fontWeight: 800, color: '#0d9488' }}>
+              {item.priceFormatted}
+            </span>
+          </div>
+
+          {/* ── Schedule & Validity Metadata Banner ── */}
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>
+                Validity Window
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>
+                {availability?.validFrom && availability?.validUntil
+                  ? `${formatDate(availability.validFrom)} – ${formatDate(availability.validUntil)}`
+                  : 'Ongoing / Open Season'}
+              </span>
+            </div>
+
+            <div>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>
+                Available Operating Days
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>
+                {availability?.availableDays || 'Daily'}
+              </span>
+            </div>
+
+            <div style={{ gridColumn: 'span 2', borderTop: '1px dashed #e2e8f0', paddingTop: 8 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>
+                Scheduled Time Slots
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+                {availability?.timeSlots || 'All Day / Operating Hours'}
+              </span>
+            </div>
+          </div>
+
+          {/* ── Date & Slot Selectors ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="vd-form-group">
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4, display: 'block' }}>
+                Select Date *
+              </label>
+              <input
+                type="date"
+                min={availability?.validFrom || new Date().toISOString().split('T')[0]}
+                max={availability?.validUntil || undefined}
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #cbd5e1' }}
+              />
+            </div>
+
+            <div className="vd-form-group">
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4, display: 'block' }}>
+                Select Time Slot *
+              </label>
+              <select
+                value={selectedSlot}
+                onChange={(e) => setSelectedSlot(e.target.value)}
+                disabled={loadingSlots || !availability?.slots?.length}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #cbd5e1' }}
+              >
+                {availability?.slots?.map((s, idx) => (
+                  <option key={idx} value={s.timeSlot}>
+                    {s.timeSlot} ({s.remainingCapacity} left)
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* ── Real-time Slot Availability Display ── */}
+          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: 12 }}>
+            {loadingSlots ? (
+              <span style={{ fontSize: 13, color: '#64748b' }}>Checking real-time capacity…</span>
+            ) : !availability?.isOperatingDay ? (
+              <div style={{ color: '#dc2626', fontWeight: 600, fontSize: 13 }}>
+                ⚠️ The provider does not operate on this selected day of the week.
+              </div>
+            ) : currentSlotObj?.isFullyBooked ? (
+              <div style={{ color: '#dc2626', fontWeight: 700, fontSize: 13 }}>
+                ● Fully Booked (0 spots left for this time slot)
+              </div>
+            ) : (
+              <div style={{ color: '#166534', fontWeight: 600, fontSize: 13 }}>
+                ✓ <strong>{currentSlotObj?.remainingCapacity}</strong> of {currentSlotObj?.totalCapacity} spots available
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="vd-detail-modal__footer">
+          <button type="button" className="vd-cancel-btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="vd-save-btn"
+            disabled={!availability?.isOperatingDay || currentSlotObj?.isFullyBooked}
+            style={(!availability?.isOperatingDay || currentSlotObj?.isFullyBooked) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            onClick={() => alert(`Selection confirmed for ${item.title} on ${selectedDate} (${selectedSlot}). Booking service will process this in next sprint!`)}
+          >
+            {currentSlotObj?.isFullyBooked ? 'Fully Booked' : 'Confirm Selection'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function VisitorDashboard({ onLogout }) {
   const [activePage, setActivePage]   = useState('profile')
   const [profile,    setProfile]      = useState(null)
@@ -306,7 +565,6 @@ function VisitorDashboard({ onLogout }) {
               <span className="vd-nav-icon"><PermIdentityIcon size={18} /></span> My Profile
             </button>
           </li>
-          
           <li>
             <button disabled title="Coming soon" id="nav-bookings">
               <span className="vd-nav-icon"><CalendarMonthIcon size={18} /></span> My Bookings
@@ -343,332 +601,247 @@ function VisitorDashboard({ onLogout }) {
         </div>
       </aside>
 
-      {/* ── Main ── */}
-<main className="vd-main">
-  {activePage === 'explore' ? (
-    <ExploreTab />
-  ) : (
-    <>
-      <div className="vd-page-header">
-        <h1>My Profile</h1>
-        <p>View and manage your personal information.</p>
-      </div>
-
-      <div className="vd-profile-card">
-        <div className="vd-profile-card__accent" />
-        <div className="vd-profile-card__body">
-
-          {loading && (
-            <div className="vd-loading">
-              <div className="vd-spinner" />
-              <span>Loading your profile…</span>
+      {/* ── Main Content ── */}
+      <main className="vd-main">
+        {activePage === 'explore' ? (
+          <ExploreTab />
+        ) : (
+          <>
+            <div className="vd-page-header">
+              <h1>My Profile</h1>
+              <p>View and manage your personal information.</p>
             </div>
-          )}
 
-          {loadError && !loading && (
-            <div className="vd-form-error">{loadError}</div>
-          )}
+            <div className="vd-profile-card">
+              <div className="vd-profile-card__accent" />
+              <div className="vd-profile-card__body">
 
-          {!loading && profile && !editing && (
-            <>
-              {/* Identity row */}
-              <div className="vd-identity">
-                <div className="vd-avatar-wrapper">
-                  <div className="vd-avatar">
-                    {profile.profilePictureUrl ? (
-                      <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="vd-avatar__img" />
-                    ) : (
-                      initials(profile.firstName, profile.lastName)
-                    )}
+                {loading && (
+                  <div className="vd-loading">
+                    <div className="vd-spinner" />
+                    <span>Loading your profile…</span>
                   </div>
-                  <label className="vd-avatar-upload-btn" title="Upload / Change profile photo">
-                    <PhotoCameraIcon size={14} />
-                    <input
-                      type="file"
-                      accept="image/png, image/jpeg, image/webp"
-                      onChange={handleAvatarChange}
-                      disabled={avatarUploading}
-                      style={{ display: 'none' }}
-                    />
-                  </label>
-                </div>
+                )}
 
-                <div className="vd-identity__info">
-                  <h2 className="vd-identity__name">{profile.firstName} {profile.lastName}</h2>
-                  <p className="vd-identity__email">{profile.email}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
-                    <span className="vd-identity__badge"><BadgeIcon size={13} style={{ marginRight: 4 }} /> Visitor</span>
-                    {profile.profilePictureUrl && (
+                {loadError && !loading && (
+                  <div className="vd-form-error">{loadError}</div>
+                )}
+
+                {!loading && profile && !editing && (
+                  <>
+                    <div className="vd-identity">
+                      <div className="vd-avatar-wrapper">
+                        <div className="vd-avatar">
+                          {profile.profilePictureUrl ? (
+                            <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="vd-avatar__img" />
+                          ) : (
+                            initials(profile.firstName, profile.lastName)
+                          )}
+                        </div>
+                        <label className="vd-avatar-upload-btn" title="Upload / Change profile photo">
+                          <PhotoCameraIcon size={14} />
+                          <input
+                            type="file"
+                            accept="image/png, image/jpeg, image/webp"
+                            onChange={handleAvatarChange}
+                            disabled={avatarUploading}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                      </div>
+
+                      <div className="vd-identity__info">
+                        <h2 className="vd-identity__name">{profile.firstName} {profile.lastName}</h2>
+                        <p className="vd-identity__email">{profile.email}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                          <span className="vd-identity__badge"><BadgeIcon size={13} style={{ marginRight: 4 }} /> Visitor</span>
+                          {profile.profilePictureUrl && (
+                            <button
+                              type="button"
+                              className="vd-avatar-remove-text-btn"
+                              onClick={() => setShowRemoveConfirm(true)}
+                              disabled={avatarUploading}
+                            >
+                              <DeleteSweepIcon size={13} style={{ marginRight: 4 }} /> Remove Photo
+                            </button>
+                          )}
+                        </div>
+                        {avatarUploading && <div className="vd-avatar-status">Uploading photo…</div>}
+                        {avatarError && <div className="vd-avatar-error">{avatarError}</div>}
+                      </div>
+                      <button className="vd-edit-btn" onClick={handleEdit} id="edit-profile-btn">
+                        <CreateIcon size={14} style={{ marginRight: 6 }} /> Edit Profile
+                      </button>
+                    </div>
+
+                    <div className="vd-fields">
+                      <div className="vd-field">
+                        <span className="vd-field__label">First Name</span>
+                        <span className="vd-field__value">{profile.firstName}</span>
+                      </div>
+                      <div className="vd-field">
+                        <span className="vd-field__label">Last Name</span>
+                        <span className="vd-field__value">{profile.lastName}</span>
+                      </div>
+                      <div className="vd-field">
+                        <span className="vd-field__label">Email Address</span>
+                        <span className="vd-field__value"><EmailIcon size={14} style={{ marginRight: 6 }} /> {profile.email}</span>
+                      </div>
+                      <div className="vd-field">
+                        <span className="vd-field__label">Phone Number</span>
+                        <span className="vd-field__value"><LocalPhoneIcon size={14} style={{ marginRight: 6 }} /> {profile.phoneNumber || '—'}</span>
+                      </div>
+                      <div className="vd-field">
+                        <span className="vd-field__label">Nationality</span>
+                        <span className="vd-field__value"><PublicIcon size={14} style={{ marginRight: 6 }} /> {profile.nationality || '—'}</span>
+                      </div>
+                    </div>
+
+                    <div className="vd-member-since">
+                      <CalendarMonthIcon size={14} style={{ marginRight: 6 }} /> Member since {formatDate(profile.createdAt)}
+                    </div>
+                  </>
+                )}
+
+                {!loading && profile && editing && (
+                  <form onSubmit={handleSave} className="vd-edit-form" noValidate>
+                    <div className="vd-identity" style={{ marginBottom: 24 }}>
+                      <div className="vd-avatar-wrapper">
+                        <div className="vd-avatar">
+                          {profile.profilePictureUrl ? (
+                            <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="vd-avatar__img" />
+                          ) : (
+                            initials(formData.firstName, formData.lastName)
+                          )}
+                        </div>
+                        <label className="vd-avatar-upload-btn" title="Upload / Change profile photo">
+                          <PhotoCameraIcon size={14} />
+                          <input
+                            type="file"
+                            accept="image/png, image/jpeg, image/webp"
+                            onChange={handleAvatarChange}
+                            disabled={avatarUploading}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                      </div>
+                      <div className="vd-identity__info">
+                        <h2 className="vd-identity__name">{formData.firstName} {formData.lastName}</h2>
+                        <p className="vd-identity__email">{profile.email}</p>
+                        {avatarUploading && <div className="vd-avatar-status">Uploading photo…</div>}
+                        {avatarError && <div className="vd-avatar-error">{avatarError}</div>}
+                      </div>
+                    </div>
+
+                    {saveError && <div className="vd-form-error">{saveError}</div>}
+
+                    <div className="vd-form-grid">
+                      <div className="vd-form-group">
+                        <label htmlFor="edit-firstName">First Name *</label>
+                        <input
+                          id="edit-firstName"
+                          name="firstName"
+                          type="text"
+                          value={formData.firstName}
+                          onChange={handleChange}
+                          placeholder="First name"
+                          required
+                        />
+                      </div>
+
+                      <div className="vd-form-group">
+                        <label htmlFor="edit-lastName">Last Name *</label>
+                        <input
+                          id="edit-lastName"
+                          name="lastName"
+                          type="text"
+                          value={formData.lastName}
+                          onChange={handleChange}
+                          placeholder="Last name"
+                          required
+                        />
+                      </div>
+
+                      <div className="vd-form-group">
+                        <label htmlFor="edit-email">Email Address</label>
+                        <input
+                          id="edit-email"
+                          type="email"
+                          value={profile.email}
+                          disabled
+                          aria-readonly="true"
+                        />
+                        <p className="vd-field-note">Email cannot be changed.</p>
+                      </div>
+
+                      <div className="vd-form-group">
+                        <label htmlFor="edit-phone">Phone Number *</label>
+                        <input
+                          id="edit-phone"
+                          name="phoneNumber"
+                          type="tel"
+                          value={formData.phoneNumber}
+                          onChange={handleChange}
+                          placeholder="Phone number"
+                          required
+                        />
+                      </div>
+
+                      <div className="vd-form-group vd-form-group--full">
+                        <label htmlFor="edit-nationality">Nationality *</label>
+                        <input
+                          id="edit-nationality"
+                          name="nationality"
+                          type="text"
+                          value={formData.nationality}
+                          onChange={handleChange}
+                          placeholder="Your nationality"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="vd-form-actions">
+                      <button
+                        type="submit"
+                        className="vd-save-btn"
+                        id="save-profile-btn"
+                        disabled={saveLoading}
+                      >
+                        {saveLoading ? 'Saving…' : 'Save Changes'}
+                      </button>
                       <button
                         type="button"
-                        className="vd-avatar-remove-text-btn"
-                        onClick={() => setShowRemoveConfirm(true)}
-                        disabled={avatarUploading}
+                        className="vd-cancel-btn"
+                        id="cancel-edit-btn"
+                        onClick={handleCancel}
+                        disabled={saveLoading}
                       >
-                        <DeleteSweepIcon size={13} style={{ marginRight: 4 }} /> Remove Photo
+                        Cancel
                       </button>
-                    )}
-                  </div>
-                  {avatarUploading && <div className="vd-avatar-status">Uploading photo…</div>}
-                  {avatarError && <div className="vd-avatar-error">{avatarError}</div>}
-                </div>
-                <button className="vd-edit-btn" onClick={handleEdit} id="edit-profile-btn">
-                  <CreateIcon size={14} style={{ marginRight: 6 }} /> Edit Profile
-                </button>
+                    </div>
+                  </form>
+                )}
+
               </div>
-
-              {/* Fields */}
-              <div className="vd-fields">
-                <div className="vd-field">
-                  <span className="vd-field__label">First Name</span>
-                  <span className="vd-field__value">{profile.firstName}</span>
-                </div>
-                <div className="vd-field">
-                  <span className="vd-field__label">Last Name</span>
-                  <span className="vd-field__value">{profile.lastName}</span>
-                </div>
-                <div className="vd-field">
-                  <span className="vd-field__label">Email Address</span>
-                  <span className="vd-field__value"><EmailIcon size={14} style={{ marginRight: 6 }} /> {profile.email}</span>
-                </div>
-                <div className="vd-field">
-                  <span className="vd-field__label">Phone Number</span>
-                  <span className="vd-field__value"><LocalPhoneIcon size={14} style={{ marginRight: 6 }} /> {profile.phoneNumber || '—'}</span>
-                </div>
-                <div className="vd-field">
-                  <span className="vd-field__label">Nationality</span>
-                  <span className="vd-field__value"><PublicIcon size={14} style={{ marginRight: 6 }} /> {profile.nationality || '—'}</span>
-                </div>
-              </div>
-
-              <div className="vd-member-since">
-                <CalendarMonthIcon size={14} style={{ marginRight: 6 }} /> Member since {formatDate(profile.createdAt)}
-              </div>
-            </>
-          )}
-
-          {!loading && profile && editing && (
-            <form onSubmit={handleSave} className="vd-edit-form" noValidate>
-              {/* Identity row (read-only header stays visible) */}
-              <div className="vd-identity" style={{ marginBottom: 24 }}>
-                <div className="vd-avatar-wrapper">
-                  <div className="vd-avatar">
-                    {profile.profilePictureUrl ? (
-                      <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="vd-avatar__img" />
-                    ) : (
-                      initials(formData.firstName, formData.lastName)
-                    )}
-                  </div>
-                  <label className="vd-avatar-upload-btn" title="Upload / Change profile photo">
-                    <PhotoCameraIcon size={14} />
-                    <input
-                      type="file"
-                      accept="image/png, image/jpeg, image/webp"
-                      onChange={handleAvatarChange}
-                      disabled={avatarUploading}
-                      style={{ display: 'none' }}
-                    />
-                  </label>
-                </div>
-                <div className="vd-identity__info">
-                  <h2 className="vd-identity__name">{formData.firstName} {formData.lastName}</h2>
-                  <p className="vd-identity__email">{profile.email}</p>
-                  {avatarUploading && <div className="vd-avatar-status">Uploading photo…</div>}
-                  {avatarError && <div className="vd-avatar-error">{avatarError}</div>}
-                </div>
-              </div>
-
-              {saveError && <div className="vd-form-error">{saveError}</div>}
-
-              <div className="vd-form-grid">
-                <div className="vd-form-group">
-                  <label htmlFor="edit-firstName">First Name *</label>
-                  <input
-                    id="edit-firstName"
-                    name="firstName"
-                    type="text"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    placeholder="First name"
-                    required
-                  />
-                </div>
-
-                <div className="vd-form-group">
-                  <label htmlFor="edit-lastName">Last Name *</label>
-                  <input
-                    id="edit-lastName"
-                    name="lastName"
-                    type="text"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    placeholder="Last name"
-                    required
-                  />
-                </div>
-
-                <div className="vd-form-group">
-                  <label htmlFor="edit-email">Email Address</label>
-                  <input
-                    id="edit-email"
-                    type="email"
-                    value={profile.email}
-                    disabled
-                    aria-readonly="true"
-                  />
-                  <p className="vd-field-note">Email cannot be changed.</p>
-                </div>
-
-                <div className="vd-form-group">
-                  <label htmlFor="edit-phone">Phone Number *</label>
-                  <input
-                    id="edit-phone"
-                    name="phoneNumber"
-                    type="tel"
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                    placeholder="Phone number"
-                    required
-                  />
-                </div>
-
-                <div className="vd-form-group vd-form-group--full">
-                  <label htmlFor="edit-nationality">Nationality *</label>
-                  <input
-                    id="edit-nationality"
-                    name="nationality"
-                    type="text"
-                    value={formData.nationality}
-                    onChange={handleChange}
-                    placeholder="Your nationality"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="vd-form-actions">
-                <button
-                  type="submit"
-                  className="vd-save-btn"
-                  id="save-profile-btn"
-                  disabled={saveLoading}
-                >
-                  {saveLoading ? 'Saving…' : 'Save Changes'}
-                </button>
-                <button
-                  type="button"
-                  className="vd-cancel-btn"
-                  id="cancel-edit-btn"
-                  onClick={handleCancel}
-                  disabled={saveLoading}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
-
-        </div>
-      </div>
-    </>
-  )}
-</main>
+            </div>
+          </>
+        )}
+      </main>
     </div>
   )
 }
 
-function ServiceDetailModal({ item, onClose }) {
-  if (!item) return null
-
-  const icons = {
-    experience:    [HourglassTopIcon, GroupIcon],
-    restaurant:    [RestaurantIcon, DiningIcon, GroupIcon],
-    accommodation: [HouseIcon, GroupIcon, HotelIcon],
-  }[item.type?.toLowerCase()] || []
-
-  return (
-    <div className="vd-modal-overlay" onClick={onClose}>
-      <div className="vd-detail-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="vd-detail-modal__header">
-          <button className="vd-detail-modal__close" onClick={onClose} aria-label="Close">
-            <CloseIcon size={16} />
-          </button>
-          <span className={`vd-type-badge vd-type-badge--${item.type.toLowerCase()}`}>
-            {item.type}
-          </span>
-          <h2 className="vd-detail-modal__title">{item.title}</h2>
-          <p className="vd-detail-modal__provider">By {item.providerBusinessName}</p>
-        </div>
-
-        <div className="vd-detail-modal__body">
-          <p className="vd-detail-modal__desc">{item.description}</p>
-
-          <div className="vd-detail-modal__grid">
-            {item.keyDetail && item.keyDetail.split('•').map((detail, idx) => {
-              const Icon = icons[idx] || GroupIcon
-              return (
-                <div key={idx} className="vd-detail-modal__item">
-                  <Icon size={16} />
-                  <div className="vd-detail-modal__item-text">
-                    <span className="vd-detail-modal__item-value">{detail.trim()}</span>
-                  </div>
-                </div>
-              )
-            })}
-            {item.scheduleInfo && (
-              <div className="vd-detail-modal__item">
-                <AccessTimeFilledIcon size={16} />
-                <div className="vd-detail-modal__item-text">
-                  <span className="vd-detail-modal__item-label">Schedule</span>
-                  <span className="vd-detail-modal__item-value">{item.scheduleInfo}</span>
-                </div>
-              </div>
-            )}
-            {item.location && (
-              <div className="vd-detail-modal__item">
-                <LocationOnIcon size={16} />
-                <div className="vd-detail-modal__item-text">
-                  <span className="vd-detail-modal__item-label">Location</span>
-                  <span className="vd-detail-modal__item-value">{item.location}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="vd-detail-modal__price-row">
-            <span className="vd-detail-modal__price-label">Price</span>
-            <span className="vd-detail-modal__price-value">{item.priceFormatted}</span>
-          </div>
-        </div>
-
-        <div className="vd-detail-modal__footer">
-          <button type="button" className="vd-cancel-btn" onClick={onClose}>
-            Close
-          </button>
-          <button
-            type="button"
-            className="vd-save-btn"
-            onClick={() => alert(`Booking: ${item.title}`)}
-          >
-            Book Now
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Explore / Search & Browse Tab ─────────────────────────────────
-
+// ── 3. Explore & Search Tab ───────────────────────────────────────
 function ExploreTab() {
   const [keywordInput, setKeywordInput] = useState('')
   const [locationInput, setLocationInput] = useState('')
   const [minPriceInput, setMinPriceInput] = useState('')
   const [maxPriceInput, setMaxPriceInput] = useState('')
   const [sortInput, setSortInput] = useState('') 
-  const [selectedItem, setSelectedItem] = useState(null)
+  const [detailItem, setDetailItem] = useState(null)
+  const [bookingItem, setBookingItem] = useState(null)
   
-  // Search state sent to backend
   const [appliedFilters, setAppliedFilters] = useState({
     q: '',
     type: 'all',
@@ -759,7 +932,6 @@ function ExploreTab() {
 
   const hasActiveFilters = appliedFilters.q || (appliedFilters.type && appliedFilters.type !== 'all') || appliedFilters.location || appliedFilters.minPrice || appliedFilters.maxPrice || appliedFilters.sort
 
-  // ── Search button or Enter submit ──
   const handleSearchSubmit = (e) => {
     e.preventDefault()
     setAppliedFilters(prev => ({
@@ -769,7 +941,6 @@ function ExploreTab() {
     }))
   }
 
-  // ── 2. Clear Button (Clears input AND resets search results immediately) ──
   const handleClear = () => {
     setKeywordInput('')
     setAppliedFilters({
@@ -779,10 +950,10 @@ function ExploreTab() {
   }
 
   const KEY_DETAIL_ICONS = {
-  experience:    [HourglassTopIcon, GroupIcon],
-  restaurant:    [RestaurantIcon, DiningIcon, GroupIcon],   
-  accommodation: [HouseIcon, GroupIcon, HotelIcon],        
-}
+    experience:    [HourglassTopIcon, GroupIcon],
+    restaurant:    [RestaurantIcon, DiningIcon, GroupIcon],   
+    accommodation: [HouseIcon, GroupIcon, HotelIcon],        
+  }
 
   return (
     <div className="vd-explore">
@@ -793,7 +964,7 @@ function ExploreTab() {
         </div>
       </div>
 
-      {/* ── Search Bar with Live Clear + Search Button ── */}
+      {/* ── Search Bar ── */}
       <form onSubmit={handleSearchSubmit} className="vd-search-hero">
         <div className="vd-search-input-wrap">
           <input
@@ -918,41 +1089,41 @@ function ExploreTab() {
         </div>
       </div>
 
-        <div className="vd-active-filter-bar">
-          <div className="vd-active-tags">
-            {appliedFilters.q && (
-              <span className="vd-filter-tag">
-                <> <SearchIcon/>&quot;{appliedFilters.q}&quot;</> <button type="button" onClick={() => setKeywordInput('')}>✕</button>
-              </span>
-            )}
-            {appliedFilters.type && appliedFilters.type !== 'all' && (
-              <span className="vd-filter-tag">
-                 {appliedFilters.type} <button type="button" onClick={() => handleTypeChange('all')}>✕</button>
-              </span>
-            )}
-            {appliedFilters.location && (
-              <span className="vd-filter-tag">
-                <><LocationOnIcon/> {appliedFilters.location} </><button type="button" onClick={() => setLocationInput('')}>✕</button>
-              </span>
-            )}
-            {(appliedFilters.minPrice || appliedFilters.maxPrice) && (
-              <span className="vd-filter-tag">
-                <><MoneyIcon/> LKR {appliedFilters.minPrice || '0'} – {appliedFilters.maxPrice || 'Any'}</>
-                <button type="button" onClick={() => { setMinPriceInput(''); setMaxPriceInput('') }}>✕</button>
-              </span>
-            )}
-            {appliedFilters.sort && (
-              <span className="vd-filter-tag">
-                <><RangeIcon/> {appliedFilters.sort === 'price_asc' ? 'Price: Low to High' : 'Price: High to Low'}</>
-                <button type="button" onClick={() => setSortInput('')}>✕</button>
-              </span>
-            )}
-            {hasActiveFilters && (
-              <button type="button" className="vd-clear-all-btn" onClick={clearAllFilters}>
-                Clear All Filters
-              </button>
-            )}
-          </div>
+      <div className="vd-active-filter-bar">
+        <div className="vd-active-tags">
+          {appliedFilters.q && (
+            <span className="vd-filter-tag">
+              <> <SearchIcon/>&quot;{appliedFilters.q}&quot;</> <button type="button" onClick={() => setKeywordInput('')}>✕</button>
+            </span>
+          )}
+          {appliedFilters.type && appliedFilters.type !== 'all' && (
+            <span className="vd-filter-tag">
+               {appliedFilters.type} <button type="button" onClick={() => handleTypeChange('all')}>✕</button>
+            </span>
+          )}
+          {appliedFilters.location && (
+            <span className="vd-filter-tag">
+              <><LocationOnIcon/> {appliedFilters.location} </><button type="button" onClick={() => setLocationInput('')}>✕</button>
+            </span>
+          )}
+          {(appliedFilters.minPrice || appliedFilters.maxPrice) && (
+            <span className="vd-filter-tag">
+              <><MoneyIcon/> LKR {appliedFilters.minPrice || '0'} – {appliedFilters.maxPrice || 'Any'}</>
+              <button type="button" onClick={() => { setMinPriceInput(''); setMaxPriceInput('') }}>✕</button>
+            </span>
+          )}
+          {appliedFilters.sort && (
+            <span className="vd-filter-tag">
+              <><RangeIcon/> {appliedFilters.sort === 'price_asc' ? 'Price: Low to High' : 'Price: High to Low'}</>
+              <button type="button" onClick={() => setSortInput('')}>✕</button>
+            </span>
+          )}
+          {hasActiveFilters && (
+            <button type="button" className="vd-clear-all-btn" onClick={clearAllFilters}>
+              Clear All Filters
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Results Count Header */}
@@ -962,7 +1133,7 @@ function ExploreTab() {
         </span>
       </div>
 
-      {/* ── Listings Grid / Loading / No Results State ── */}
+      {/* ── Listings Grid ── */}
       {loading ? (
         <div className="vd-loading-card">
           <div className="vd-spinner" />
@@ -1002,7 +1173,7 @@ function ExploreTab() {
                     {item.keyDetail && (() => {
                       const icons = KEY_DETAIL_ICONS[item.type?.toLowerCase()] || []
                       return item.keyDetail.split('•').map((detail, idx) => {
-                        const Icon = icons[idx] || GroupIcon  // fallback
+                        const Icon = icons[idx] || GroupIcon
                         return (
                           <div key={idx} className="vd-service-card__detail-item">
                             <Icon size={14} /> {detail.trim()}
@@ -1030,14 +1201,14 @@ function ExploreTab() {
                   <button
                     type="button"
                     className="vd-view-btn"
-                    onClick={() => setSelectedItem(item)}
+                    onClick={() => setDetailItem(item)}
                   >
                     View Details
                   </button>
                   <button
                     type="button"
                     className="vd-book-btn"
-                    onClick={() => alert(`Booking: ${item.title}`)}
+                    onClick={() => setBookingItem(item)}
                   >
                     Book Now
                   </button>
@@ -1050,75 +1221,88 @@ function ExploreTab() {
 
       {/* ── Pagination Controls ── */}
       {data.totalPages > 1 && (() => {
-  const goToPage = (p) => {
-    setAppliedFilters(prev => {
-      const next = Math.min(Math.max(1, p), data.totalPages)
-      if (next === prev.page) return prev
-      return { ...prev, page: next }
-    })
-  }
+        const goToPage = (p) => {
+          setAppliedFilters(prev => {
+            const next = Math.min(Math.max(1, p), data.totalPages)
+            if (next === prev.page) return prev
+            return { ...prev, page: next }
+          })
+        }
 
-  const pageNumbers = getPageNumbers(data.page, data.totalPages)
+        const pageNumbers = getPageNumbers(data.page, data.totalPages)
 
-  return (
-    <div className="vd-pagination">
-      <button
-        type="button"
-        className="vd-page-btn"
-        disabled={!data.hasPreviousPage}
-        onClick={() => goToPage(data.page - 1)}
-        aria-label="Previous page"
-      >
-        ← Previous
-      </button>
-
-      <div className="vd-page-numbers">
-        {pageNumbers.map((p, idx) => {
-          if (p === 'left-ellipsis' || p === 'right-ellipsis') {
-            return (
-              <span key={`${p}-${idx}`} className="vd-page-ellipsis" aria-hidden="true">
-                …
-              </span>
-            )
-          }
-
-          const isActive = p === data.page
-          return (
+        return (
+          <div className="vd-pagination">
             <button
-              key={p}
               type="button"
-              className={`vd-page-num ${isActive ? 'active' : ''}`}
-              onClick={() => goToPage(p)}
-              disabled={isActive}
-              aria-label={`Go to page ${p}`}
-              aria-current={isActive ? 'page' : undefined}
+              className="vd-page-btn"
+              disabled={!data.hasPreviousPage}
+              onClick={() => goToPage(data.page - 1)}
+              aria-label="Previous page"
             >
-              {p}
+              ← Previous
             </button>
-          )
-        })}
-      </div>
 
-      <button
-        type="button"
-        className="vd-page-btn"
-        disabled={!data.hasNextPage}
-        onClick={() => goToPage(data.page + 1)}
-        aria-label="Next page"
-      >
-        Next
-      </button>
-    </div>
-  )
-})()}
-      {selectedItem && (
-        <ServiceDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} />
+            <div className="vd-page-numbers">
+              {pageNumbers.map((p, idx) => {
+                if (p === 'left-ellipsis' || p === 'right-ellipsis') {
+                  return (
+                    <span key={`${p}-${idx}`} className="vd-page-ellipsis" aria-hidden="true">
+                      …
+                    </span>
+                  )
+                }
+
+                const isActive = p === data.page
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    className={`vd-page-num ${isActive ? 'active' : ''}`}
+                    onClick={() => goToPage(p)}
+                    disabled={isActive}
+                    aria-label={`Go to page ${p}`}
+                    aria-current={isActive ? 'page' : undefined}
+                  >
+                    {p}
+                  </button>
+                )
+              })}
+            </div>
+
+            <button
+              type="button"
+              className="vd-page-btn"
+              disabled={!data.hasNextPage}
+              onClick={() => goToPage(data.page + 1)}
+              aria-label="Next page"
+            >
+              Next →
+            </button>
+          </div>
+        )
+      })()}
+
+      {/* ── Modals ── */}
+      {detailItem && (
+        <ServiceDetailModal
+          item={detailItem}
+          onClose={() => setDetailItem(null)}
+          onOpenBooking={(item) => setBookingItem(item)}
+        />
+      )}
+
+      {bookingItem && (
+        <BookingAvailabilityModal
+          item={bookingItem}
+          onClose={() => setBookingItem(null)}
+        />
+      )}
       )}
     </div>
   )
 }
 
-// Builds a compact page list, e.g. [1, '...', 4, 5, 6, '...', 12]
 function getPageNumbers(current, total, maxVisible = 5) {
   const pages = []
 
@@ -1132,7 +1316,6 @@ function getPageNumbers(current, total, maxVisible = 5) {
   let start = Math.max(2, current - 1)
   let end   = Math.min(total - 1, current + 1)
 
-  // shift window when near edges
   if (current <= 3) {
     start = 2
     end   = maxVisible - 1

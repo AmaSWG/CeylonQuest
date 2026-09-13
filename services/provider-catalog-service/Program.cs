@@ -130,6 +130,10 @@ builder.Services.AddScoped<DocumentStorageService>();
 
 builder.Services.AddScoped<IEmailService, EmailService>();
 
+builder.Services.AddScoped<AvailabilityService>();
+
+builder.Services.AddHostedService<BookingCreatedConsumer>();
+
 var app = builder.Build();
 
 // HTTP request pipeline
