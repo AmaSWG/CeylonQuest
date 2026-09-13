@@ -15,9 +15,7 @@ public class RestaurantListingsTests : BaseTest
         int Status,
         string Body);
 
-    // =====================================================
     // ENV VARIABLES
-    // =====================================================
 
     private string GetEnvironmentVariable(
         string variableName)
@@ -35,9 +33,9 @@ public class RestaurantListingsTests : BaseTest
         return value;
     }
 
-    // =====================================================
+    
     // UNIQUE NAME
-    // =====================================================
+   
 
     private string CreateUniqueName(
         string prefix)
@@ -47,9 +45,9 @@ public class RestaurantListingsTests : BaseTest
             $"{DateTime.UtcNow:yyyyMMddHHmmssfff}";
     }
 
-    // =====================================================
+    
     // LOGIN
-    // =====================================================
+
 
     private void Login(
         string emailVariable = "QA_PROVIDER_EMAIL",
@@ -96,9 +94,8 @@ public class RestaurantListingsTests : BaseTest
                 .Any(x => x.Displayed));
     }
 
-    // =====================================================
     // CLEAR SESSION
-    // =====================================================
+    
 
     private void ClearSession()
     {
@@ -117,9 +114,8 @@ public class RestaurantListingsTests : BaseTest
                 $"{BaseUrl}/login");
     }
 
-    // =====================================================
     // API REQUEST
-    // =====================================================
+    
 
     private ApiResult SendApiRequest(
         string method,
@@ -232,9 +228,9 @@ public class RestaurantListingsTests : BaseTest
             responseBody);
     }
 
-    // =====================================================
+  
     // CREATE RESTAURANT THROUGH API
-    // =====================================================
+  
 
     private string CreateRestaurantThroughApi(
         string restaurantName)
@@ -312,9 +308,9 @@ public class RestaurantListingsTests : BaseTest
         return id;
     }
 
-    // =====================================================
+   
     // PUBLIC SEARCH
-    // =====================================================
+  
 
     private ApiResult SearchPublicRestaurant(
         string restaurantName)
@@ -353,9 +349,8 @@ public class RestaurantListingsTests : BaseTest
                     StringComparison.OrdinalIgnoreCase));
     }
 
-    // =====================================================
     // CLEANUP DELETE
-    // =====================================================
+   
 
     private void DeleteRestaurantThroughApi(
         string restaurantId)
@@ -371,9 +366,9 @@ public class RestaurantListingsTests : BaseTest
             $"/api/catalog/restaurant-listings/{restaurantId}");
     }
 
-    // =====================================================
+    
     // TC57-01
-    // =====================================================
+ 
 
     [Fact]
     public void TC57_01_CreateRestaurant_WithValidDetails()
@@ -405,9 +400,9 @@ public class RestaurantListingsTests : BaseTest
                 restaurantName));
     }
 
-    // =====================================================
+    
     // TC57-02
-    // =====================================================
+    
 
     [Fact]
     public void TC57_02_CreatedRestaurant_IsVisibleInPublicSearch()
@@ -444,9 +439,8 @@ public class RestaurantListingsTests : BaseTest
         }
     }
 
-    // =====================================================
     // TC57-03
-    // =====================================================
+   
 
     [Fact]
     public void TC57_03_UpdateRestaurant_OpeningHours()
@@ -495,9 +489,9 @@ public class RestaurantListingsTests : BaseTest
             publicResult.Body);
     }
 
-    // =====================================================
+    
     // TC57-04
-    // =====================================================
+    
 
     [Fact]
     public void TC57_04_UpdateRestaurant_PriceRange()
@@ -545,9 +539,9 @@ public class RestaurantListingsTests : BaseTest
             publicResult.Body);
     }
 
-    // =====================================================
+
     // TC57-05
-    // =====================================================
+  
 
     [Fact]
     public void TC57_05_EditRestaurant_NotOwnedByProvider_IsForbidden()
@@ -630,9 +624,9 @@ public class RestaurantListingsTests : BaseTest
             restaurantId);
     }
 
-    // =====================================================
+   
     // TC57-06
-    // =====================================================
+    
 
     [Fact]
     public void TC57_06_DeleteRestaurant_NotOwnedByProvider_IsForbidden()
@@ -679,9 +673,8 @@ public class RestaurantListingsTests : BaseTest
             restaurantId);
     }
 
-    // =====================================================
     // TC57-07
-    // =====================================================
+    
 
     [Fact]
     public void TC57_07_DeleteOwnRestaurant()
@@ -719,9 +712,9 @@ public class RestaurantListingsTests : BaseTest
                 restaurantName));
     }
 
-    // =====================================================
+   
     // TC57-08
-    // =====================================================
+    
 
     [Fact]
     public void TC57_08_DeletedRestaurant_IsRemovedFromPublicSearch()
@@ -768,10 +761,10 @@ public class RestaurantListingsTests : BaseTest
                 restaurantName));
     }
 
-    // =====================================================
+    
     // TC57-09
     // MISSING REQUIRED FIELD
-    // =====================================================
+   
 
     [Fact]
     public void TC57_09_MissingRequiredField_ShouldShowValidation()
@@ -808,10 +801,10 @@ public class RestaurantListingsTests : BaseTest
             "Restaurant was created even though a required field was missing.");
     }
 
-    // =====================================================
+    
     // TC57-10
     // INVALID OPENING HOURS
-    // =====================================================
+
 
     [Fact]
     public void TC57_10_InvalidOpeningHours_ShouldShowValidation()
