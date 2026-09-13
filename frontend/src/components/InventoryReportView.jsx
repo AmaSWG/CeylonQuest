@@ -24,13 +24,18 @@ function formatDate(iso) {
 
 function getTodayString() {
   const d = new Date()
-  return d.toISOString().split('T')[0]
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
-
 function getFutureDateString(daysAhead) {
   const d = new Date()
   d.setDate(d.getDate() + daysAhead)
-  return d.toISOString().split('T')[0]
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 const CATEGORY_NAMES = {
@@ -458,7 +463,7 @@ export default function InventoryReportView({ token, onLogout, isAdmin = false }
               <div className="cq-report-section__header">
                 <h2><DangerIcon/> Capacity & Low-Availability Alerts</h2>
                 <span className="cq-report-section__hint">
-                  Upcoming slots with ≤3 spots remaining or 100% booked in the selected window.
+                  Upcoming slots with ≤3 spots remaining, ≤25% capacity, or 100% booked.
                 </span>
               </div>
 
