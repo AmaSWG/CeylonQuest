@@ -2,7 +2,8 @@
 
 /* ── Layout ── */
 .pd-page {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   background-color: #f7f3e8;
   font-family: 'Inter', system-ui, sans-serif;
@@ -118,7 +119,6 @@
 .pd-sidebar__footer {
   padding: 16px 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  text-align: left;
 }
 
 .pd-logout-btn {

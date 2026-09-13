@@ -27,6 +27,7 @@ import {
   RangeIcon,
   HouseIcon,
   DiningIcon,
+  CheckIcon,
   DangerIcon
 } from '../components/Icons'
 import ConfirmModal from '../components/ConfirmModal'
@@ -88,7 +89,6 @@ function ServiceDetailModal({ item, onClose, onOpenBooking }) {
           <span className={`vd-type-badge vd-type-badge--${item.type.toLowerCase()}`}>
             {item.type}
           </span>
-          <span className="vd-service-card__provider">By {item.providerBusinessName}</span>
           <h2 className="vd-detail-modal__title">{item.title}</h2>
           <p className="vd-detail-modal__provider">By {item.providerBusinessName}</p>
         </div>
@@ -146,7 +146,7 @@ function ServiceDetailModal({ item, onClose, onOpenBooking }) {
               onOpenBooking(item)
             }}
           >
-            Check Availability & Book
+            Check Availability and Book
           </button>
         </div>
       </div>
@@ -550,20 +550,20 @@ function VisitorDashboard({ onLogout }) {
         <ul className="vd-sidebar__nav">
           <li>
             <button
-              className={activePage === 'explore' ? 'active' : ''}
-              onClick={() => setActivePage('explore')}
-              id="nav-explore"
-            >
-              <span className="vd-nav-icon"><PublicIcon size={18} /></span> Explore & Search
-            </button>
-          </li>
-          <li>
-            <button
               className={activePage === 'profile' ? 'active' : ''}
               onClick={() => setActivePage('profile')}
               id="nav-profile"
             >
               <span className="vd-nav-icon"><PermIdentityIcon size={18} /></span> My Profile
+            </button>
+          </li>
+          <li>
+            <button
+              className={activePage === 'explore' ? 'active' : ''}
+              onClick={() => setActivePage('explore')}
+              id="nav-explore"
+            >
+              <span className="vd-nav-icon"><PublicIcon size={18} /></span> Explore and Search
             </button>
           </li>
           <li>
@@ -1022,8 +1022,8 @@ function ExploreTab() {
             {[
               { key: 'all', label: 'All Listings' },
               { key: 'experience', label: <><KitesurfingIcon size={14} /> Experiences</> },
-              { key: 'restaurant', label: <><RestaurantIcon size={14} /> Dining</> },
-              { key: 'accommodation', label: <><HotelIcon size={14} /> Stays</> }
+              { key: 'restaurant', label: <><RestaurantIcon size={14} /> Restaurant</> },
+              { key: 'accommodation', label: <><HotelIcon size={14} /> Accommodation</> }
             ].map(t => (
               <button
                 key={t.key}
