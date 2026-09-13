@@ -236,6 +236,16 @@ public class FakeEmailService : IEmailService
         LastResetLink = resetLink;
         return Task.CompletedTask;
     }
+
+     public Task SendProviderOtpEmailAsync(
+            string recipientEmail,
+            string otp,
+            string providerName,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
 }
 
 public class CapturingLogger<T> : ILogger<T>
