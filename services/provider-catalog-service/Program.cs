@@ -134,6 +134,8 @@ builder.Services.AddScoped<AvailabilityService>();
 
 builder.Services.AddHostedService<BookingCreatedConsumer>();
 
+builder.Services.AddScoped<InventoryReportService>();
+
 var app = builder.Build();
 
 // HTTP request pipeline
