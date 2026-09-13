@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProviderCatalogService.Data;
 
@@ -11,9 +12,11 @@ using ProviderCatalogService.Data;
 namespace ProviderCatalogService.Migrations
 {
     [DbContext(typeof(CatalogDbContext))]
-    partial class CatalogDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260913034051_AddAvailabilitySlotsTable")]
+    partial class AddAvailabilitySlotsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -141,6 +144,10 @@ namespace ProviderCatalogService.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ProviderId");
+
+                    b.HasIndex("IsActive", "CreatedAt");
+
+                    b.HasIndex("IsActive", "Price");
 
                     b.ToTable("ActivityListings");
                 });
