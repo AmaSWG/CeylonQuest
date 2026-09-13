@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -31,12 +32,46 @@ public class ReportsController : ControllerBase
         [FromQuery] string? location,
         [FromQuery] string? status)
     {
-        var start = DateOnly.TryParse(startDate, out var s) ? s : DateOnly.FromDateTime(DateTime.UtcNow);
-        var end = DateOnly.TryParse(endDate, out var e) ? e : start.AddDays(7);
+        DateOnly start;
+        DateOnly end;
+
+        if (!string.IsNullOrWhiteSpace(startDate))
+        {
+            if (!DateOnly.TryParseExact(startDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out start))
+            {
+                return BadRequest(new { message = "Invalid startDate format. Expected YYYY-MM-DD." });
+            }
+        }
+        else
+        {
+            start = DateOnly.FromDateTime(DateTime.UtcNow);
+        }
+
+        if (!string.IsNullOrWhiteSpace(endDate))
+        {
+            if (!DateOnly.TryParseExact(endDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out end))
+            {
+                return BadRequest(new { message = "Invalid endDate format. Expected YYYY-MM-DD." });
+            }
+        }
+        else
+        {
+            end = start.AddDays(7);
+        }
+
+        if (end < start)
+        {
+            return BadRequest(new { message = "endDate must be greater than or equal to startDate." });
+        }
+
+        // Max window limit to protect performance (e.g. max 90 days)
+        if (end.DayNumber - start.DayNumber > 90)
+        {
+            return BadRequest(new { message = "Date window cannot exceed 90 days." });
+        }
 
         Guid? providerId = null;
 
-        // If logged-in user is a Provider, scope to their business only
         if (User.IsInRole("Provider") && !User.IsInRole("Admin"))
         {
             var identityUserId = GetIdentityUserId();
@@ -65,7 +100,10 @@ public class ReportsController : ControllerBase
 
     private Guid? GetIdentityUserId()
     {
-        var raw = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        return Guid.TryParse(raw, out var id) ? id : null;
+        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                   ?? User.FindFirstValue("sub")
+                   ?? User.FindFirstValue("nameid");
+
+        return Guid.TryParse(idClaim, out var guid) ? guid : null;
     }
 }
