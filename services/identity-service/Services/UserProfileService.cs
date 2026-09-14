@@ -17,7 +17,7 @@ public class UserProfileService
     private readonly IBlobStorageService _blobStorage;
     private readonly string _avatarContainer;
 
-    public UserProfileService(ApplicationDbContext db, IBlobStorageService blobStorage,IConfiguration configuration)
+    public UserProfileService(ApplicationDbContext db, IBlobStorageService blobStorage, IConfiguration configuration)
     {
         _db = db;
         _blobStorage = blobStorage;
@@ -84,7 +84,10 @@ public class UserProfileService
 
         // 2. Upload new avatar stream to Azure Blob Container
         var blobName = $"{userId}_{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}{ext}";
-        var contentType = file.ContentType ?? (ext == ".png" ? "image/png" : "image/jpeg");
+        var contentType = (file.Headers != null && !string.IsNullOrWhiteSpace(file.ContentType))
+            ? file.ContentType
+            : (ext == ".png" ? "image/png" : ext == ".webp" ? "image/webp" : "image/jpeg");
+
         await using var stream = file.OpenReadStream();
         var blobUrl = await _blobStorage.UploadAsync(stream, blobName, _avatarContainer, contentType);
 

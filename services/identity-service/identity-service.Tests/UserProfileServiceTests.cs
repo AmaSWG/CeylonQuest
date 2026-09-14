@@ -132,12 +132,10 @@ public class UserProfileServiceTests
         Assert.Equal("Perera", updated.LastName);
         Assert.Equal("0719876543", updated.PhoneNumber);
         Assert.Equal("Australian", updated.Nationality);
-        // Non-editable fields remain unchanged
         Assert.Equal(originalEmail, updated.Email);
         Assert.Equal("Visitor", updated.Role);
         Assert.Equal(originalCreatedAt, updated.CreatedAt);
 
-        // Verify in DB directly
         var dbUser = await db.Users.FindAsync(user.Id);
         Assert.NotNull(dbUser);
         Assert.Equal("Nimal", dbUser.FirstName);
@@ -198,7 +196,11 @@ public class UserProfileServiceTests
 
         var content = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }; // JPG header bytes
         var stream = new MemoryStream(content);
-        var file = new Microsoft.AspNetCore.Http.FormFile(stream, 0, content.Length, "file", "avatar.jpg");
+        var file = new Microsoft.AspNetCore.Http.FormFile(stream, 0, content.Length, "file", "avatar.jpg")
+        {
+            Headers = new Microsoft.AspNetCore.Http.HeaderDictionary(),
+            ContentType = "image/jpeg"
+        };
 
         var updated = await service.UploadProfilePictureAsync(user.Id, file);
 
