@@ -12,7 +12,7 @@ namespace ProviderCatalogService.Controllers;
 
 [ApiController]
 [Route("api/catalog/reports")]
-[Authorize]
+[Authorize(Roles = "Provider,Admin")]
 public class ReportsController : ControllerBase
 {
     private readonly InventoryReportService _reportService;

@@ -896,6 +896,14 @@ function ListingsTab({
     if (slotsList.filter(s => s.startTime && s.endTime).length === 0)
       return 'At least one complete time slot is required.'
     return null
+
+    const today = new Date().toISOString().split('T')[0]
+    if (form.validFrom && form.validFrom < today) {
+      return 'Valid From date cannot be in the past.'
+    }
+    if (form.validFrom && form.validUntil && form.validUntil < form.validFrom) {
+      return 'Valid Until date must be on or after the Valid From date.'
+}
   }
 
   const handleSubmit = async (e) => {
@@ -1482,6 +1490,7 @@ function ListingsTab({
                       id="exp-valid-from"
                       name="validFrom"
                       type="date"
+                      min={new Date().toISOString().split('T')[0]}
                       value={form.validFrom}
                       onChange={handleFormChange}
                     />
@@ -1493,6 +1502,7 @@ function ListingsTab({
                       id="exp-valid-until"
                       name="validUntil"
                       type="date"
+                      min={form.validFrom || new Date().toISOString().split('T')[0]}
                       value={form.validUntil}
                       onChange={handleFormChange}
                     />
