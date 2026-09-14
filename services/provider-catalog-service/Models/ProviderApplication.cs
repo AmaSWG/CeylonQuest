@@ -20,6 +20,8 @@ public class ProviderApplication
 
     public string? LegalDocumentFileName { get; set; }
 
+    public string LegalDocumentsJson { get; set; } = "[]";
+
     public ProviderStatus Status { get; set; } = ProviderStatus.Pending;
 
     public string? RejectionReason { get; set; }

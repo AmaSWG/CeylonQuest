@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using ProviderCatalogService.Data;
 using ProviderCatalogService.DTOs;
 using ProviderCatalogService.Models;
 using ProviderCatalogService.Services;
 using Shared.Kafka;
+using Shared.Storage;
 
 namespace ProviderCatalogService.Controllers;
 
@@ -17,12 +19,21 @@ public class ProviderAdminController : ControllerBase
     private readonly CatalogDbContext _db;
     private readonly IKafkaProducer _kafkaProducer;
 	private readonly IEmailService _emailService;
+	private readonly IBlobStorageService _blobStorage;
+    private readonly string _verificationContainer;
 
-    public ProviderAdminController(CatalogDbContext db, IKafkaProducer kafkaProducer, IEmailService emailService)
+    public ProviderAdminController(
+        CatalogDbContext db,
+        IKafkaProducer kafkaProducer,
+        IEmailService emailService,
+        IBlobStorageService blobStorage,
+        IConfiguration configuration)
     {
         _db = db;
         _kafkaProducer = kafkaProducer;
 		_emailService = emailService;
+		_blobStorage = blobStorage;
+        _verificationContainer = configuration["AzureStorage:VerificationFilesContainer"] ?? "provider-verification-files";
     }
 
     [HttpGet]
@@ -49,6 +60,8 @@ public class ProviderAdminController : ControllerBase
                 a.ServiceType,
                 a.Location,
                 a.Description,
+                a.LegalDocumentFileName,
+                a.LegalDocumentsJson,
                 a.Status,
                 a.SubmittedAt,
                 a.ReviewedAt,
@@ -60,42 +73,66 @@ public class ProviderAdminController : ControllerBase
     }
 
     [HttpGet("{id:guid}/document")]
-    public async Task<IActionResult> DownloadDocument(Guid id)
+    public async Task<IActionResult> DownloadDocument(Guid id, [FromQuery] int index = 0)
     {
         var application = await _db.ProviderApplications
             .FirstOrDefaultAsync(a => a.Id == id);
 
         if (application is null)
-            return NotFound();
+            return NotFound(new { message = "Application not found." });
 
-        if (string.IsNullOrWhiteSpace(application.LegalDocumentPath))
-            return NotFound(new
+        string? blobName = null;
+        string fileName = application.LegalDocumentFileName ?? "Verification_Document.pdf";
+
+        // 1. Try reading from the new Azure Blob JSON metadata
+        if (!string.IsNullOrWhiteSpace(application.LegalDocumentsJson) && application.LegalDocumentsJson != "[]")
+        {
+            try
             {
-                message = "No document was uploaded."
-            });
+                var parsed = JsonSerializer.Deserialize<List<JsonElement>>(application.LegalDocumentsJson);
+                if (parsed != null && parsed.Count > 0)
+                {
+                    var docIndex = Math.Clamp(index, 0, parsed.Count - 1);
+                    var target = parsed[docIndex];
+                    blobName = target.GetProperty("BlobName").GetString();
+                    if (target.TryGetProperty("OriginalFileName", out var origName))
+                    {
+                        fileName = origName.GetString() ?? fileName;
+                    }
+                }
+            }
+            catch { }
+        }
 
-        var fullPath = Path.Combine(
-            Directory.GetCurrentDirectory(),
-            application.LegalDocumentPath
-        );
+        // 2. Fallback to legacy path if present
+        if (string.IsNullOrWhiteSpace(blobName) && !string.IsNullOrWhiteSpace(application.LegalDocumentPath))
+        {
+            blobName = Path.GetFileName(application.LegalDocumentPath);
+        }
 
-        if (!System.IO.File.Exists(fullPath))
-            return NotFound(new
-            {
-                message = "Document file was not found."
-            });
+        if (string.IsNullOrWhiteSpace(blobName))
+        {
+            return NotFound(new { message = "No verification document was found for this application." });
+        }
 
-        var contentType = "application/octet-stream";
-        var extension = Path.GetExtension(fullPath);
+        // 3. Open stream directly from Azure Blob Storage
+        var stream = await _blobStorage.OpenReadAsync(blobName, _verificationContainer);
+        if (stream == null)
+        {
+            return NotFound(new { message = "Document file was not found in Azure Storage." });
+        }
 
-        if (extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
-            contentType = "application/pdf";
+        var ext = Path.GetExtension(fileName).ToLowerInvariant();
+        var contentType = ext switch
+        {
+            ".pdf" => "application/pdf",
+            ".png" => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            _ => "application/octet-stream"
+        };
 
-        return PhysicalFile(
-            fullPath,
-            contentType,
-            application.LegalDocumentFileName
-        );
+        // Return file stream with proper download filename
+        return File(stream, contentType, fileName);
     }
 
     [HttpPost("{id:guid}/approve")]
@@ -213,5 +250,34 @@ public class ProviderAdminController : ControllerBase
             application.RejectionReason,
             application.ReviewedAt
         });
+    }
+
+// GET /api/catalog/admin/providers/{id}/documents
+    [HttpGet("{id:guid}/documents")]
+    public async Task<IActionResult> GetApplicationDocuments(Guid id)
+    {
+        var app = await _db.ProviderApplications.FirstOrDefaultAsync(a => a.Id == id);
+        if (app == null) return NotFound(new { message = "Application not found." });
+        var docs = new List<object>();
+        if (!string.IsNullOrWhiteSpace(app.LegalDocumentsJson) && app.LegalDocumentsJson != "[]")
+        {
+            var parsed = JsonSerializer.Deserialize<List<JsonElement>>(app.LegalDocumentsJson) ?? new();
+            foreach (var doc in parsed)
+            {
+                var blobName = doc.GetProperty("BlobName").GetString() ?? "";
+                var originalName = doc.GetProperty("OriginalFileName").GetString() ?? blobName;
+
+                // Generate a temporary 30-minute SAS link for the Admin
+                var secureSasUrl = _blobStorage.GenerateSasUri(blobName, _verificationContainer, TimeSpan.FromMinutes(30));
+                docs.Add(new { fileName = originalName, url = secureSasUrl });
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(app.LegalDocumentPath))
+        {
+            var blobName = Path.GetFileName(app.LegalDocumentPath);
+            var secureSasUrl = _blobStorage.GenerateSasUri(blobName, _verificationContainer, TimeSpan.FromMinutes(30));
+            docs.Add(new { fileName = app.LegalDocumentFileName ?? "Document.pdf", url = secureSasUrl });
+        }
+        return Ok(docs);
     }
 }

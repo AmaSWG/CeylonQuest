@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 using Shared.Kafka;
 using System.Text.Json.Serialization;
+using Shared.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -108,6 +109,8 @@ if (!builder.Environment.IsEnvironment("Testing"))
 {
     builder.Services.AddHostedService<ProviderApprovedConsumer>();
 }
+
+builder.Services.AddScoped<IBlobStorageService, BlobStorageService>();
 
 var app = builder.Build();
 
