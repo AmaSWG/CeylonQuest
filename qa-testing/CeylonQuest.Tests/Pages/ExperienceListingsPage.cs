@@ -686,35 +686,49 @@ public class ExperienceListingsPage
     private IWebElement? FindListingRow(
         string title)
     {
-        var rows =
-            _driver.FindElements(
-                By.CssSelector(
-                    ".pd-table tbody tr"));
+        IWebElement? FindIn(
+            By locator)
+        {
+            IReadOnlyCollection<IWebElement> rows;
 
-        var row =
-            rows.FirstOrDefault(r =>
-                SafeDisplayed(r)
-                &&
-                r.Text.Contains(
-                    title,
-                    StringComparison.OrdinalIgnoreCase));
+            try
+            {
+                rows =
+                    _driver.FindElements(
+                        locator);
+            }
+            catch (StaleElementReferenceException)
+            {
+                return null;
+            }
 
-        if (row != null)
-            return row;
+            foreach (var row in rows)
+            {
+                try
+                {
+                    if (row.Displayed &&
+                        row.Text.Contains(
+                            title,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        return row;
+                    }
+                }
+                catch (StaleElementReferenceException)
+                {
+                }
+            }
 
-        // Fallback if frontend class changes
-        // but table structure stays.
-        rows =
-            _driver.FindElements(
-                By.CssSelector(
-                    "table tbody tr"));
+            return null;
+        }
 
-        return rows.FirstOrDefault(r =>
-            SafeDisplayed(r)
-            &&
-            r.Text.Contains(
-                title,
-                StringComparison.OrdinalIgnoreCase));
+        return FindIn(
+                   By.CssSelector(
+                       ".pd-table tbody tr"))
+               ??
+               FindIn(
+                   By.CssSelector(
+                       "table tbody tr"));
     }
 
     // ============================================================
@@ -835,8 +849,17 @@ public class ExperienceListingsPage
         string title)
     {
         _wait.Until(_ =>
-            !ListingExists(
-                title));
+        {
+            try
+            {
+                return !ListingExists(
+                    title);
+            }
+            catch (StaleElementReferenceException)
+            {
+                return false;
+            }
+        });
     }
 
     // ============================================================

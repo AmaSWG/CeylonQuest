@@ -26,6 +26,7 @@ public class AvailabilityTests : BaseTest
     private sealed record PreparedSlot(
         AvailabilityPage Page,
         string ListingId,
+        string ListingTitle,
         string Date,
         string TimeSlot,
         int Total,
@@ -44,6 +45,16 @@ public class AvailabilityTests : BaseTest
 
     private string ListingTitle =>
         Env("QA_AVAILABILITY_LISTING_TITLE");
+
+    private string ProviderEmail =>
+        Environment.GetEnvironmentVariable(
+            "CQ_APPROVED_PROVIDER_EMAIL")
+        ?? Env("QA_PROVIDER_EMAIL");
+
+    private string ProviderPassword =>
+        Environment.GetEnvironmentVariable(
+            "CQ_APPROVED_PROVIDER_PASSWORD")
+        ?? Env("QA_PROVIDER_PASSWORD");
 
     private void ClearSession()
     {
@@ -115,8 +126,8 @@ public class AvailabilityTests : BaseTest
 
     private void LoginAsProvider() =>
         Login(
-            Env("QA_PROVIDER_EMAIL"),
-            Env("QA_PROVIDER_PASSWORD"),
+            ProviderEmail,
+            ProviderPassword,
             "pd-nav-services");
 
     private void LoginAsVisitor() =>
@@ -250,7 +261,7 @@ public class AvailabilityTests : BaseTest
             ListingTitle.Trim();
 
         var providerEmail =
-            Env("QA_PROVIDER_EMAIL");
+            ProviderEmail;
 
         var matches =
             GetActiveExperienceListings(
@@ -270,18 +281,20 @@ public class AvailabilityTests : BaseTest
         if (exactOwned != null)
             return exactOwned;
 
-        var exact =
-            matches.FirstOrDefault(l =>
-                l.Title.Trim().Equals(
-                    expectedTitle,
-                    StringComparison.OrdinalIgnoreCase));
+        var anyOwned =
+            GetActiveExperienceListings(page)
+                .FirstOrDefault(l =>
+                    l.ProviderEmail.Equals(
+                        providerEmail,
+                        StringComparison.OrdinalIgnoreCase));
 
-        if (exact != null)
-            return exact;
+        if (anyOwned != null)
+            return anyOwned;
 
         throw new InvalidOperationException(
-            $"No ACTIVE experience listing named " +
-            $"'{expectedTitle}' was found.");
+            $"No ACTIVE experience listing owned by " +
+            $"'{providerEmail}' was found. " +
+            $"Use an approved provider that owns an active experience listing.");
     }
 
     private ListingInfo ResolveOtherProviderListing(
@@ -289,7 +302,7 @@ public class AvailabilityTests : BaseTest
         string ownListingId)
     {
         var ownProviderEmail =
-            Env("QA_PROVIDER_EMAIL");
+            ProviderEmail;
 
         var configuredId =
             Environment.GetEnvironmentVariable(
@@ -547,6 +560,7 @@ public class AvailabilityTests : BaseTest
         return new PreparedSlot(
             page,
             listing.Id,
+            listing.Title,
             testDate,
             first.TimeSlot,
             prepared.Total,
@@ -583,7 +597,7 @@ public class AvailabilityTests : BaseTest
         page.OpenVisitorExplore();
 
         page.OpenAvailabilityForListingTitle(
-            ListingTitle);
+            prepared.ListingTitle);
 
         page.SelectDate(
             prepared.Date);
@@ -788,7 +802,7 @@ public class AvailabilityTests : BaseTest
         visitorPage.OpenVisitorExplore();
 
         visitorPage.OpenAvailabilityForListingTitle(
-            ListingTitle);
+            prepared.ListingTitle);
 
         visitorPage.SelectDate(
             prepared.Date);
@@ -905,7 +919,7 @@ public class AvailabilityTests : BaseTest
             new AvailabilityPage(Driver);
 
         var providerEmail =
-            Env("QA_PROVIDER_EMAIL");
+            ProviderEmail;
 
         var candidates =
             GetActiveExperienceListings(page)
@@ -1082,7 +1096,7 @@ public class AvailabilityTests : BaseTest
         visitorPage.OpenVisitorExplore();
 
         visitorPage.OpenAvailabilityForListingTitle(
-            ListingTitle);
+            prepared.ListingTitle);
 
         visitorPage.SelectDate(
             prepared.Date);
@@ -1198,9 +1212,11 @@ public class AvailabilityTests : BaseTest
         var listing =
             ResolveOwnActiveListing(page);
 
+        // Use a date safely in the past for both local time
+        // and UTC-based backend validation.
         var pastDate =
-            DateTime.Today
-                .AddDays(-1)
+            DateTime.UtcNow
+                .AddDays(-2)
                 .ToString("yyyy-MM-dd");
 
         using var baseline =

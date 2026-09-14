@@ -74,7 +74,17 @@ public class SearchBrowsePage
     {
         return _driver
             .FindElements(By.CssSelector(".vd-service-card"))
-            .Where(e => e.Displayed)
+            .Where(e =>
+            {
+                try
+                {
+                    return e.Displayed;
+                }
+                catch (StaleElementReferenceException)
+                {
+                    return false;
+                }
+            })
             .ToList();
     }
 
@@ -85,32 +95,71 @@ public class SearchBrowsePage
 
     public bool HasListing(string title)
     {
-        return VisibleCards().Any(card =>
-            card.FindElements(
-                    By.CssSelector(".vd-service-card__title"))
-                .Any(e =>
-                    e.Displayed &&
-                    string.Equals(
-                        e.Text.Trim(),
-                        title,
-                        StringComparison.OrdinalIgnoreCase)));
+        try
+        {
+            return VisibleCards().Any(card =>
+                card.FindElements(
+                        By.CssSelector(".vd-service-card__title"))
+                    .Any(e =>
+                    {
+                        try
+                        {
+                            return e.Displayed &&
+                                   string.Equals(
+                                       e.Text.Trim(),
+                                       title,
+                                       StringComparison.OrdinalIgnoreCase);
+                        }
+                        catch (StaleElementReferenceException)
+                        {
+                            return false;
+                        }
+                    }));
+        }
+        catch (StaleElementReferenceException)
+        {
+            return false;
+        }
     }
 
     public IWebElement GetListingCard(string title)
     {
-        return _wait.Until(_ =>
+        IWebElement? foundCard = null;
+
+        _wait.Until(_ =>
         {
-            return VisibleCards()
-                .FirstOrDefault(card =>
-                    card.FindElements(
-                            By.CssSelector(".vd-service-card__title"))
-                        .Any(e =>
-                            e.Displayed &&
-                            string.Equals(
-                                e.Text.Trim(),
-                                title,
-                                StringComparison.OrdinalIgnoreCase)));
-        })!;
+            try
+            {
+                foundCard = VisibleCards()
+                    .FirstOrDefault(card =>
+                    {
+                        try
+                        {
+                            return card
+                                .FindElements(
+                                    By.CssSelector(".vd-service-card__title"))
+                                .Any(e =>
+                                    e.Displayed &&
+                                    string.Equals(
+                                        e.Text.Trim(),
+                                        title,
+                                        StringComparison.OrdinalIgnoreCase));
+                        }
+                        catch (StaleElementReferenceException)
+                        {
+                            return false;
+                        }
+                    });
+
+                return foundCard != null;
+            }
+            catch (StaleElementReferenceException)
+            {
+                return false;
+            }
+        });
+
+        return foundCard!;
     }
 
     public string GetListingType(string title)
@@ -125,13 +174,26 @@ public class SearchBrowsePage
 
     public IReadOnlyList<string> VisibleTitles()
     {
-        return VisibleCards()
-            .Select(card =>
-                card.FindElement(
-                        By.CssSelector(".vd-service-card__title"))
+        var titles = new List<string>();
+
+        foreach (var card in VisibleCards())
+        {
+            try
+            {
+                var title = card
+                    .FindElement(By.CssSelector(".vd-service-card__title"))
                     .Text
-                    .Trim())
-            .ToList();
+                    .Trim();
+
+                titles.Add(title);
+            }
+            catch (StaleElementReferenceException)
+            {
+                // DOM refreshed; ignore this card
+            }
+        }
+
+        return titles;
     }
 
     public string ResultsCountText()
@@ -149,35 +211,58 @@ public class SearchBrowsePage
         return _driver
             .FindElements(By.CssSelector(".vd-empty-search"))
             .Any(e =>
-                e.Displayed &&
-                e.Text.Contains(
-                    "No listings matched your search",
-                    StringComparison.OrdinalIgnoreCase));
+            {
+                try
+                {
+                    return e.Displayed &&
+                           e.Text.Contains(
+                               "No listings matched your search",
+                               StringComparison.OrdinalIgnoreCase);
+                }
+                catch (StaleElementReferenceException)
+                {
+                    return false;
+                }
+            });
     }
 
     public string WaitForNoResults(string keyword)
     {
-        return _wait.Until(d =>
+        string? result = null;
+
+        _wait.Until(d =>
         {
-            var empty = d
-                .FindElements(By.CssSelector(".vd-empty-search"))
-                .FirstOrDefault(e => e.Displayed);
+            try
+            {
+                var empty = d
+                    .FindElements(By.CssSelector(".vd-empty-search"))
+                    .FirstOrDefault(e => e.Displayed);
 
-            if (empty == null)
-                return null;
+                if (empty == null)
+                    return false;
 
-            if (!empty.Text.Contains(
-                    "No listings matched your search",
-                    StringComparison.OrdinalIgnoreCase))
-                return null;
+                var text = empty.Text;
 
-            if (!empty.Text.Contains(
-                    keyword,
-                    StringComparison.OrdinalIgnoreCase))
-                return null;
+                if (!text.Contains(
+                        "No listings matched your search",
+                        StringComparison.OrdinalIgnoreCase))
+                    return false;
 
-            return empty.Text;
-        })!;
+                if (!text.Contains(
+                        keyword,
+                        StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                result = text;
+                return true;
+            }
+            catch (StaleElementReferenceException)
+            {
+                return false;
+            }
+        });
+
+        return result ?? string.Empty;
     }
 
     public string NoResultsText()
@@ -193,92 +278,272 @@ public class SearchBrowsePage
     {
         return _driver
             .FindElements(By.CssSelector(".vd-pagination"))
-            .Any(e => e.Displayed);
+            .Any(e =>
+            {
+                try
+                {
+                    return e.Displayed;
+                }
+                catch (StaleElementReferenceException)
+                {
+                    return false;
+                }
+            });
     }
 
     public string PageIndicatorText()
     {
-        return _wait
-            .Until(d =>
-                d.FindElements(By.CssSelector(".vd-page-indicator"))
-                    .First(e => e.Displayed))
-            .Text
-            .Trim();
+        return $"Page {CurrentPage()}";
     }
 
     public int CurrentPage()
     {
-        var text = PageIndicatorText();
+        int currentPage = 0;
 
-        var parts = text.Split(
-            ' ',
-            StringSplitOptions.RemoveEmptyEntries);
-
-        if (parts.Length >= 2 &&
-            int.TryParse(parts[1], out var page))
+        _wait.Until(d =>
         {
-            return page;
-        }
+            try
+            {
+                // First try aria-current
+                var active = d.FindElements(
+                        By.CssSelector(
+                            ".vd-pagination [aria-current='page']"))
+                    .FirstOrDefault(e =>
+                    {
+                        try
+                        {
+                            return e.Displayed;
+                        }
+                        catch (StaleElementReferenceException)
+                        {
+                            return false;
+                        }
+                    });
 
-        throw new InvalidOperationException(
-            $"Could not parse page indicator: '{text}'.");
+                // Fallback: active page button/class
+                active ??= d.FindElements(
+                        By.CssSelector(
+                            ".vd-pagination .vd-page-num.active, " +
+                            ".vd-pagination button.active"))
+                    .FirstOrDefault(e =>
+                    {
+                        try
+                        {
+                            return e.Displayed;
+                        }
+                        catch (StaleElementReferenceException)
+                        {
+                            return false;
+                        }
+                    });
+
+                if (active == null)
+                    return false;
+
+                var text = active.Text.Trim();
+
+                if (!int.TryParse(text, out var page))
+                    return false;
+
+                currentPage = page;
+                return true;
+            }
+            catch (StaleElementReferenceException)
+            {
+                return false;
+            }
+        });
+
+        return currentPage;
     }
 
     public void GoToNextPage()
     {
-        var currentPage = CurrentPage();
+        var oldPage = CurrentPage();
 
-        var button = _wait.Until(d =>
-            d.FindElements(
-                    By.XPath(
-                        "//button[contains(@class,'vd-page-btn') " +
-                        "and contains(normalize-space(),'Next')]"))
-                .FirstOrDefault(e =>
-                    e.Displayed &&
-                    e.Enabled));
+        IWebElement? nextButton = null;
 
-        button!.Click();
+        _wait.Until(d =>
+        {
+            try
+            {
+                nextButton = d.FindElements(
+                        By.CssSelector(
+                            ".vd-pagination button[aria-label='Next page']"))
+                    .FirstOrDefault(e =>
+                    {
+                        try
+                        {
+                            return e.Displayed && e.Enabled;
+                        }
+                        catch (StaleElementReferenceException)
+                        {
+                            return false;
+                        }
+                    });
+
+                return nextButton != null;
+            }
+            catch (StaleElementReferenceException)
+            {
+                return false;
+            }
+        });
+
+        if (nextButton == null)
+            throw new NoSuchElementException(
+                "Next page button was not found or is disabled.");
+
+        nextButton.Click();
 
         _wait.Until(_ =>
-            CurrentPage() == currentPage + 1);
+        {
+            try
+            {
+                return TryGetCurrentPage(out var newPage)
+                       && newPage > oldPage;
+            }
+            catch (StaleElementReferenceException)
+            {
+                return false;
+            }
+        });
 
         WaitForResultsToFinishLoading();
     }
 
     public void GoToPreviousPage()
     {
-        var currentPage = CurrentPage();
+        var oldPage = CurrentPage();
 
-        var button = _wait.Until(d =>
-            d.FindElements(
-                    By.XPath(
-                        "//button[contains(@class,'vd-page-btn') " +
-                        "and contains(normalize-space(),'Previous')]"))
-                .FirstOrDefault(e =>
-                    e.Displayed &&
-                    e.Enabled));
+        IWebElement? previousButton = null;
 
-        button!.Click();
+        _wait.Until(d =>
+        {
+            try
+            {
+                previousButton = d.FindElements(
+                        By.CssSelector(
+                            ".vd-pagination button[aria-label='Previous page']"))
+                    .FirstOrDefault(e =>
+                    {
+                        try
+                        {
+                            return e.Displayed && e.Enabled;
+                        }
+                        catch (StaleElementReferenceException)
+                        {
+                            return false;
+                        }
+                    });
+
+                return previousButton != null;
+            }
+            catch (StaleElementReferenceException)
+            {
+                return false;
+            }
+        });
+
+        if (previousButton == null)
+            throw new NoSuchElementException(
+                "Previous page button was not found or is disabled.");
+
+        previousButton.Click();
 
         _wait.Until(_ =>
-            CurrentPage() == currentPage - 1);
+        {
+            try
+            {
+                return TryGetCurrentPage(out var newPage)
+                       && newPage < oldPage;
+            }
+            catch (StaleElementReferenceException)
+            {
+                return false;
+            }
+        });
 
         WaitForResultsToFinishLoading();
+    }
+
+    private bool TryGetCurrentPage(out int page)
+    {
+        page = 0;
+
+        try
+        {
+            var active = _driver.FindElements(
+                    By.CssSelector(
+                        ".vd-pagination [aria-current='page']"))
+                .FirstOrDefault(e =>
+                {
+                    try
+                    {
+                        return e.Displayed;
+                    }
+                    catch (StaleElementReferenceException)
+                    {
+                        return false;
+                    }
+                });
+
+            active ??= _driver.FindElements(
+                    By.CssSelector(
+                        ".vd-pagination .vd-page-num.active, " +
+                        ".vd-pagination button.active"))
+                .FirstOrDefault(e =>
+                {
+                    try
+                    {
+                        return e.Displayed;
+                    }
+                    catch (StaleElementReferenceException)
+                    {
+                        return false;
+                    }
+                });
+
+            if (active == null)
+                return false;
+
+            return int.TryParse(active.Text.Trim(), out page);
+        }
+        catch (StaleElementReferenceException)
+        {
+            return false;
+        }
     }
 
     public void WaitForListing(string title)
     {
         _wait.Until(d =>
         {
-            var titles = d.FindElements(
-                By.CssSelector(".vd-service-card__title"));
+            try
+            {
+                var titles = d.FindElements(
+                    By.CssSelector(".vd-service-card__title"));
 
-            return titles.Any(e =>
-                e.Displayed &&
-                string.Equals(
-                    e.Text.Trim(),
-                    title,
-                    StringComparison.OrdinalIgnoreCase));
+                return titles.Any(e =>
+                {
+                    try
+                    {
+                        return e.Displayed &&
+                               string.Equals(
+                                   e.Text.Trim(),
+                                   title,
+                                   StringComparison.OrdinalIgnoreCase);
+                    }
+                    catch (StaleElementReferenceException)
+                    {
+                        return false;
+                    }
+                });
+            }
+            catch (StaleElementReferenceException)
+            {
+                return false;
+            }
         });
     }
 
@@ -286,30 +551,86 @@ public class SearchBrowsePage
     {
         _wait.Until(d =>
         {
-            var loading = d
-                .FindElements(By.CssSelector(".vd-loading-card"))
-                .Any(e => e.Displayed);
+            try
+            {
+                var loading = d
+                    .FindElements(By.CssSelector(".vd-loading-card"))
+                    .Any(e =>
+                    {
+                        try
+                        {
+                            return e.Displayed;
+                        }
+                        catch (StaleElementReferenceException)
+                        {
+                            return false;
+                        }
+                    });
 
-            if (loading)
+                if (loading)
+                    return false;
+
+                var cards = d
+                    .FindElements(By.CssSelector(".vd-service-card"))
+                    .Any(e =>
+                    {
+                        try
+                        {
+                            return e.Displayed;
+                        }
+                        catch (StaleElementReferenceException)
+                        {
+                            return false;
+                        }
+                    });
+
+                var empty = d
+                    .FindElements(By.CssSelector(".vd-empty-search"))
+                    .Any(e =>
+                    {
+                        try
+                        {
+                            return e.Displayed;
+                        }
+                        catch (StaleElementReferenceException)
+                        {
+                            return false;
+                        }
+                    });
+
+                return cards || empty;
+            }
+            catch (StaleElementReferenceException)
+            {
                 return false;
-
-            var cards = d
-                .FindElements(By.CssSelector(".vd-service-card"))
-                .Any(e => e.Displayed);
-
-            var empty = d
-                .FindElements(By.CssSelector(".vd-empty-search"))
-                .Any(e => e.Displayed);
-
-            return cards || empty;
+            }
         });
     }
 
     private void WaitForResultsToFinishLoading()
     {
         _wait.Until(d =>
-            !d.FindElements(
-                    By.CssSelector(".vd-loading-card"))
-                .Any(e => e.Displayed));
+        {
+            try
+            {
+                return !d.FindElements(
+                        By.CssSelector(".vd-loading-card"))
+                    .Any(e =>
+                    {
+                        try
+                        {
+                            return e.Displayed;
+                        }
+                        catch (StaleElementReferenceException)
+                        {
+                            return false;
+                        }
+                    });
+            }
+            catch (StaleElementReferenceException)
+            {
+                return false;
+            }
+        });
     }
 }

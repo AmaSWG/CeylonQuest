@@ -678,6 +678,27 @@ public class InventoryReportPage
     // CATEGORY FILTER
     // =========================
 
+    private static string NormalizeCategory(
+        string value)
+    {
+        return (value ?? string.Empty)
+            .Trim()
+            .ToLowerInvariant() switch
+        {
+            "activity" => "Experience",
+            "activities" => "Experience",
+            "experience" => "Experience",
+            "experiences" => "Experience",
+            "restaurant" => "Restaurant",
+            "restaurants" => "Restaurant",
+            "accommodation" => "Accommodation",
+            "accommodations" => "Accommodation",
+            "stay" => "Accommodation",
+            "stays" => "Accommodation",
+            _ => value?.Trim() ?? string.Empty
+        };
+    }
+
     public void ApplyCategory(
         string value)
     {

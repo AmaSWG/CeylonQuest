@@ -834,7 +834,26 @@ public class AvailabilityPage
             date,
             yyyyMmDd);
 
-        Thread.Sleep(700);
+        // Wait until React has accepted the selected date.
+        _wait.Until(d =>
+        {
+            try
+            {
+                var current =
+                    date.GetAttribute("value");
+
+                return string.Equals(
+                    current,
+                    yyyyMmDd,
+                    StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        });
+
+        Thread.Sleep(500);
     }
 
     // =========================================================
@@ -843,32 +862,72 @@ public class AvailabilityPage
 
     public string AvailabilityMessage()
     {
-        var box =
+        // Prefer the smallest visible element that actually contains
+        // the availability state. The old XPath could match a large
+        // ancestor (even the whole page) before the modal message.
+        var message =
             _wait.Until(d =>
-                d.FindElements(
-                    By.XPath(
-                        "//*[contains(.,'spots available') " +
-                        "or contains(.,'Fully Booked') " +
-                        "or contains(.,'does not operate')]"))
-                 .FirstOrDefault(e =>
-                 {
-                     try
-                     {
-                         return e.Displayed;
-                     }
-                     catch
-                     {
-                         return false;
-                     }
-                 }));
+            {
+                var candidates =
+                    d.FindElements(
+                        By.XPath(
+                            "//*[contains(normalize-space(.),'Fully Booked') " +
+                            "or contains(normalize-space(.),'spots available') " +
+                            "or contains(normalize-space(.),'does not operate')]"));
 
-        if (box == null)
+                var visible =
+                    candidates
+                        .Where(e =>
+                        {
+                            try
+                            {
+                                return e.Displayed &&
+                                       !string.IsNullOrWhiteSpace(e.Text);
+                            }
+                            catch
+                            {
+                                return false;
+                            }
+                        })
+                        .ToList();
+
+                if (visible.Count == 0)
+                    return null;
+
+                // Prefer a leaf/small element rather than a page container.
+                return visible
+                    .OrderBy(e =>
+                    {
+                        try
+                        {
+                            return e.FindElements(By.XPath("./*")).Count;
+                        }
+                        catch
+                        {
+                            return int.MaxValue;
+                        }
+                    })
+                    .ThenBy(e =>
+                    {
+                        try
+                        {
+                            return e.Text.Length;
+                        }
+                        catch
+                        {
+                            return int.MaxValue;
+                        }
+                    })
+                    .FirstOrDefault();
+            });
+
+        if (message == null)
         {
             throw new NoSuchElementException(
                 "Availability message was not found.");
         }
 
-        return box.Text;
+        return message.Text.Trim();
     }
 
     // =========================================================

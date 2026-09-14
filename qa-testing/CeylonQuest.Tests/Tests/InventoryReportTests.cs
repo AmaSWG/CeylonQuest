@@ -23,10 +23,41 @@ public class InventoryReportTests : BaseTest
         return value;
     }
 
-    private string ReportCategory =>
+    private string ReportCategory
+    {
+        get
+        {
+            var raw =
+                Environment.GetEnvironmentVariable(
+                    "QA_REPORT_CATEGORY")
+                ?? "Experience";
+
+            return raw.Trim().ToLowerInvariant() switch
+            {
+                "activity" => "Experience",
+                "activities" => "Experience",
+                "experience" => "Experience",
+                "experiences" => "Experience",
+                "restaurant" => "Restaurant",
+                "restaurants" => "Restaurant",
+                "accommodation" => "Accommodation",
+                "accommodations" => "Accommodation",
+                "stay" => "Accommodation",
+                "stays" => "Accommodation",
+                _ => raw.Trim()
+            };
+        }
+    }
+
+    private string ProviderEmail =>
         Environment.GetEnvironmentVariable(
-            "QA_REPORT_CATEGORY")
-        ?? "Experience";
+            "CQ_APPROVED_PROVIDER_EMAIL")
+        ?? Env("QA_PROVIDER_EMAIL");
+
+    private string ProviderPassword =>
+        Environment.GetEnvironmentVariable(
+            "CQ_APPROVED_PROVIDER_PASSWORD")
+        ?? Env("QA_PROVIDER_PASSWORD");
 
     private string ReportLocation =>
         Environment.GetEnvironmentVariable(
@@ -127,8 +158,8 @@ public class InventoryReportTests : BaseTest
     private void LoginProvider()
     {
         Login(
-            Env("QA_PROVIDER_EMAIL"),
-            Env("QA_PROVIDER_PASSWORD"),
+            ProviderEmail,
+            ProviderPassword,
             "pd-nav-reports",
             "pd-nav-services");
     }
@@ -158,15 +189,20 @@ public class InventoryReportTests : BaseTest
     private string ResolveReportListingId(
         InventoryReportPage page)
     {
-        var title =
-            Env("QA_AVAILABILITY_LISTING_TITLE");
+        var expectedTitle =
+            Environment.GetEnvironmentVariable(
+                "QA_AVAILABILITY_LISTING_TITLE");
 
+        // Use the authenticated provider endpoint.
+        // It returns listings that belong to the currently
+        // logged-in provider, so we do not depend on
+        // providerEmail being present in the public API.
         var result =
             page.BrowserApiRequest(
                 "GET",
-                $"/api/catalog/activity-listings/public?search={Uri.EscapeDataString(title)}",
+                "/api/catalog/activity-listings",
                 null,
-                false);
+                true);
 
         Assert.Equal(
             200,
@@ -180,49 +216,87 @@ public class InventoryReportTests : BaseTest
             != JsonValueKind.Array)
         {
             throw new InvalidOperationException(
-                "Public listing API did not return an array.");
+                "Provider activity listings API did not return an array.");
         }
 
-        foreach (
-            var item
-            in json.RootElement.EnumerateArray())
+        string? firstActiveId = null;
+
+        foreach (var item
+                 in json.RootElement.EnumerateArray())
         {
-            if (!item.TryGetProperty(
-                    "title",
-                    out var titleProperty))
-            {
-                continue;
-            }
-
-            var itemTitle =
-                titleProperty.GetString();
-
-            if (!string.Equals(
-                    itemTitle?.Trim(),
-                    title.Trim(),
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (!item.TryGetProperty(
-                    "id",
-                    out var idProperty))
-            {
-                continue;
-            }
-
             var id =
-                idProperty.GetString();
+                item.TryGetProperty(
+                    "id",
+                    out var idProperty)
+                    ? idProperty.GetString()
+                    : null;
 
-            if (!string.IsNullOrWhiteSpace(id))
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                continue;
+            }
+
+            var isActive = false;
+
+            if (item.TryGetProperty(
+                    "isActive",
+                    out var activeProperty))
+            {
+                isActive =
+                    activeProperty.ValueKind == JsonValueKind.True
+                    || (activeProperty.ValueKind == JsonValueKind.String
+                        && bool.TryParse(
+                            activeProperty.GetString(),
+                            out var parsedActive)
+                        && parsedActive);
+            }
+            else if (item.TryGetProperty(
+                         "status",
+                         out var statusProperty))
+            {
+                var status =
+                    statusProperty.GetString();
+
+                isActive =
+                    string.Equals(
+                        status,
+                        "Active",
+                        StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (!isActive)
+            {
+                continue;
+            }
+
+            firstActiveId ??= id;
+
+            var title =
+                item.TryGetProperty(
+                    "title",
+                    out var titleProperty)
+                    ? titleProperty.GetString()
+                    : null;
+
+            if (!string.IsNullOrWhiteSpace(expectedTitle)
+                && string.Equals(
+                    title?.Trim(),
+                    expectedTitle.Trim(),
+                    StringComparison.OrdinalIgnoreCase))
             {
                 return id;
             }
         }
 
+        if (!string.IsNullOrWhiteSpace(firstActiveId))
+        {
+            return firstActiveId;
+        }
+
         throw new InvalidOperationException(
-            $"Active listing '{title}' was not found.");
+            $"No active experience listing was found " +
+            $"for the currently logged-in provider " +
+            $"'{ProviderEmail}'.");
     }
 
     private (
