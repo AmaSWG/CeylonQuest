@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using IdentityService.Data;
@@ -6,18 +7,55 @@ using IdentityService.DTOs;
 using IdentityService.Models;
 using IdentityService.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Shared.Storage;
 using Xunit;
 
 namespace IdentityService.Tests;
 
 public class UserProfileServiceTests
 {
+    private class FakeBlobStorageService : IBlobStorageService
+    {
+        public Task<string> UploadAsync(Stream content, string blobName, string containerName, string contentType)
+        {
+            return Task.FromResult($"https://fakeaccount.blob.core.windows.net/{containerName}/{blobName}");
+        }
+
+        public Task<bool> DeleteAsync(string blobName, string containerName)
+        {
+            return Task.FromResult(true);
+        }
+
+        public Task<Stream?> OpenReadAsync(string blobName, string containerName)
+        {
+            return Task.FromResult<Stream?>(new MemoryStream());
+        }
+
+        public string GenerateSasUri(string blobName, string containerName, TimeSpan expiry)
+        {
+            return $"https://fakeaccount.blob.core.windows.net/{containerName}/{blobName}?sas=dummy";
+        }
+    }
+
     private static ApplicationDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         return new ApplicationDbContext(options);
+    }
+
+    private static UserProfileService CreateService(ApplicationDbContext db, IBlobStorageService? blobStorage = null)
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["AzureStorage:ProfilePicturesContainer"] = "profile-images"
+            })
+            .Build();
+
+        return new UserProfileService(db, blobStorage ?? new FakeBlobStorageService(), config);
     }
 
     private static User SeedUser(ApplicationDbContext db, UserRole role = UserRole.Visitor)
@@ -44,7 +82,7 @@ public class UserProfileServiceTests
     {
         using var db = CreateDbContext();
         var user = SeedUser(db, UserRole.Visitor);
-        var service = new UserProfileService(db);
+        var service = CreateService(db);
 
         var profile = await service.GetProfileAsync(user.Id);
 
@@ -63,7 +101,7 @@ public class UserProfileServiceTests
     public async Task GetProfileAsync_NonExistentUser_ThrowsUserNotFoundException()
     {
         using var db = CreateDbContext();
-        var service = new UserProfileService(db);
+        var service = CreateService(db);
 
         await Assert.ThrowsAsync<UserNotFoundException>(() =>
             service.GetProfileAsync(Guid.NewGuid()));
@@ -78,7 +116,7 @@ public class UserProfileServiceTests
         var originalRole = user.Role;
         var originalCreatedAt = user.CreatedAt;
 
-        var service = new UserProfileService(db);
+        var service = CreateService(db);
 
         var updateRequest = new UpdateProfileRequest
         {
@@ -115,7 +153,7 @@ public class UserProfileServiceTests
     {
         using var db = CreateDbContext();
         var user = SeedUser(db);
-        var service = new UserProfileService(db);
+        var service = CreateService(db);
 
         var updateRequest = new UpdateProfileRequest
         {
@@ -137,7 +175,7 @@ public class UserProfileServiceTests
     public async Task UpdateProfileAsync_NonExistentUser_ThrowsUserNotFoundException()
     {
         using var db = CreateDbContext();
-        var service = new UserProfileService(db);
+        var service = CreateService(db);
 
         var updateRequest = new UpdateProfileRequest
         {
@@ -156,30 +194,20 @@ public class UserProfileServiceTests
     {
         using var db = CreateDbContext();
         var user = SeedUser(db);
-        var service = new UserProfileService(db);
+        var service = CreateService(db);
 
-        var tempDir = Path.Combine(Path.GetTempPath(), "cq_test_" + Guid.NewGuid());
-        Directory.CreateDirectory(tempDir);
+        var content = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }; // JPG header bytes
+        var stream = new MemoryStream(content);
+        var file = new Microsoft.AspNetCore.Http.FormFile(stream, 0, content.Length, "file", "avatar.jpg");
 
-        try
-        {
-            var content = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }; // JPG header bytes
-            var stream = new System.IO.MemoryStream(content);
-            var file = new Microsoft.AspNetCore.Http.FormFile(stream, 0, content.Length, "file", "avatar.jpg");
+        var updated = await service.UploadProfilePictureAsync(user.Id, file);
 
-            var updated = await service.UploadProfilePictureAsync(user.Id, file, tempDir);
+        Assert.NotNull(updated.ProfilePictureUrl);
+        Assert.Contains("profile-images", updated.ProfilePictureUrl);
+        Assert.EndsWith(".jpg", updated.ProfilePictureUrl);
 
-            Assert.NotNull(updated.ProfilePictureUrl);
-            Assert.StartsWith("/api/users/avatar/", updated.ProfilePictureUrl);
-            Assert.EndsWith(".jpg", updated.ProfilePictureUrl);
-
-            var dbUser = await db.Users.FindAsync(user.Id);
-            Assert.Equal(updated.ProfilePictureUrl, dbUser?.ProfilePictureUrl);
-        }
-        finally
-        {
-            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
-        }
+        var dbUser = await db.Users.FindAsync(user.Id);
+        Assert.Equal(updated.ProfilePictureUrl, dbUser?.ProfilePictureUrl);
     }
 
     [Fact]
@@ -187,25 +215,15 @@ public class UserProfileServiceTests
     {
         using var db = CreateDbContext();
         var user = SeedUser(db);
-        user.ProfilePictureUrl = "/uploads/avatars/test.jpg";
+        user.ProfilePictureUrl = "https://fakeaccount.blob.core.windows.net/profile-images/test.jpg";
         db.SaveChanges();
 
-        var service = new UserProfileService(db);
-        var tempDir = Path.Combine(Path.GetTempPath(), "cq_test_" + Guid.NewGuid());
-        Directory.CreateDirectory(Path.Combine(tempDir, "uploads", "avatars"));
-        File.WriteAllText(Path.Combine(tempDir, "uploads", "avatars", "test.jpg"), "dummy");
+        var service = CreateService(db);
 
-        try
-        {
-            var updated = await service.RemoveProfilePictureAsync(user.Id, tempDir);
+        var updated = await service.RemoveProfilePictureAsync(user.Id);
 
-            Assert.Null(updated.ProfilePictureUrl);
-            var dbUser = await db.Users.FindAsync(user.Id);
-            Assert.Null(dbUser?.ProfilePictureUrl);
-        }
-        finally
-        {
-            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
-        }
+        Assert.Null(updated.ProfilePictureUrl);
+        var dbUser = await db.Users.FindAsync(user.Id);
+        Assert.Null(dbUser?.ProfilePictureUrl);
     }
 }
