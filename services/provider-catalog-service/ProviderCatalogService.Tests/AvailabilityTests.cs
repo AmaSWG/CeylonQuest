@@ -99,4 +99,102 @@ public class AvailabilityTests
         Assert.Equal(0, response.Slots[0].RemainingCapacity);
         Assert.True(response.Slots[0].IsFullyBooked);
     }
+
+    [Fact]
+    public async Task Scenario4_BookingCanceled_RestoresCapacity()
+    {
+        var db = CreateInMemoryDbContext();
+        var service = new AvailabilityService(db);
+        var listingId = Guid.NewGuid();
+
+        db.ActivityListings.Add(new ActivityListing
+        {
+            Id = listingId,
+            Title = "Scuba Diving",
+            MaxParticipants = 6,
+            TimeSlots = "09:00 AM - 11:00 AM",
+            AvailableDays = "Daily",
+            IsActive = true
+        });
+        await db.SaveChangesAsync();
+
+        var date = new DateOnly(2026, 9, 25);
+
+        // Deduct 4 spots
+        await service.DeductCapacityAsync(listingId, date, "09:00 AM - 11:00 AM", 4);
+        var afterBooking = await service.GetAvailabilityForDateAsync(listingId, date);
+        Assert.Equal(2, afterBooking!.Slots[0].RemainingCapacity);
+
+        // Cancel 2 spots -> should restore back to 4
+        await service.RestoreCapacityAsync(listingId, date, "09:00 AM - 11:00 AM", 2);
+        var afterCancel = await service.GetAvailabilityForDateAsync(listingId, date);
+        Assert.Equal(4, afterCancel!.Slots[0].RemainingCapacity);
+    }
+
+    [Fact]
+    public async Task Scenario5_BookingCanceled_DoesNotExceedTotalCapacity()
+    {
+        var db = CreateInMemoryDbContext();
+        var service = new AvailabilityService(db);
+        var listingId = Guid.NewGuid();
+
+        db.ActivityListings.Add(new ActivityListing
+        {
+            Id = listingId,
+            Title = "Surf Lesson",
+            MaxParticipants = 5,
+            TimeSlots = "08:00 AM - 10:00 AM",
+            AvailableDays = "Daily",
+            IsActive = true
+        });
+        await db.SaveChangesAsync();
+
+        var date = new DateOnly(2026, 9, 26);
+
+        // Attempting to restore more capacity than total capacity caps at TotalCapacity
+        await service.RestoreCapacityAsync(listingId, date, "08:00 AM - 10:00 AM", 10);
+        var response = await service.GetAvailabilityForDateAsync(listingId, date);
+        Assert.Equal(5, response!.Slots[0].RemainingCapacity);
+    }
+
+    [Fact]
+    public async Task Scenario6_BookingUpdated_RebalancesCapacityBetweenSlots()
+    {
+        var db = CreateInMemoryDbContext();
+        var service = new AvailabilityService(db);
+        var listingId = Guid.NewGuid();
+
+        db.ActivityListings.Add(new ActivityListing
+        {
+            Id = listingId,
+            Title = "Lagoon Safari",
+            MaxParticipants = 10,
+            TimeSlots = "09:00 AM - 11:00 AM, 02:00 PM - 04:00 PM",
+            AvailableDays = "Daily",
+            IsActive = true
+        });
+        await db.SaveChangesAsync();
+
+        var oldDate = new DateOnly(2026, 9, 27);
+        var newDate = new DateOnly(2026, 9, 28);
+
+        // Initial booking on oldDate for 4 spots
+        await service.DeductCapacityAsync(listingId, oldDate, "09:00 AM - 11:00 AM", 4);
+
+        // Update booking: Move from oldDate (4 guests) to newDate (6 guests)
+        await service.UpdateCapacityAsync(
+            listingId,
+            oldDate, "09:00 AM - 11:00 AM", 4,
+            newDate, "02:00 PM - 04:00 PM", 6);
+
+        // Old date slot should be restored to 10
+        var oldDateResp = await service.GetAvailabilityForDateAsync(listingId, oldDate);
+        var oldSlot = oldDateResp!.Slots.Find(s => s.TimeSlot == "09:00 AM - 11:00 AM");
+        Assert.Equal(10, oldSlot!.RemainingCapacity);
+
+        // New date slot should have 4 remaining (10 - 6)
+        var newDateResp = await service.GetAvailabilityForDateAsync(listingId, newDate);
+        var newSlot = newDateResp!.Slots.Find(s => s.TimeSlot == "02:00 PM - 04:00 PM");
+        Assert.Equal(4, newSlot!.RemainingCapacity);
+    }
 }

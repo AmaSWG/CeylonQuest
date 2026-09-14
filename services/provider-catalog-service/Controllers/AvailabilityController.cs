@@ -114,6 +114,49 @@ public class AvailabilityController : ControllerBase
         return Ok(new { message = "Booking event simulated and capacity deducted.", availability = updated });
     }
 
+    // ── 4. POST Simulate Booking Canceled Event (Dev / Swagger simulation) ─────
+    [HttpPost("simulate-booking-canceled-event")]
+    public async Task<IActionResult> SimulateBookingCanceled([FromBody] SimulateBookingCanceledEventRequest request)
+    {
+        if (!ModelState.IsValid)
+            return ValidationProblem(ModelState);
+
+        if (!DateOnly.TryParseExact(request.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
+            return BadRequest(new { message = "Invalid date format. Expected YYYY-MM-DD." });
+
+        await _availabilityService.RestoreCapacityAsync(request.ListingId, parsedDate, request.TimeSlot, request.GuestCount);
+
+        var updated = await _availabilityService.GetAvailabilityForDateAsync(request.ListingId, parsedDate);
+        return Ok(new { message = "Booking cancellation simulated and capacity restored.", availability = updated });
+    }
+
+    // ── 5. POST Simulate Booking Updated Event (Dev / Swagger simulation) ──────
+    [HttpPost("simulate-booking-updated-event")]
+    public async Task<IActionResult> SimulateBookingUpdated([FromBody] SimulateBookingUpdatedEventRequest request)
+    {
+        if (!ModelState.IsValid)
+            return ValidationProblem(ModelState);
+
+        if (!DateOnly.TryParseExact(request.OldDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedOldDate))
+            return BadRequest(new { message = "Invalid OldDate format. Expected YYYY-MM-DD." });
+
+        if (!DateOnly.TryParseExact(request.NewDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedNewDate))
+            return BadRequest(new { message = "Invalid NewDate format. Expected YYYY-MM-DD." });
+
+        await _availabilityService.UpdateCapacityAsync(
+            request.ListingId,
+            parsedOldDate,
+            request.OldTimeSlot,
+            request.OldGuestCount,
+            parsedNewDate,
+            request.NewTimeSlot,
+            request.NewGuestCount);
+
+        var updatedOld = await _availabilityService.GetAvailabilityForDateAsync(request.ListingId, parsedOldDate);
+        var updatedNew = await _availabilityService.GetAvailabilityForDateAsync(request.ListingId, parsedNewDate);
+        return Ok(new { message = "Booking update simulated and capacity adjusted.", oldDateAvailability = updatedOld, newDateAvailability = updatedNew });
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
     private async Task<(bool found, Guid? ownerId)> GetListingOwnerAsync(Guid listingId)
     {
