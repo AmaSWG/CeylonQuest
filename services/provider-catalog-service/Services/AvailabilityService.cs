@@ -279,4 +279,36 @@ public class AvailabilityService
 
         return timeSlots.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
     }
+
+    public async Task<bool> RestoreCapacityAsync(Guid listingId, DateOnly date, string timeSlot, int guestCount)
+    {
+        var existing = await _db.AvailabilitySlots
+            .FirstOrDefaultAsync(s => s.ListingId == listingId && s.Date == date && s.TimeSlot == timeSlot);
+
+        if (existing == null)
+        {
+            // Capacity is already at default maximum, nothing to restore
+            return true;
+        }
+
+        existing.RemainingCapacity = Math.Min(existing.TotalCapacity, existing.RemainingCapacity + guestCount);
+        existing.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return true;
+    }
+
+    public async Task<bool> UpdateCapacityAsync(
+        Guid listingId,
+        DateOnly oldDate,
+        string oldTimeSlot,
+        int oldGuestCount,
+        DateOnly newDate,
+        string newTimeSlot,
+        int newGuestCount)
+    {
+        await RestoreCapacityAsync(listingId, oldDate, oldTimeSlot, oldGuestCount);
+        await DeductCapacityAsync(listingId, newDate, newTimeSlot, newGuestCount);
+        return true;
+    }
 }

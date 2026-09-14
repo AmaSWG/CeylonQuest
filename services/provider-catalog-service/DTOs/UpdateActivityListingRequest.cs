@@ -26,6 +26,7 @@ public class UpdateActivityListingRequest
 
     public string Duration { get; set; } = "2 Hours";
 
+    [Required(ErrorMessage = "Available operating days are required (e.g. Daily, Mon–Fri, Weekends).")]
     public string AvailableDays { get; set; } = "Daily";
 
     public string TimeSlots { get; set; } = "[]";

@@ -616,6 +616,8 @@ function ListingsTab({
   const [formLoading, setFormLoading] = useState(false)
   const [serviceToDelete, setServiceToDelete] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [selectedFiles, setSelectedFiles] = useState([]) 
+  const [existingImages, setExistingImages] = useState([]) 
 
   const emptyForm = {
     // shared / activity
@@ -718,6 +720,8 @@ function ListingsTab({
     setSlotsList([{ startTime: '08:00', endTime: addDurationToTime('08:00', '') }])
     setFormError(null)
     setModal('add')
+    setSelectedFiles([])
+    setExistingImages([])
   }
 
   const openEdit = (item) => {
@@ -862,47 +866,49 @@ function ListingsTab({
     }
   }
 
-  const validate = () => {
+    const validate = () => {
     if (isHotel) {
-      if (!form.roomType.trim()) return 'Room type is required.'
-      if (!form.location.trim()) return 'Location is required.'
-      if (!form.description.trim()) return 'Description is required.'
+      if (!form.roomType.trim()) return { id: 'hotel-room', msg: 'Room type is required.' }
+      if (!form.location.trim()) return { id: 'hotel-location', msg: 'Location is required.' }
+      if (!form.description.trim()) return { id: 'hotel-desc', msg: 'Description is required.' }
       const p = parseFloat(form.pricePerNight)
-      if (isNaN(p) || p <= 0) return 'Price per night must be a positive amount.'
+      if (isNaN(p) || p <= 0) return { id: 'hotel-price', msg: 'Price per night must be a positive amount.' }
       return null
     }
     if (isRestaurant) {
-      if (!form.name.trim()) return 'Restaurant / item name is required.'
-      if (!form.cuisineType.trim()) {
-        return 'Cuisine type is required.'
-      }
-      if (!form.location.trim()) return 'Location is required.'
-      if (!form.description.trim()) return 'Description is required.'
-      if (description.length < 10) {
-        return 'Description must be at least 10 characters long.'
-      }
-
-      if (description.length > 2000) {
-        return 'Description must not exceed 2000 characters.'
+      if (!form.name.trim()) return { id: 'rest-name', msg: 'Restaurant / item name is required.' }
+      if (!form.cuisineType.trim()) return { id: 'rest-cuisine', msg: 'Cuisine type is required.' }
+      if (!form.location.trim()) return { id: 'rest-location', msg: 'Location is required.' }
+      if (!form.description.trim()) return { id: 'rest-desc', msg: 'Description is required.' }
+      if (form.description.trim().length < 10) {
+        return { id: 'rest-desc', msg: 'Description must be at least 10 characters long.' }
       }
       const p = parseFloat(form.pricePerPerson)
-      if (isNaN(p) || p <= 0) return 'Price per person must be a positive amount.'
+      if (isNaN(p) || p <= 0) return { id: 'rest-price', msg: 'Price per person must be a positive amount.' }
       return null
     }
         
-    if (!form.title.trim()) return 'Experience title is required.'
-    if (!form.location.trim()) return 'Operating location is required.'
+    // ── Experience / Activity Validation ──
+    if (!form.title.trim()) return { id: 'exp-title', msg: 'Experience title is required.' }
+    if (!form.location.trim()) return { id: 'exp-location', msg: 'Operating location is required.' }
+    if (!form.description.trim()) return { id: 'exp-desc', msg: 'Description & inclusions are required.' }
+    if (!form.duration?.trim()) return { id: 'exp-duration', msg: 'Duration is required (e.g. "2 Hours" or "45 Mins").' }
+    if (!form.availableDays?.trim()) {
+      return { id: 'exp-days', msg: 'Available operating days are required (e.g. "Daily", "Mon–Fri", or "Weekends").' }
+    }
+
     const p = parseFloat(form.price)
-    if (isNaN(p) || p <= 0) return 'Price must be a valid positive amount.'
-    if (slotsList.filter(s => s.startTime && s.endTime).length === 0)
-      return 'At least one complete time slot is required.'
+    if (isNaN(p) || p <= 0) return { id: 'exp-price', msg: 'Price must be a valid positive amount.' }
+    if (slotsList.filter(s => s.startTime && s.endTime).length === 0) {
+      return { id: 'exp-duration', msg: 'At least one complete time slot is required.' }
+    }
 
     const today = new Date().toISOString().split('T')[0]
     if (form.validFrom && form.validFrom < today) {
-      return 'Valid From date cannot be in the past.'
+      return { id: 'exp-valid-from', msg: 'Valid From date cannot be in the past.' }
     }
     if (form.validFrom && form.validUntil && form.validUntil < form.validFrom) {
-      return 'Valid Until date must be on or after the Valid From date.'
+      return { id: 'exp-valid-until', msg: 'Valid Until date must be on or after the Valid From date.' }
     }
 
     return null
@@ -911,7 +917,18 @@ function ListingsTab({
   const handleSubmit = async (e) => {
     e.preventDefault()
     const err = validate()
-    if (err) { setFormError(err); return }
+    if (err) { 
+      setFormError(err.msg)
+      
+      setTimeout(() => {
+        const el = document.getElementById(err.id)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          el.focus()
+        }
+      }, 50)
+      return 
+    }
 
     setFormError(null)
     setFormLoading(true)
@@ -932,6 +949,30 @@ function ListingsTab({
         },
         body: JSON.stringify(payload)
       })
+
+      let finalUrls = [...existingImages]
+
+      if (selectedFiles.length > 0) {
+        const uploadData = new FormData()
+        selectedFiles.forEach(file => uploadData.append('files', file))
+
+        const mediaResp = await fetch(catalogUrl('/api/catalog/media/upload-images'), {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: uploadData
+  })
+
+  if (mediaResp.ok) {
+    const { urls } = await mediaResp.json()
+    finalUrls = [...finalUrls, ...urls]
+  } else {
+    setFormError('Failed to upload images.')
+    setFormLoading(false)
+    return
+  }
+}
+
+  payload.imageUrls = JSON.stringify(finalUrls)
 
       if (resp.ok || resp.status === 201) {
         closeModal()
@@ -1028,6 +1069,24 @@ function ListingsTab({
     return true
   })
 
+  const handleImageSelect = (e) => {
+  const files = Array.from(e.target.files)
+  if (existingImages.length + selectedFiles.length + files.length > 5) {
+    setFormError('You can upload a maximum of 5 images per listing.')
+    return
+  }
+  setSelectedFiles(prev => [...prev, ...files])
+  e.target.value = ''
+}
+
+const removeExistingImage = (idx) => {
+  setExistingImages(prev => prev.filter((_, i) => i !== idx))
+}
+
+const removeSelectedFile = (idx) => {
+  setSelectedFiles(prev => prev.filter((_, i) => i !== idx))
+}
+
   const pageTitle = isHotel ? 'Rooms and Accommodations'
                   : isRestaurant ? 'Menu and Dining'
                   : 'Experience Listings'
@@ -1071,7 +1130,11 @@ function ListingsTab({
       {modal && (
         <Modal title={modal === 'edit' ? editLabel : createLabel} onClose={closeModal} wide>
           <form onSubmit={handleSubmit} className="pd-modal__form" noValidate>
-            {formError && <div className="pd-form-error">{formError}</div>}
+            {formError && (
+              <div className="pd-form-error" style={{ marginTop: '14px', marginBottom: '8px' }}>
+                {formError}
+              </div>
+            )}
 
             {/* ───────── RESTAURANT FORM ───────── */}
             {isRestaurant && (
@@ -1262,6 +1325,38 @@ function ListingsTab({
                     placeholder="e.g. Halal, Vegetarian, Vegan"
                   />
                 </div>
+
+                <div className="pd-form-group" style={{ marginTop: '14px' }}>
+                  <label style={{ fontWeight: 600, color: '#123b5d' }}>
+                    Listing Photos (Optional, up to 5 photos)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp"
+                    multiple
+                    onChange={handleImageSelect}
+                    disabled={existingImages.length + selectedFiles.length >= 5}
+                    style={{ marginTop: '6px' }}
+                  />
+                  
+                  {/* Thumbnails preview strip */}
+                  {(existingImages.length > 0 || selectedFiles.length > 0) && (
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                      {existingImages.map((url, i) => (
+                        <div key={`exist-${i}`} style={{ position: 'relative', width: 68, height: 54, borderRadius: 6, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
+                          <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <button type="button" onClick={() => removeExistingImage(i)} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.65)', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: 11, cursor: 'pointer', lineHeight: '18px', padding: 0 }}>✕</button>
+                        </div>
+                      ))}
+                      {selectedFiles.map((file, i) => (
+                        <div key={`new-${i}`} style={{ position: 'relative', width: 68, height: 54, borderRadius: 6, overflow: 'hidden', border: '1px solid #168aad' }}>
+                          <img src={URL.createObjectURL(file)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <button type="button" onClick={() => removeSelectedFile(i)} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.65)', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: 11, cursor: 'pointer', lineHeight: '18px', padding: 0 }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
@@ -1399,6 +1494,38 @@ function ListingsTab({
                     placeholder="e.g. En-suite with hot water"
                   />
                 </div>
+
+                <div className="pd-form-group" style={{ marginTop: '14px' }}>
+                <label style={{ fontWeight: 600, color: '#123b5d' }}>
+                  Listing Photos (Optional, up to 5 photos)
+                </label>
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.webp"
+                  multiple
+                  onChange={handleImageSelect}
+                  disabled={existingImages.length + selectedFiles.length >= 5}
+                  style={{ marginTop: '6px' }}
+                />
+                
+                {/* Thumbnails preview strip */}
+                {(existingImages.length > 0 || selectedFiles.length > 0) && (
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                    {existingImages.map((url, i) => (
+                      <div key={`exist-${i}`} style={{ position: 'relative', width: 68, height: 54, borderRadius: 6, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
+                        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <button type="button" onClick={() => removeExistingImage(i)} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.65)', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: 11, cursor: 'pointer', lineHeight: '18px', padding: 0 }}>✕</button>
+                      </div>
+                    ))}
+                    {selectedFiles.map((file, i) => (
+                      <div key={`new-${i}`} style={{ position: 'relative', width: 68, height: 54, borderRadius: 6, overflow: 'hidden', border: '1px solid #168aad' }}>
+                        <img src={URL.createObjectURL(file)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <button type="button" onClick={() => removeSelectedFile(i)} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.65)', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: 11, cursor: 'pointer', lineHeight: '18px', padding: 0 }}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               </>
             )}
 

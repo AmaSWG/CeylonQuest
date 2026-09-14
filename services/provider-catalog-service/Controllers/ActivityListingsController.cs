@@ -168,7 +168,9 @@ public class ActivityListingsController : ControllerBase
         listing.MaxParticipants = request.MaxParticipants > 0 ? request.MaxParticipants : 1;
         listing.IsActive = request.IsActive;
         listing.Duration = request.Duration?.Trim() ?? listing.Duration;
-        listing.AvailableDays = request.AvailableDays?.Trim() ?? "";
+        listing.AvailableDays = !string.IsNullOrWhiteSpace(request.AvailableDays)
+            ? request.AvailableDays.Trim()
+            : listing.AvailableDays;
         listing.TimeSlots = request.TimeSlots ?? "[]";
         listing.ValidFrom = request.ValidFrom;
         listing.ValidUntil = request.ValidUntil;
