@@ -889,13 +889,13 @@ function ListingsTab({
       if (isNaN(p) || p <= 0) return 'Price per person must be a positive amount.'
       return null
     }
+        
     if (!form.title.trim()) return 'Experience title is required.'
     if (!form.location.trim()) return 'Operating location is required.'
     const p = parseFloat(form.price)
     if (isNaN(p) || p <= 0) return 'Price must be a valid positive amount.'
     if (slotsList.filter(s => s.startTime && s.endTime).length === 0)
       return 'At least one complete time slot is required.'
-    return null
 
     const today = new Date().toISOString().split('T')[0]
     if (form.validFrom && form.validFrom < today) {
@@ -903,7 +903,9 @@ function ListingsTab({
     }
     if (form.validFrom && form.validUntil && form.validUntil < form.validFrom) {
       return 'Valid Until date must be on or after the Valid From date.'
-}
+    }
+
+    return null
   }
 
   const handleSubmit = async (e) => {

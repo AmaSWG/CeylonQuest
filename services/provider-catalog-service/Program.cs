@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Serialization;
 using Shared.Kafka;
+using Shared.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -135,6 +136,8 @@ builder.Services.AddScoped<AvailabilityService>();
 builder.Services.AddHostedService<BookingCreatedConsumer>();
 
 builder.Services.AddScoped<InventoryReportService>();
+
+builder.Services.AddScoped<IBlobStorageService, BlobStorageService>();
 
 var app = builder.Build();
 
