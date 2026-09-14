@@ -64,8 +64,15 @@ public class AvailabilityService
         if (existing != null)
         {
             var bookedCount = existing.TotalCapacity - existing.RemainingCapacity;
+
+            // TC60-15 Fix: Cannot reduce capacity below already booked spots
+            if (capacity < bookedCount)
+            {
+                throw new InvalidOperationException($"Cannot reduce capacity to {capacity} because {bookedCount} spots are already booked.");
+            }
+
             existing.TotalCapacity = capacity;
-            existing.RemainingCapacity = Math.Max(0, capacity - bookedCount);
+            existing.RemainingCapacity = capacity - bookedCount;
             existing.UpdatedAt = DateTime.UtcNow;
         }
         else
