@@ -45,7 +45,9 @@ public class RestaurantListingsController : ControllerBase
         CreatedAt = r.CreatedAt
     };
 
-    // ── 1. Create Restaurant Listing (Approved Providers Only) ───────────────
+    /// <summary>
+    /// Creates a new restaurant listing owned by the authenticated approved provider
+    /// </summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateRestaurantListingRequest request)
     {
@@ -82,7 +84,9 @@ public class RestaurantListingsController : ControllerBase
         return Created($"/api/catalog/restaurant-listings/{listing.Id}", ToDto(listing, provider.BusinessName));
     }
 
-    // ── 2. Get My Restaurant Listings ─────────────────────────────────────────
+    /// <summary>
+    /// Retrieves all restaurant listings owned by the authenticated approved provider
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetMyListings()
     {
@@ -100,7 +104,10 @@ public class RestaurantListingsController : ControllerBase
         return Ok(listings);
     }
 
-    // ── 3. Get Listing by ID (Ownership Check) ───────────────────────────────
+    /// <summary>
+    /// Retrieves a single restaurant listing by ID, enforcing that it
+    /// belongs to the authenticated approved provider
+    /// </summary>
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -116,13 +123,16 @@ public class RestaurantListingsController : ControllerBase
         if (listing is null)
             return NotFound(new { message = "Restaurant listing not found." });
 
+        // Ensure the provider only accesses their own listing
         if (listing.ProviderId != provider.Id)
             return StatusCode(403, new { message = "You do not have permission to view this listing." });
 
         return Ok(ToDto(listing));
     }
 
-    // ── 4. Update Restaurant Listing (Ownership Enforced) ────────────────────
+    /// <summary>
+    /// Updates a restaurant listing owned by the authenticated approved provider
+    /// </summary>
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateRestaurantListingRequest request)
     {
@@ -160,7 +170,9 @@ public class RestaurantListingsController : ControllerBase
         return Ok(ToDto(listing, provider.BusinessName));
     }
 
-    // ── 5. Delete Restaurant Listing (Ownership Enforced) ────────────────────
+    /// <summary>
+    /// Deletes a restaurant listing owned by the authenticated approved provider
+    /// </summary>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
@@ -182,7 +194,10 @@ public class RestaurantListingsController : ControllerBase
         return NoContent();
     }
 
-    // ── 6. Public Discovery for Visitors ──────────────────────────────────────
+    /// <summary>
+    /// Returns active restaurant listings for public discovery, with optional
+    /// filtering by search term, cuisine, and location
+    /// </summary>
     [AllowAnonymous]
     [HttpGet("public")]
     public async Task<IActionResult> GetPublicListings(
@@ -195,6 +210,7 @@ public class RestaurantListingsController : ControllerBase
             .Include(r => r.Provider)
             .Where(r => r.IsActive);
 
+        // Apply the free-text search across multiple listing fields
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.ToLower().Trim();
@@ -206,12 +222,14 @@ public class RestaurantListingsController : ControllerBase
                 r.SetMenuDetails.ToLower().Contains(s));
         }
 
+        // Filter by cuisine type when provided
         if (!string.IsNullOrWhiteSpace(cuisine))
         {
             var c = cuisine.ToLower().Trim();
             query = query.Where(r => r.CuisineType.ToLower().Contains(c));
         }
 
+        // Filter by location when provided
         if (!string.IsNullOrWhiteSpace(location))
         {
             var loc = location.ToLower().Trim();
@@ -226,12 +244,16 @@ public class RestaurantListingsController : ControllerBase
         return Ok(results);
     }
 
-    // ── Helper: Authenticate Approved Provider ────────────────────────────────
+    /// <summary>
+    /// Identifies the authenticated provider and verifies that the provider
+    /// profile exists before allowing provider-specific listing management
+    /// </summary>
     private async Task<(Provider? provider, string? errorMessage)> GetApprovedProviderAsync()
     {
         var identityUserId = GetIdentityUserId();
         var email = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email");
 
+        // A valid identity ID or email is required to identify the provider
         if (identityUserId is null && string.IsNullOrWhiteSpace(email))
             return (null, "User identity could not be verified from token.");
 
@@ -251,6 +273,10 @@ public class RestaurantListingsController : ControllerBase
         return (provider, null);
     }
 
+    /// <summary>
+    /// Extracts the authenticated user's identity ID from the available
+    /// NameIdentifier or subject token claim
+    /// </summary>
     private Guid? GetIdentityUserId()
     {
         var raw = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");

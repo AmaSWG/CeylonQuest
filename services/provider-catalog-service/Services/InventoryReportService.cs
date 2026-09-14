@@ -20,6 +20,11 @@ public class InventoryReportService
         _db = db;
     }
 
+    /// <summary>
+    /// Generates an inventory report for the given date window, optionally
+    /// scoped to a provider and filtered by category or location, covering
+    /// activities, restaurants, and accommodations
+    /// </summary>
     public async Task<InventoryReportResponse> GenerateReportAsync(
         Guid? providerId,
         DateOnly startDate,
@@ -31,11 +36,12 @@ public class InventoryReportService
         var catFilter = categoryFilter?.Trim();
         var locFilter = locationFilter?.Trim();
 
-        // 1. Fetch Listings
+        // Fetch Listings
         var actQuery = _db.ActivityListings.Include(a => a.Provider).AsNoTracking().Where(a => a.IsActive);
         var restQuery = _db.RestaurantListings.Include(r => r.Provider).AsNoTracking().Where(r => r.IsActive);
         var stayQuery = _db.AccommodationListings.Include(ac => ac.Provider).AsNoTracking().Where(ac => ac.IsActive);
 
+        // Scope all listing queries to the requested provider when supplied
         if (providerId.HasValue)
         {
             actQuery = actQuery.Where(a => a.ProviderId == providerId.Value);
@@ -54,6 +60,7 @@ public class InventoryReportService
         List<RestaurantListing> restaurants = new();
         List<AccommodationListing> stays = new();
 
+        // Only load listings for categories included by the filter
         if (string.IsNullOrWhiteSpace(catFilter) || catFilter.Equals("Experience", StringComparison.OrdinalIgnoreCase))
             activities = await actQuery.ToListAsync();
 
@@ -63,7 +70,7 @@ public class InventoryReportService
         if (string.IsNullOrWhiteSpace(catFilter) || catFilter.Equals("Accommodation", StringComparison.OrdinalIgnoreCase))
             stays = await stayQuery.ToListAsync();
 
-        // 2. Fetch all DB slot overrides within the window
+        // Fetch all DB slot overrides within the window
         var allListingIds = activities.Select(a => a.Id)
             .Concat(restaurants.Select(r => r.Id))
             .Concat(stays.Select(s => s.Id))
@@ -74,11 +81,11 @@ public class InventoryReportService
             .Where(s => allListingIds.Contains(s.ListingId) && s.Date >= startDate && s.Date <= endDate)
             .ToListAsync();
 
-        // 3. Build Unified Virtual Slot Matrix across all days in window
+        // Build Unified Virtual Slot Matrix across all days in window
         var resolvedSlots = new List<ResolvedSlot>();
         var totalDays = endDate.DayNumber - startDate.DayNumber + 1;
 
-        // --- Activities (Experiences) ---
+        // Activities (Experiences)
         foreach (var act in activities)
         {
             var defaultCap = act.MaxParticipants > 0 ? act.MaxParticipants : 10;
@@ -114,7 +121,8 @@ public class InventoryReportService
                 }
             }
         }
-        // --- Restaurants (Dining) ---
+
+        // Restaurants (Dining)
         foreach (var rest in restaurants)
         {
             var defaultCap = rest.SeatingCapacity > 0 ? rest.SeatingCapacity : 20;
@@ -143,7 +151,7 @@ public class InventoryReportService
             }
         }
 
-        // --- Stays (Accommodations) ---
+        // Stays (Accommodations)
         foreach (var stay in stays)
         {
             var defaultCap = stay.MaxGuests > 0 ? stay.MaxGuests : 2;
@@ -172,10 +180,11 @@ public class InventoryReportService
             }
         }
 
-        // 4. Low Availability & Sold Out Alerts (Sorted by Date and TimeSlot)
+        // Low Availability & Sold Out Alerts (Sorted by Date and TimeSlot)
         var lowAlerts = new List<LowAvailabilityItemDto>();
         foreach (var slot in resolvedSlots)
         {
+            // Canonical thresholds: sold out when nothing remains, low when at or below 3 or 25%
             var isSoldOut = slot.TotalCapacity > 0 && slot.RemainingCapacity <= 0;
             var isLow = !isSoldOut && slot.TotalCapacity > 0 && (slot.RemainingCapacity <= 3 || slot.RemainingCapacity <= slot.TotalCapacity * 0.25);
 
@@ -202,7 +211,7 @@ public class InventoryReportService
             .ThenBy(a => a.TimeSlot, StringComparer.Ordinal)
             .ToList();
 
-        // 5. Category Aggregations (Coherent Window Sums)
+        // Category Aggregations (Coherent Window Sums)
         var byCategory = new List<CategoryReportDto>();
         var cats = new[] { ("Experience", "Experiences", activities.Count), ("Restaurant", "Dining", restaurants.Count), ("Accommodation", "Stays", stays.Count) };
 
@@ -223,7 +232,7 @@ public class InventoryReportService
             }
         }
 
-        // 6. Location Aggregations & Coverage Gaps
+        // Location Aggregations & Coverage Gaps
         var allLocations = activities.Select(a => a.Location)
             .Concat(restaurants.Select(r => r.Location))
             .Concat(stays.Select(s => s.Location))
@@ -260,6 +269,7 @@ public class InventoryReportService
                 MissingCategories = missing
             });
 
+            // Only surface a coverage gap when a location is missing categories
             if (missing.Count > 0)
             {
                 coverageGaps.Add(new CoverageGapDto
@@ -272,7 +282,7 @@ public class InventoryReportService
             }
         }
 
-        // 7. Overall Summary (Exact Coherent Math)
+        // Overall Summary (Exact Coherent Math)
         var totalCapAll = resolvedSlots.Sum(s => s.TotalCapacity);
         var bookedCapAll = resolvedSlots.Sum(s => s.BookedCapacity);
         var remCapAll = resolvedSlots.Sum(s => s.RemainingCapacity);
@@ -301,6 +311,10 @@ public class InventoryReportService
         };
     }
 
+    /// <summary>
+    /// Parses a comma-separated time slot string into individual slot
+    /// entries, falling back to a default slot when empty
+    /// </summary>
     private static List<string> ParseTimeSlots(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return new List<string> { "09:00 - 12:00" };
@@ -310,6 +324,10 @@ public class InventoryReportService
         return list.Count > 0 ? list : new List<string> { "09:00 - 12:00" };
     }
 
+    /// <summary>
+    /// Determines whether a given date falls within the listing's validity
+    /// window and matches its configured available days
+    /// </summary>
     private static bool IsDateInOperatingSchedule(DateOnly date, DateTime? validFrom, DateTime? validUntil, string? availableDays)
     {
         if (validFrom.HasValue && date < DateOnly.FromDateTime(validFrom.Value)) return false;
@@ -321,6 +339,9 @@ public class InventoryReportService
         return days.Any(d => d.Equals(dayName, StringComparison.OrdinalIgnoreCase) || d.StartsWith(dayName[..3], StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// Maps a canonical category name to its user-facing display name
+    /// </summary>
     private static string ToDisplayCategory(string canonical) => canonical switch
     {
         "Experience" => "Experiences",

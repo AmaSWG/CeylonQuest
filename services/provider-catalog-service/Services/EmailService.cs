@@ -19,12 +19,17 @@ public class EmailService : IEmailService
         _env = env;
     }
 
+    /// <summary>
+    /// Sends a provider application rejection notification to the applicant,
+    /// falling back to logging in development when SMTP is not configured
+    /// </summary>
     public async Task SendApplicationRejectionEmailAsync(
         string recipientEmail,
         string businessName,
         string rejectionReason,
         CancellationToken cancellationToken = default)
     {
+        // Default to development behavior when no environment is provided
         var isDevelopment = _env?.IsDevelopment() ?? true;
         var host = _config["Email:Host"];
         var portStr = _config["Email:Port"];
@@ -52,6 +57,7 @@ If you have questions or would like to re-apply with updated information, please
 Best regards,
 The CeylonQuest Admin Team";
 
+        // Skip SMTP entirely when credentials are missing
         if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
             if (isDevelopment)
@@ -77,6 +83,7 @@ The CeylonQuest Admin Team";
             client.EnableSsl = enableSsl;
             client.Credentials = new NetworkCredential(username, password);
 
+            // Allow the caller's cancellation token to cancel the SMTP send
             using (cancellationToken.Register(() => client.SendAsyncCancel()))
             {
                 await client.SendMailAsync(message);
@@ -86,6 +93,7 @@ The CeylonQuest Admin Team";
         }
         catch (Exception ex)
         {
+            // In development, fall back to logging rather than failing the request
             if (isDevelopment)
             {
                 _logger.LogWarning(ex, "[DEV] SMTP send failed; falling back to console output.");

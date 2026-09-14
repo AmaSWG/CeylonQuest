@@ -154,7 +154,6 @@ function ServiceDetailModal({ item, onClose, onOpenBooking }) {
   )
 }
 
-// ── 2. Availability & Booking Slot Picker Modal (Story 6.1) ────────
 function BookingAvailabilityModal({ item, onClose }) {
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedSlot, setSelectedSlot] = useState('')
@@ -194,7 +193,13 @@ function BookingAvailabilityModal({ item, onClose }) {
     return () => { isMounted = false }
   }, [item?.id, selectedDate])
 
-  const currentSlotObj = availability?.slots?.find(s => s.timeSlot === selectedSlot)
+  // Fallback to first slot if selectedSlot has not yet updated in state
+  const currentSlotObj = availability?.slots?.find(s => s.timeSlot === selectedSlot) || availability?.slots?.[0]
+  const isFullyBooked = Boolean(
+    currentSlotObj?.isFullyBooked || 
+    (currentSlotObj && currentSlotObj.remainingCapacity <= 0) || 
+    availability?.isFullyBooked
+  )
 
   return (
     <div className="vd-modal-overlay" onClick={onClose}>
@@ -203,7 +208,7 @@ function BookingAvailabilityModal({ item, onClose }) {
           <button className="vd-detail-modal__close" onClick={onClose} aria-label="Close">
             <CloseIcon size={16} />
           </button>
-          <span className={`vd-type-badge vd-type-badge--${item.type.toLowerCase()}`}>
+          <span className={`vd-type-badge vd-type-badge--${item.type?.toLowerCase()}`}>
             {item.type}
           </span>
           <h2 className="vd-detail-modal__title">Book: {item.title}</h2>
@@ -281,7 +286,7 @@ function BookingAvailabilityModal({ item, onClose }) {
               >
                 {availability?.slots?.map((s, idx) => (
                   <option key={idx} value={s.timeSlot}>
-                    {s.timeSlot} ({s.remainingCapacity} left)
+                    {s.timeSlot} ({s.remainingCapacity <= 0 || s.isFullyBooked ? 'Fully Booked' : `${s.remainingCapacity} left`})
                   </option>
                 ))}
               </select>
@@ -289,15 +294,20 @@ function BookingAvailabilityModal({ item, onClose }) {
           </div>
 
           {/* ── Real-time Slot Availability Display ── */}
-          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: 12 }}>
+          <div style={{
+            background: isFullyBooked || !availability?.isOperatingDay ? '#fef2f2' : '#f0fdf4',
+            border: `1px solid ${isFullyBooked || !availability?.isOperatingDay ? '#fecaca' : '#bbf7d0'}`,
+            borderRadius: 8,
+            padding: 12
+          }}>
             {loadingSlots ? (
               <span style={{ fontSize: 13, color: '#64748b' }}>Checking real-time capacity…</span>
             ) : !availability?.isOperatingDay ? (
               <div style={{ color: '#dc2626', fontWeight: 600, fontSize: 13 }}>
                 <DangerIcon/> The provider does not operate on this selected day of the week.
               </div>
-            ) : currentSlotObj?.isFullyBooked ? (
-              <div style={{ color: '#dc2626', fontWeight: 700, fontSize: 13 }}>
+            ) : isFullyBooked ? (
+              <div style={{ color: '#dc2626', fontWeight: 700, fontSize: 13 }} className="vd-fully-booked-notice">
                 ● Fully Booked (0 spots left for this time slot)
               </div>
             ) : (
@@ -315,11 +325,11 @@ function BookingAvailabilityModal({ item, onClose }) {
           <button
             type="button"
             className="vd-save-btn"
-            disabled={!availability?.isOperatingDay || currentSlotObj?.isFullyBooked}
-            style={(!availability?.isOperatingDay || currentSlotObj?.isFullyBooked) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            disabled={loadingSlots || !availability?.isOperatingDay || isFullyBooked}
+            style={(!availability?.isOperatingDay || isFullyBooked) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             onClick={() => alert(`Selection confirmed for ${item.title} on ${selectedDate} (${selectedSlot}). Booking service will process this in next sprint!`)}
           >
-            {currentSlotObj?.isFullyBooked ? 'Fully Booked' : 'Confirm Selection'}
+            {isFullyBooked ? 'Fully Booked' : 'Confirm Selection'}
           </button>
         </div>
       </div>

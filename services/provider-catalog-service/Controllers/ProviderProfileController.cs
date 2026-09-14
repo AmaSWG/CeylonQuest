@@ -27,6 +27,9 @@ public class ProviderProfileController : ControllerBase
         _db = db;
     }
 
+    /// <summary>
+    /// Retrieves the authenticated provider's own business profile
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetMyProfile()
     {
@@ -61,6 +64,9 @@ public class ProviderProfileController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Updates the authenticated provider's own business profile details
+    /// </summary>
     [HttpPut]
     public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateProviderProfileRequest request)
     {
@@ -87,7 +93,7 @@ public class ProviderProfileController : ControllerBase
             provider.Id,
             provider.BusinessName,
             provider.Email,
-            provider.PhoneNumber,                                // <-- ADD
+            provider.PhoneNumber,
             provider.ServiceType,
             provider.Location,
             provider.Description,
@@ -96,6 +102,10 @@ public class ProviderProfileController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Extracts the authenticated user's identity ID from the available
+    /// NameIdentifier or subject token claim
+    /// </summary>
     private Guid? GetIdentityUserId()
     {
         var raw = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");

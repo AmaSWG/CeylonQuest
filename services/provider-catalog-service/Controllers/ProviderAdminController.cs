@@ -36,6 +36,9 @@ public class ProviderAdminController : ControllerBase
         _verificationContainer = configuration["AzureStorage:VerificationFilesContainer"] ?? "provider-verification-files";
     }
 
+    /// <summary>
+    /// Retrieves provider applications, optionally filtered by their review status
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetApplications(
         [FromQuery] ProviderStatus? status)
@@ -44,6 +47,7 @@ public class ProviderAdminController : ControllerBase
             .AsNoTracking()
             .AsQueryable();
 
+        // Apply the optional status filter before projecting the results
         if (status.HasValue)
         {
             query = query.Where(a => a.Status == status.Value);
@@ -72,6 +76,10 @@ public class ProviderAdminController : ControllerBase
         return Ok(applications);
     }
 
+    /// <summary>
+    /// Streams a specific verification document for an application by index,
+    /// resolving the blob from Azure Storage metadata or the legacy path
+    /// </summary>
     [HttpGet("{id:guid}/document")]
     public async Task<IActionResult> DownloadDocument(Guid id, [FromQuery] int index = 0)
     {
@@ -84,7 +92,7 @@ public class ProviderAdminController : ControllerBase
         string? blobName = null;
         string fileName = application.LegalDocumentFileName ?? "Verification_Document.pdf";
 
-        // 1. Try reading from the new Azure Blob JSON metadata
+        // Try reading from the new Azure Blob JSON metadata
         if (!string.IsNullOrWhiteSpace(application.LegalDocumentsJson) && application.LegalDocumentsJson != "[]")
         {
             try
@@ -104,7 +112,7 @@ public class ProviderAdminController : ControllerBase
             catch { }
         }
 
-        // 2. Fallback to legacy path if present
+        // Fallback to legacy path if present
         if (string.IsNullOrWhiteSpace(blobName) && !string.IsNullOrWhiteSpace(application.LegalDocumentPath))
         {
             blobName = Path.GetFileName(application.LegalDocumentPath);
@@ -115,13 +123,14 @@ public class ProviderAdminController : ControllerBase
             return NotFound(new { message = "No verification document was found for this application." });
         }
 
-        // 3. Open stream directly from Azure Blob Storage
+        // Open stream directly from Azure Blob Storage
         var stream = await _blobStorage.OpenReadAsync(blobName, _verificationContainer);
         if (stream == null)
         {
             return NotFound(new { message = "Document file was not found in Azure Storage." });
         }
 
+        // Resolve the content type based on the file extension for proper browser handling
         var ext = Path.GetExtension(fileName).ToLowerInvariant();
         var contentType = ext switch
         {
@@ -135,6 +144,10 @@ public class ProviderAdminController : ControllerBase
         return File(stream, contentType, fileName);
     }
 
+    /// <summary>
+    /// Approves a pending provider application, creates the provider profile,
+    /// and publishes a provider approved event
+    /// </summary>
     [HttpPost("{id:guid}/approve")]
     public async Task<IActionResult> Approve(Guid id)
     {
@@ -144,6 +157,7 @@ public class ProviderAdminController : ControllerBase
         if (application is null)
             return NotFound();
 
+        // Only applications still awaiting review can be approved
         if (application.Status != ProviderStatus.Pending)
         {
             return BadRequest(new
@@ -155,6 +169,7 @@ public class ProviderAdminController : ControllerBase
         var existingProvider = await _db.Providers
             .FirstOrDefaultAsync(p => p.Email == application.Email);
 
+        // Prevent duplicate provider profiles for the same email address
         if (existingProvider is not null)
         {
             return Conflict(new
@@ -193,6 +208,7 @@ public class ProviderAdminController : ControllerBase
             ApprovedAt = application.ReviewedAt.Value
         };
 
+        // Notify downstream services that the provider has been approved
         await _kafkaProducer.PublishAsync("provider.approved", application.Id.ToString(), payload);
 
         return Ok(new
@@ -204,6 +220,10 @@ public class ProviderAdminController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Rejects a pending provider application with a required reason
+    /// and notifies the applicant by email
+    /// </summary>
     [HttpPost("{id:guid}/reject")]
     public async Task<IActionResult> Reject(
         Guid id,
@@ -215,6 +235,7 @@ public class ProviderAdminController : ControllerBase
         if (application is null)
             return NotFound();
 
+        // Only applications still awaiting review can be rejected
         if (application.Status != ProviderStatus.Pending)
         {
             return BadRequest(new
@@ -252,7 +273,10 @@ public class ProviderAdminController : ControllerBase
         });
     }
 
-// GET /api/catalog/admin/providers/{id}/documents
+    /// <summary>
+    /// Generates short-lived SAS links for all verification documents
+    /// attached to an application so the admin can preview them securely
+    /// </summary>
     [HttpGet("{id:guid}/documents")]
     public async Task<IActionResult> GetApplicationDocuments(Guid id)
     {
@@ -267,7 +291,7 @@ public class ProviderAdminController : ControllerBase
                 var blobName = doc.GetProperty("BlobName").GetString() ?? "";
                 var originalName = doc.GetProperty("OriginalFileName").GetString() ?? blobName;
 
-                // Generate a temporary 30-minute SAS link for the Admin
+                // Generate a temporary 30 minute SAS link for the Admin
                 var secureSasUrl = _blobStorage.GenerateSasUri(blobName, _verificationContainer, TimeSpan.FromMinutes(30));
                 docs.Add(new { fileName = originalName, url = secureSasUrl });
             }

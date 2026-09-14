@@ -24,6 +24,10 @@ public class ReportsController : ControllerBase
         _db = db;
     }
 
+    /// <summary>
+    /// Generates an inventory summary report for the requested date range,
+    /// scoped to the authenticated provider unless the caller is an admin
+    /// </summary>
     [HttpGet("inventory-summary")]
     public async Task<IActionResult> GetInventoryReport(
         [FromQuery] string? startDate,
@@ -35,6 +39,7 @@ public class ReportsController : ControllerBase
         DateOnly start;
         DateOnly end;
 
+        // Default the start date to today when not supplied
         if (!string.IsNullOrWhiteSpace(startDate))
         {
             if (!DateOnly.TryParseExact(startDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out start))
@@ -47,6 +52,7 @@ public class ReportsController : ControllerBase
             start = DateOnly.FromDateTime(DateTime.UtcNow);
         }
 
+        // Default the end date to one week after the start date
         if (!string.IsNullOrWhiteSpace(endDate))
         {
             if (!DateOnly.TryParseExact(endDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out end))
@@ -72,6 +78,7 @@ public class ReportsController : ControllerBase
 
         Guid? providerId = null;
 
+        // Non-admin providers are restricted to their own inventory data
         if (User.IsInRole("Provider") && !User.IsInRole("Admin"))
         {
             var identityUserId = GetIdentityUserId();
@@ -98,6 +105,10 @@ public class ReportsController : ControllerBase
         return Ok(report);
     }
 
+    /// <summary>
+    /// Extracts the authenticated user's identity ID from the available
+    /// NameIdentifier, subject, or nameid token claim
+    /// </summary>
     private Guid? GetIdentityUserId()
     {
         var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)

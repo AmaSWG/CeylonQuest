@@ -50,6 +50,9 @@ public class ActivityListingsControllerTests
         return controller;
     }
 
+    /// <summary>
+    /// Verifies that an approved provider can successfully create a new activity listing
+    /// </summary>
     [Fact]
     public async Task CreateListing_ApprovedProvider_Succeeds()
     {
@@ -92,6 +95,9 @@ public class ActivityListingsControllerTests
         Assert.Equal("Trincomalee", listing.Location);
     }
 
+    /// <summary>
+    /// Verifies that a provider without an approved profile is denied listing creation
+    /// </summary>
     [Fact]
     public async Task CreateListing_PendingProvider_IsDenied()
     {
@@ -115,6 +121,9 @@ public class ActivityListingsControllerTests
         Assert.Equal(403, objectResult.StatusCode);
     }
 
+    /// <summary>
+    /// Verifies that a rejected provider is denied listing creation
+    /// </summary>
     [Fact]
     public async Task CreateListing_RejectedProvider_IsDenied()
     {
@@ -138,6 +147,9 @@ public class ActivityListingsControllerTests
         Assert.Equal(403, objectResult.StatusCode);
     }
 
+    /// <summary>
+    /// Verifies that only the authenticated provider's own listings are returned
+    /// </summary>
     [Fact]
     public async Task GetListings_ReturnsProviderListings()
     {
@@ -164,7 +176,9 @@ public class ActivityListingsControllerTests
         Assert.All(list, l => Assert.Contains(l.Title, new[] { "My Listing 1", "My Listing 2" }));
     }
 
-
+    /// <summary>
+    /// Verifies that the owner of a listing can successfully update it
+    /// </summary>
     [Fact]
     public async Task UpdateListing_Owner_Succeeds()
     {
@@ -211,7 +225,9 @@ public class ActivityListingsControllerTests
         Assert.Equal("Negombo", updated.Location);
     }
 
-
+    /// <summary>
+    /// Verifies that a provider cannot update a listing they do not own
+    /// </summary>
     [Fact]
     public async Task UpdateListing_NonOwner_IsDenied()
     {
@@ -249,6 +265,9 @@ public class ActivityListingsControllerTests
         Assert.Equal("Provider B Listing", unchanged!.Title);
     }
 
+    /// <summary>
+    /// Verifies that the owner of a listing can successfully delete it
+    /// </summary>
     [Fact]
     public async Task DeleteListing_Owner_Succeeds()
     {
@@ -270,6 +289,9 @@ public class ActivityListingsControllerTests
         Assert.Null(await db.ActivityListings.FindAsync(listingId));
     }
 
+    /// <summary>
+    /// Verifies that a provider cannot delete a listing they do not own
+    /// </summary>
     [Fact]
     public async Task DeleteListing_NonOwner_IsDenied()
     {

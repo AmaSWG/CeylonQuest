@@ -20,6 +20,10 @@ public class AvailabilityTests
         return new CatalogDbContext(options);
     }
 
+    /// <summary>
+    /// Verifies that a provider setting slot capacity creates the record
+    /// and the slot appears as bookable to visitors
+    /// </summary>
     [Fact]
     public async Task Scenario1_SetAvailability_CreatesRecordAndShowsAsBookable()
     {
@@ -53,6 +57,9 @@ public class AvailabilityTests
         Assert.Equal(12, response.Slots[0].RemainingCapacity);
     }
 
+    /// <summary>
+    /// Verifies that zero or negative capacity values are rejected
+    /// </summary>
     [Fact]
     public async Task Scenario2_InvalidCapacity_ThrowsArgumentException()
     {
@@ -70,6 +77,9 @@ public class AvailabilityTests
             service.SetSlotCapacityAsync(listingId, date, "09:00 AM - 11:00 AM", -5));
     }
 
+    /// <summary>
+    /// Verifies that a slot with no remaining capacity is reported as fully booked
+    /// </summary>
     [Fact]
     public async Task Scenario3_FullyBookedSlot_ShowsAsFullyBooked()
     {
@@ -100,6 +110,9 @@ public class AvailabilityTests
         Assert.True(response.Slots[0].IsFullyBooked);
     }
 
+    /// <summary>
+    /// Verifies that canceling a booking restores the deducted capacity
+    /// </summary>
     [Fact]
     public async Task Scenario4_BookingCanceled_RestoresCapacity()
     {
@@ -131,6 +144,9 @@ public class AvailabilityTests
         Assert.Equal(4, afterCancel!.Slots[0].RemainingCapacity);
     }
 
+    /// <summary>
+    /// Verifies that restoring capacity never exceeds the slot's total capacity
+    /// </summary>
     [Fact]
     public async Task Scenario5_BookingCanceled_DoesNotExceedTotalCapacity()
     {
@@ -157,6 +173,10 @@ public class AvailabilityTests
         Assert.Equal(5, response!.Slots[0].RemainingCapacity);
     }
 
+    /// <summary>
+    /// Verifies that updating a booking restores capacity on the old slot
+    /// and deducts it from the new slot
+    /// </summary>
     [Fact]
     public async Task Scenario6_BookingUpdated_RebalancesCapacityBetweenSlots()
     {

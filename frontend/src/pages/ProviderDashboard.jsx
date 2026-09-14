@@ -872,16 +872,25 @@ function ListingsTab({
       if (isNaN(p) || p <= 0) return { id: 'hotel-price', msg: 'Price per night must be a positive amount.' }
       return null
     }
+  
     if (isRestaurant) {
-      if (!form.name.trim()) return { id: 'rest-name', msg: 'Restaurant / item name is required.' }
-      if (!form.cuisineType.trim()) return { id: 'rest-cuisine', msg: 'Cuisine type is required.' }
-      if (!form.location.trim()) return { id: 'rest-location', msg: 'Location is required.' }
-      if (!form.description.trim()) return { id: 'rest-desc', msg: 'Description is required.' }
+      if (!form.name?.trim()) return { id: 'rest-name', msg: 'Restaurant / item name is required.' }
+      if (!form.cuisineType?.trim()) return { id: 'rest-cuisine', msg: 'Cuisine type is required.' }
+      if (!form.location?.trim()) return { id: 'rest-location', msg: 'Location is required.' }
+      if (!form.description?.trim()) return { id: 'rest-desc', msg: 'Description is required.' }
       if (form.description.trim().length < 10) {
         return { id: 'rest-desc', msg: 'Description must be at least 10 characters long.' }
       }
       const p = parseFloat(form.pricePerPerson)
       if (isNaN(p) || p <= 0) return { id: 'rest-price', msg: 'Price per person must be a positive amount.' }
+      
+      // ── Opening Hours Validation ──
+      if (!form.openingHoursOpen || !form.openingHoursClose) {
+        return { id: 'rest-hours-open', msg: 'Opening and closing hours are required.' }
+      }
+      if (form.openingHoursClose <= form.openingHoursOpen) {
+        return { id: 'rest-hours-close', msg: 'Closing time must be after opening time.' }
+      }
       return null
     }
         

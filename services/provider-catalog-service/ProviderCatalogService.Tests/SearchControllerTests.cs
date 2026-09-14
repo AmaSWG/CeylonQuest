@@ -33,7 +33,7 @@ public class SearchControllerTests
             Email = "partner@example.com"
         });
 
-        // 1. Activity: Pigeon Island Diving in Trincomalee
+        // Activity: Pigeon Island Diving in Trincomalee
         db.ActivityListings.Add(new ActivityListing
         {
             Id = Guid.NewGuid(),
@@ -47,7 +47,7 @@ public class SearchControllerTests
             IsActive = true
         });
 
-        // 2. Activity: Kite Surfing in Kalpitiya
+        // Activity: Kite Surfing in Kalpitiya
         db.ActivityListings.Add(new ActivityListing
         {
             Id = Guid.NewGuid(),
@@ -61,7 +61,7 @@ public class SearchControllerTests
             IsActive = true
         });
 
-        // 3. Inactive Activity: Closed Diving Cave (Should NEVER appear in search)
+        // Inactive Activity: Closed Diving Cave (Should NEVER appear in search)
         db.ActivityListings.Add(new ActivityListing
         {
             Id = Guid.NewGuid(),
@@ -74,7 +74,7 @@ public class SearchControllerTests
             IsActive = false
         });
 
-        // 4. Restaurant: Seafood in Colombo
+        // Restaurant: Seafood in Colombo
         db.RestaurantListings.Add(new RestaurantListing
         {
             Id = Guid.NewGuid(),
@@ -90,7 +90,7 @@ public class SearchControllerTests
             IsActive = true
         });
 
-        // 5. Accommodation: Luxury Villa in Mirissa
+        // Accommodation: Luxury Villa in Mirissa
         db.AccommodationListings.Add(new AccommodationListing
         {
             Id = Guid.NewGuid(),
@@ -109,6 +109,10 @@ public class SearchControllerTests
         await db.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Verifies that a keyword search returns the matching listing across
+    /// the combined activity and restaurant results
+    /// </summary>
     [Fact]
     public async Task Search_KeywordMatch_ReturnsMatchingExperiencesAndRestaurants()
     {
@@ -127,6 +131,10 @@ public class SearchControllerTests
         Assert.Equal("Experience", item.Type);
     }
 
+    /// <summary>
+    /// Verifies that a keyword matching no listings returns an empty
+    /// result set with a zero total count
+    /// </summary>
     [Fact]
     public async Task Search_NoMatch_ReturnsEmptyResultsWithZeroTotal()
     {
@@ -143,6 +151,10 @@ public class SearchControllerTests
         Assert.Empty(paged.Items);
     }
 
+    /// <summary>
+    /// Verifies that an empty keyword returns all active listings across
+    /// all categories in a paginated response
+    /// </summary>
     [Fact]
     public async Task Search_NoKeyword_ReturnsAllActiveListingsPaginated()
     {
@@ -159,6 +171,10 @@ public class SearchControllerTests
         Assert.Equal(4, paged.Items.Count());
     }
 
+    /// <summary>
+    /// Verifies that the first page respects the requested page size and
+    /// reports the correct pagination flags
+    /// </summary>
     [Fact]
     public async Task Search_Pagination_Page1_RespectsPageAndPageSize()
     {
@@ -178,6 +194,10 @@ public class SearchControllerTests
         Assert.False(paged.HasPreviousPage);
     }
 
+    /// <summary>
+    /// Verifies that the second page returns only the remaining items
+    /// and reports the correct pagination flags
+    /// </summary>
     [Fact]
     public async Task Search_Pagination_Page2_ReturnsRemainingItems()
     {
@@ -196,6 +216,9 @@ public class SearchControllerTests
         Assert.False(paged.HasNextPage);
     }
 
+    /// <summary>
+    /// Verifies that inactive listings never appear in search results
+    /// </summary>
     [Fact]
     public async Task Search_InactiveListings_AreExcludedFromResults()
     {
@@ -212,6 +235,10 @@ public class SearchControllerTests
         Assert.Equal(0, paged.TotalCount);
     }
 
+    /// <summary>
+    /// Verifies that the type filter restricts the results to the
+    /// requested listing category
+    /// </summary>
     [Fact]
     public async Task Search_TypeFilter_ReturnsOnlyRequestedType()
     {
@@ -228,7 +255,10 @@ public class SearchControllerTests
         Assert.Equal("Restaurant", paged.Items.First().Type);
     }
 
-
+    /// <summary>
+    /// Verifies that the location filter restricts the results to the
+    /// requested location
+    /// </summary>
     [Fact]
     public async Task Search_LocationFilter_ReturnsOnlyMatchingLocation()
     {
@@ -245,6 +275,9 @@ public class SearchControllerTests
         Assert.Equal("Trincomalee", paged.Items.First().Location);
     }
 
+    /// <summary>
+    /// Verifies that keyword matching is case-insensitive
+    /// </summary>
     [Fact]
     public async Task Search_KeywordMatch_IsCaseInsensitive()
     {
@@ -265,6 +298,9 @@ public class SearchControllerTests
         Assert.Equal(pagedLower.TotalCount, pagedMixed.TotalCount);
     }
 
+    /// <summary>
+    /// Verifies that a partial keyword matches listings by substring
+    /// </summary>
     [Fact]
     public async Task Search_PartialKeyword_MatchesSubstring()
     {
@@ -281,6 +317,10 @@ public class SearchControllerTests
         Assert.Contains("Surfing", paged.Items.First().Title);
     }
 
+    /// <summary>
+    /// Verifies that combining keyword, type, and location filters returns
+    /// only listings matching all criteria
+    /// </summary>
     [Fact]
     public async Task Search_CombinedFilters_ReturnsIntersection()
     {
@@ -297,6 +337,10 @@ public class SearchControllerTests
         Assert.Equal("Pigeon Island Coral Diving", paged.Items.First().Title);
     }
 
+    /// <summary>
+    /// Verifies that searching an empty database returns a zero total
+    /// without throwing
+    /// </summary>
     [Fact]
     public async Task Search_EmptyDatabase_ReturnsZeroTotalWithoutThrowing()
     {
@@ -312,7 +356,10 @@ public class SearchControllerTests
         Assert.Empty(paged.Items);
     }
 
-
+    /// <summary>
+    /// Verifies that requesting a page beyond the available pages returns
+    /// an empty item collection with the correct total count
+    /// </summary>
     [Fact]
     public async Task Search_PageBeyondTotalPages_ReturnsEmptyItems()
     {
@@ -330,6 +377,10 @@ public class SearchControllerTests
         Assert.Empty(paged.Items);
     }
 
+    /// <summary>
+    /// Verifies that a keyword present only in the description still
+    /// matches the listing
+    /// </summary>
     [Fact]
     public async Task Search_KeywordInDescriptionOnly_ReturnsListing()
     {
@@ -347,6 +398,10 @@ public class SearchControllerTests
         Assert.Equal("Pigeon Island Coral Diving", paged.Items.First().Title);
     }
 
+    /// <summary>
+    /// Verifies that invalid page and pageSize values are clamped to
+    /// safe defaults within the allowed bounds
+    /// </summary>
     [Fact]
     public async Task Search_InvalidPageAndPageSize_ClampsToSafeDefaults()
     {
@@ -371,6 +426,9 @@ public class SearchControllerTests
         Assert.Equal(50, pagedOversized.PageSize);
     }
 
+    /// <summary>
+    /// Verifies that an unrecognized type filter returns an empty result set
+    /// </summary>
     [Fact]
     public async Task Search_UnrecognizedTypeFilter_ReturnsEmptyResults()
     {
@@ -387,6 +445,10 @@ public class SearchControllerTests
         Assert.Empty(paged.Items);
     }
 
+    /// <summary>
+    /// Verifies that combined location, category, and price filters return
+    /// only listings satisfying the full intersection of criteria
+    /// </summary>
     [Fact]
     public async Task Search_CombinedFilters_LocationCategoryAndPrice_ReturnsMatchingIntersection()
     {
@@ -411,6 +473,10 @@ public class SearchControllerTests
         Assert.Equal(7500, item.Price);
     }
 
+    /// <summary>
+    /// Verifies that clearing previously applied filters returns the full
+    /// unfiltered list of active listings
+    /// </summary>
     [Fact]
     public async Task Search_ClearFilters_ReturnsFullUnfilteredList()
     {
@@ -428,6 +494,10 @@ public class SearchControllerTests
         Assert.Equal(4, clearedPaged.TotalCount);
     }
 
+    /// <summary>
+    /// Verifies that the minPrice filter excludes listings priced below
+    /// the provided threshold
+    /// </summary>
     [Fact]
     public async Task Search_MinPriceFilter_ExcludesItemsBelowThreshold()
     {
@@ -442,6 +512,10 @@ public class SearchControllerTests
         Assert.All(paged.Items, item => Assert.True(item.Price >= 8000));
     }
 
+    /// <summary>
+    /// Verifies that the maxPrice filter excludes listings priced above
+    /// the provided threshold
+    /// </summary>
     [Fact]
     public async Task Search_MaxPriceFilter_ExcludesItemsAboveThreshold()
     {
@@ -457,6 +531,10 @@ public class SearchControllerTests
         Assert.Equal(4500, paged.Items.First().Price);
     }
 
+    /// <summary>
+    /// Verifies that combining filters with no matching intersection
+    /// returns an empty result set
+    /// </summary>
     [Fact]
     public async Task Search_CombinedFilters_NoIntersection_ReturnsZeroResults()
     {
@@ -471,6 +549,10 @@ public class SearchControllerTests
         Assert.Empty(paged.Items);
     }
 
+    /// <summary>
+    /// Verifies that sorting by price ascending orders results from
+    /// cheapest to most expensive
+    /// </summary>
     [Fact]
     public async Task Search_SortByPriceAsc_ReturnsCheapestFirst()
     {
@@ -492,6 +574,10 @@ public class SearchControllerTests
         }
     }
 
+    /// <summary>
+    /// Verifies that sorting by price descending orders results from
+    /// most expensive to cheapest
+    /// </summary>
     [Fact]
     public async Task Search_SortByPriceDesc_ReturnsMostExpensiveFirst()
     {
@@ -513,6 +599,9 @@ public class SearchControllerTests
         }
     }
 
+    /// <summary>
+    /// Verifies that the default sort order returns the newest listings first
+    /// </summary>
     [Fact]
     public async Task Search_SortByDefault_ReturnsNewestCreatedFirst()
     {
@@ -532,6 +621,10 @@ public class SearchControllerTests
         }
     }
 
+    /// <summary>
+    /// Verifies that an unrecognized sort order falls back to the default
+    /// ordering without failing
+    /// </summary>
     [Fact]
     public async Task Search_UnrecognizedSortOrder_FallsBackToDefaultOrder()
     {
@@ -548,6 +641,10 @@ public class SearchControllerTests
         Assert.NotEmpty(paged.Items);
     }
 
+    /// <summary>
+    /// Verifies that applying a filter and sort together returns the
+    /// correctly filtered and ordered results
+    /// </summary>
     [Fact]
     public async Task Search_SortAndFilterCombined_FiltersAndSortsCorrectly()
     {
@@ -565,5 +662,4 @@ public class SearchControllerTests
         Assert.Equal(7500, paged.Items.First().Price);
         Assert.Equal(9000, paged.Items.Last().Price);
     }
-
 }

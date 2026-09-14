@@ -20,6 +20,9 @@ public class ActivityListingsController : ControllerBase
         _db = db;
     }
 
+    /// <summary>
+    /// Maps an activity listing entity to the response DTO returned by the API
+    /// </summary>
      private static ActivityListingResponse ToDto(ActivityListing a) => new()
     {
         Id = a.Id,
@@ -39,7 +42,9 @@ public class ActivityListingsController : ControllerBase
     };
 
     
-    // Create
+    /// <summary>
+    /// Creates a new activity listing for the currently authenticated approved provider
+    /// </summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateActivityListingRequest request)
     {
@@ -77,7 +82,9 @@ public class ActivityListingsController : ControllerBase
         return Created($"/api/catalog/activity-listings/{listing.Id}", ToDto(listing));
     }
 
-    // Get My Listing
+    /// <summary>
+    /// Retrieves all activity listings belonging to the currently authenticated approved provider
+    /// </summary
     [HttpGet]
     public async Task<IActionResult> GetMyListings()
     {
@@ -113,9 +120,10 @@ public class ActivityListingsController : ControllerBase
         return Ok(listings);
     }
 
-    
-    // Get by Id
-    
+    /// <summary>
+    /// Retrieves a specific activity listing after verifying that it belongs to the
+    /// currently authenticated provider
+    /// </summary>
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -132,14 +140,18 @@ public class ActivityListingsController : ControllerBase
         if (listing is null)
             return NotFound(new { message = "Activity listing not found." });
 
+        // Providers can only access their own listings
         if (listing.ProviderId != provider.Id)
             return StatusCode(403, new { message = "You do not have permission to view this listing." });
 
         return Ok(ToDto(listing));
     }
 
-    // Update 
-  
+
+    /// <summary>
+    /// Updates an existing activity listing after verifying that the currently
+    /// authenticated provider owns the listing
+    /// </summary>
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateActivityListingRequest request)
     {
@@ -156,7 +168,7 @@ public class ActivityListingsController : ControllerBase
         if (listing is null)
             return NotFound(new { message = "Activity listing not found." });
 
-        // Ownership check
+        // Ownership is checked before allowing the listing to be modified
         if (listing.ProviderId != provider.Id)
             return StatusCode(403, new { message = "You can only update your own listings." });
 
@@ -180,8 +192,10 @@ public class ActivityListingsController : ControllerBase
         return Ok(ToDto(listing));
     }
 
-    // Delete
-	
+	/// <summary>
+	/// Deletes an activity listing after verifying that the currently authenticated
+	/// provider owns the listing
+	/// </summary>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
@@ -195,7 +209,7 @@ public class ActivityListingsController : ControllerBase
         if (listing is null)
             return NotFound(new { message = "Activity listing not found." });
 
-        // Ownership check
+        // Ownership is checked before the listing can be deleted
         if (listing.ProviderId != provider.Id)
             return StatusCode(403, new { message = "You can only delete your own listings." });
 
@@ -205,13 +219,17 @@ public class ActivityListingsController : ControllerBase
         return NoContent(); // 204
     }
 
-    // Helper (auto-links approved providers)
+    /// <summary>
+    /// Identifies the authenticated provider and verifies that the provider is approved
+    /// before allowing activity listing management
+    /// </summary>
     private async Task<(Provider? provider, string? errorMessage)> GetApprovedProviderAsync()
     {
         var identityUserId = GetIdentityUserId();
         var email = User.FindFirstValue(ClaimTypes.Email) 
                  ?? User.FindFirstValue("email");
 
+        // A user must have an identifiable claim to be matched with a provider
         if (identityUserId is null && string.IsNullOrWhiteSpace(email))
         {
             return (null, "User identity could not be verified from token.");
@@ -227,7 +245,7 @@ public class ActivityListingsController : ControllerBase
             return (null, "Only approved providers can manage experience listings. Your application may still be pending or was rejected.");
         }
 
-        // Auto-link IdentityUserId if not already stored
+        // Link the provider to the identity user if it has not been stored yet
         if (provider.IdentityUserId == null && identityUserId.HasValue)
         {
             provider.IdentityUserId = identityUserId.Value;
@@ -237,6 +255,9 @@ public class ActivityListingsController : ControllerBase
         return (provider, null);
     }
 
+    /// <summary>
+    /// Extracts the authenticated user's identity ID from the available token claims
+    /// </summary>
     private Guid? GetIdentityUserId()
     {
         var raw = User.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -245,7 +266,10 @@ public class ActivityListingsController : ControllerBase
         return Guid.TryParse(raw, out var id) ? id : null;
     }
 
-    // Visitor activity listings
+    /// <summary>
+    /// Retrieves active activity listings for public discovery, with optional
+    /// filtering by search term, location, and maximum price
+    /// </summary>
     [AllowAnonymous]
     [HttpGet("public")]
     public async Task<IActionResult> GetPublicListings(
@@ -253,23 +277,27 @@ public class ActivityListingsController : ControllerBase
         [FromQuery] string? location,
         [FromQuery] decimal? maxPrice)
     {
+        // Only active listings are included in public results
         var query = _db.ActivityListings
             .Include(l => l.Provider)
             .AsNoTracking()
             .Where(l => l.IsActive);
 
+        // Search across the activity title and description
         if (!string.IsNullOrWhiteSpace(search))
         {
             var q = search.Trim().ToLower();
             query = query.Where(l => l.Title.ToLower().Contains(q) || l.Description.ToLower().Contains(q));
         }
 
+        // Filter activities by location when provided
         if (!string.IsNullOrWhiteSpace(location))
         {
             var loc = location.Trim().ToLower();
             query = query.Where(l => l.Location.ToLower().Contains(loc));
         }
 
+        // Return activities within the visitor's maximum price
         if (maxPrice.HasValue && maxPrice > 0)
         {
             query = query.Where(l => l.Price <= maxPrice.Value);

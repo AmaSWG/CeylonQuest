@@ -37,6 +37,10 @@ public class BookingCanceledConsumer : KafkaConsumerBase
 
     protected override IReadOnlyList<string> Topics => new[] { BookingCanceledTopic };
 
+    /// <summary>
+    /// Handles a booking canceled event by deserializing the payload and
+    /// restoring the previously deducted capacity to the listing's slot
+    /// </summary>
     protected override async Task HandleMessageAsync(
         string topic,
         string? key,
@@ -54,6 +58,7 @@ public class BookingCanceledConsumer : KafkaConsumerBase
             return;
         }
 
+        // Ignore events missing the required identifiers or booking details
         if (evt == null || evt.ListingId == Guid.Empty || string.IsNullOrWhiteSpace(evt.BookingDate))
         {
             _logger.LogWarning("Received invalid {Topic} event, ignoring: {Value}", topic, value);

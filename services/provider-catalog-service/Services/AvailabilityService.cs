@@ -18,9 +18,13 @@ public class AvailabilityService
         _db = db;
     }
 
+    /// <summary>
+    /// Retrieves the availability for a listing on a specific date,
+    /// resolving the listing as an activity, restaurant, or accommodation
+    /// </summary>
     public async Task<ListingDateAvailabilityResponse?> GetAvailabilityForDateAsync(Guid listingId, DateOnly date)
     {
-        // 1. Try Activity Listing
+        // Try Activity Listing
         var activity = await _db.ActivityListings
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == listingId && a.IsActive);
@@ -30,7 +34,7 @@ public class AvailabilityService
             return await BuildActivityAvailabilityAsync(activity, date);
         }
 
-        // 2. Try Restaurant Listing
+        // Try Restaurant Listing
         var restaurant = await _db.RestaurantListings
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == listingId && r.IsActive);
@@ -40,7 +44,7 @@ public class AvailabilityService
             return await BuildRestaurantAvailabilityAsync(restaurant, date);
         }
 
-        // 3. Try Accommodation Listing (Stays)
+        // Try Accommodation Listing (Stays)
         var accommodation = await _db.AccommodationListings
             .AsNoTracking()
             .FirstOrDefaultAsync(ac => ac.Id == listingId && ac.IsActive);
@@ -53,6 +57,10 @@ public class AvailabilityService
         return null;
     }
 
+    /// <summary>
+    /// Sets or updates the total capacity for a specific availability
+    /// time slot, preventing reductions below the already booked count
+    /// </summary>
     public async Task<bool> SetSlotCapacityAsync(Guid listingId, DateOnly date, string timeSlot, int capacity)
     {
         if (capacity <= 0)
@@ -92,6 +100,10 @@ public class AvailabilityService
         return true;
     }
 
+    /// <summary>
+    /// Deducts the requested guest count from a slot's remaining capacity,
+    /// creating the slot with a sensible default capacity if it does not exist
+    /// </summary>
     public async Task<bool> DeductCapacityAsync(Guid listingId, DateOnly date, string timeSlot, int guestCount)
     {
         var existing = await _db.AvailabilitySlots
@@ -99,6 +111,7 @@ public class AvailabilityService
 
         if (existing == null)
         {
+            // Fall back to a sensible default capacity based on the listing type
             int defaultCapacity = 10;
             var act = await _db.ActivityListings.FirstOrDefaultAsync(a => a.Id == listingId);
             if (act != null)
@@ -137,6 +150,10 @@ public class AvailabilityService
         return true;
     }
 
+    /// <summary>
+    /// Builds the availability response for an activity listing, applying
+    /// the operating schedule and merging any per-slot overrides
+    /// </summary>
     private async Task<ListingDateAvailabilityResponse> BuildActivityAvailabilityAsync(ActivityListing activity, DateOnly date)
     {
         var isOperating = IsDateInOperatingSchedule(date, activity.ValidFrom, activity.ValidUntil, activity.AvailableDays);
@@ -178,6 +195,10 @@ public class AvailabilityService
         };
     }
 
+    /// <summary>
+    /// Builds the availability response for a restaurant listing using its
+    /// opening hours as the slot and its seating capacity as the default
+    /// </summary>
     private async Task<ListingDateAvailabilityResponse> BuildRestaurantAvailabilityAsync(RestaurantListing rest, DateOnly date)
     {
         var isOperating = true;
@@ -218,6 +239,10 @@ public class AvailabilityService
         };
     }
 
+    /// <summary>
+    /// Builds the availability response for an accommodation listing,
+    /// treating each night as a single-unit booking slot
+    /// </summary>
     private async Task<ListingDateAvailabilityResponse> BuildAccommodationAvailabilityAsync(AccommodationListing ac, DateOnly date)
     {
         var slotName = $"Stay (Min {ac.MinStayNights} Night{(ac.MinStayNights > 1 ? "s" : "")})";
@@ -254,6 +279,10 @@ public class AvailabilityService
         };
     }
 
+    /// <summary>
+    /// Determines whether a given date falls within the listing's validity
+    /// window and matches its configured available days
+    /// </summary>
     private static bool IsDateInOperatingSchedule(DateOnly date, DateTime? validFrom, DateTime? validUntil, string? availableDays)
     {
         var dateTime = date.ToDateTime(TimeOnly.MinValue);
@@ -272,6 +301,10 @@ public class AvailabilityService
         return raw.Contains(dayOfWeek) || raw.Contains(dayOfWeek.Substring(0, 3));
     }
 
+    /// <summary>
+    /// Parses a comma-separated time slot string into individual slot
+    /// entries, falling back to sensible default slots when empty
+    /// </summary>
     private static List<string> ParseTimeSlots(string? timeSlots)
     {
         if (string.IsNullOrWhiteSpace(timeSlots) || timeSlots == "[]")
@@ -280,6 +313,10 @@ public class AvailabilityService
         return timeSlots.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
     }
 
+    /// <summary>
+    /// Restores the requested guest count to a slot's remaining capacity,
+    /// capped at the slot's total capacity
+    /// </summary>
     public async Task<bool> RestoreCapacityAsync(Guid listingId, DateOnly date, string timeSlot, int guestCount)
     {
         var existing = await _db.AvailabilitySlots
@@ -298,6 +335,10 @@ public class AvailabilityService
         return true;
     }
 
+    /// <summary>
+    /// Adjusts availability when a booking is updated by restoring the
+    /// old slot and deducting from the new slot
+    /// </summary>
     public async Task<bool> UpdateCapacityAsync(
         Guid listingId,
         DateOnly oldDate,

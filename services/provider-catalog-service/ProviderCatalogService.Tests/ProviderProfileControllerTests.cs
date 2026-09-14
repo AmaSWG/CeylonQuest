@@ -37,6 +37,10 @@ public class ProviderProfileControllerTests
         return controller;
     }
 
+    /// <summary>
+    /// Verifies that the authenticated provider's own business profile
+    /// is returned successfully
+    /// </summary>
     [Fact]
     public async Task GetMyProfile_ReturnsProfileForAuthenticatedProvider()
     {
@@ -64,6 +68,10 @@ public class ProviderProfileControllerTests
         Assert.Equal(200, result.StatusCode);
     }
 
+    /// <summary>
+    /// Verifies that updating the authenticated provider's profile with
+    /// valid data persists the changes to the database
+    /// </summary>
     [Fact]
     public async Task UpdateMyProfile_ValidData_UpdatesRecord()
     {

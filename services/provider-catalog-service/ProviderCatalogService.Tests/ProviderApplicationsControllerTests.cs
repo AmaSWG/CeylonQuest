@@ -53,6 +53,10 @@ public class ProviderApplicationsControllerTests
         return new FormFile(stream, 0, bytes.Length, "LegalDocuments", fileName);
     }
 
+    /// <summary>
+    /// Verifies that a valid application submission uploads the documents,
+    /// persists the record, and returns a 201 Created response
+    /// </summary>
     [Fact]
     public async Task Submit_ValidApplication_CreatesRecordAndReturns201()
     {
@@ -81,6 +85,10 @@ public class ProviderApplicationsControllerTests
         Assert.Equal(2, blob.UploadedBlobs.Count);
     }
 
+    /// <summary>
+    /// Verifies that submitting an application without any legal documents
+    /// is rejected with a 400 Bad Request response
+    /// </summary>
     [Fact]
     public async Task Submit_NoFiles_ReturnsBadRequest()
     {
@@ -105,6 +113,10 @@ public class ProviderApplicationsControllerTests
         Assert.Equal(400, result.StatusCode);
     }
 
+    /// <summary>
+    /// Verifies that the status endpoint returns the application for a
+    /// known email and a not-found response for an unknown email
+    /// </summary>
     [Fact]
     public async Task GetStatus_ReturnsCorrectStatus()
     {
