@@ -24,6 +24,11 @@ public class ProviderApplicationsController : ControllerBase
         _blobStorage = blobStorage;
         _containerName = configuration["AzureStorage:VerificationFilesContainer"] ?? "provider-verification-files";
     }
+
+    /// <summary>
+    /// Submits a new provider application along with the required legal
+    /// verification documents, uploading each file to blob storage
+    /// </summary>
     [HttpPost]
     public async Task<IActionResult> Submit([FromForm] CreateProviderApplicationRequest request)
     {
@@ -44,9 +49,11 @@ public class ProviderApplicationsController : ControllerBase
         var uploadedDocMetadata = new List<object>();
         foreach (var file in files)
         {
+            // Reject unsupported file formats before attempting to upload
             var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
             if (!allowedExtensions.Contains(ext))
                 return BadRequest(new { message = $"File '{file.FileName}' has an invalid format. Only PDF, JPG, and PNG are accepted." });
+            // Enforce the 10MB per-file size limit
             if (file.Length > 10 * 1024 * 1024) // 10MB limit
                 return BadRequest(new { message = $"File '{file.FileName}' exceeds the 10MB file size limit." });
             var blobName = $"{Guid.NewGuid()}{ext}";
@@ -83,11 +90,17 @@ public class ProviderApplicationsController : ControllerBase
             submittedAt = application.SubmittedAt
         });
     }
+
+    /// <summary>
+    /// Retrieves the current review status of a provider application
+    /// by the applicant's email address
+    /// </summary>
     [HttpGet("status")]
     public async Task<IActionResult> GetStatus([FromQuery] string email)
     {
         if (string.IsNullOrWhiteSpace(email))
             return BadRequest(new { message = "Email is required." });
+        // Normalize the email so lookups are case-insensitive
         var normalizedEmail = email.Trim().ToLowerInvariant();
         var application = await _db.ProviderApplications.FirstOrDefaultAsync(a => a.Email == normalizedEmail);
         if (application is null)

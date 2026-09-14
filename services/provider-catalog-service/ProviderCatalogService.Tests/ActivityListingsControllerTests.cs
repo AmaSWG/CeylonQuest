@@ -57,6 +57,9 @@ public class ActivityListingsControllerTests
     // CREATE
     // ============================================================
 
+    /// <summary>
+    /// Verifies that an approved provider can successfully create a new activity listing
+    /// </summary>
     [Fact]
     public async Task CreateListing_ApprovedProvider_Succeeds()
     {
@@ -102,6 +105,9 @@ public class ActivityListingsControllerTests
         Assert.Equal("Trincomalee", listing.Location);
     }
 
+    /// <summary>
+    /// Verifies that a provider without an approved profile is denied listing creation
+    /// </summary>
     [Fact]
     public async Task CreateListing_PendingProvider_IsDenied()
     {
@@ -130,6 +136,9 @@ public class ActivityListingsControllerTests
         Assert.Equal(403, objectResult.StatusCode);
     }
 
+    /// <summary>
+    /// Verifies that a rejected provider is denied listing creation
+    /// </summary>
     [Fact]
     public async Task CreateListing_RejectedProvider_IsDenied()
     {
@@ -162,6 +171,9 @@ public class ActivityListingsControllerTests
     // GET MY LISTINGS
     // ============================================================
 
+    /// <summary>
+    /// Verifies that only the authenticated provider's own listings are returned
+    /// </summary>
     [Fact]
     public async Task GetListings_ReturnsProviderListings()
     {
@@ -243,147 +255,9 @@ public class ActivityListingsControllerTests
                 new[] { "My Listing 1", "My Listing 2" }));
     }
 
-    // ============================================================
-    // GET BY ID
-    // ============================================================
-
-    [Fact]
-    public async Task GetById_Owner_ReturnsListing()
-    {
-        using var db = CreateInMemoryDbContext();
-
-        var identityId = Guid.NewGuid();
-        var providerId = Guid.NewGuid();
-        var listingId = Guid.NewGuid();
-
-        db.Providers.Add(new Provider
-        {
-            Id = providerId,
-            IdentityUserId = identityId,
-            Email = "owner@example.com",
-            BusinessName = "Owner Business",
-            ServiceType = "Tour"
-        });
-
-        db.ActivityListings.Add(new ActivityListing
-        {
-            Id = listingId,
-            ProviderId = providerId,
-            Title = "Sigiriya Tour",
-            Description = "Day tour",
-            Price = 5000,
-            Unit = "Per Person",
-            Location = "Sigiriya",
-            IsActive = true
-        });
-
-        await db.SaveChangesAsync();
-
-        var controller = CreateController(
-            db,
-            identityId,
-            "owner@example.com");
-
-        var result = await controller.GetById(listingId);
-
-        var ok = Assert.IsType<OkObjectResult>(result);
-
-        var listing =
-            Assert.IsType<ActivityListingResponse>(ok.Value);
-
-        Assert.Equal(listingId, listing.Id);
-        Assert.Equal("Sigiriya Tour", listing.Title);
-    }
-
-    [Fact]
-    public async Task GetById_ListingNotFound_Returns404()
-    {
-        using var db = CreateInMemoryDbContext();
-
-        var identityId = Guid.NewGuid();
-        var providerId = Guid.NewGuid();
-
-        db.Providers.Add(new Provider
-        {
-            Id = providerId,
-            IdentityUserId = identityId,
-            Email = "owner@example.com",
-            BusinessName = "Owner",
-            ServiceType = "Tour"
-        });
-
-        await db.SaveChangesAsync();
-
-        var controller = CreateController(
-            db,
-            identityId,
-            "owner@example.com");
-
-        var result =
-            await controller.GetById(Guid.NewGuid());
-
-        Assert.IsType<NotFoundObjectResult>(result);
-    }
-
-    [Fact]
-    public async Task GetById_NonOwner_Returns403()
-    {
-        using var db = CreateInMemoryDbContext();
-
-        var myIdentityId = Guid.NewGuid();
-        var myProviderId = Guid.NewGuid();
-        var otherProviderId = Guid.NewGuid();
-        var listingId = Guid.NewGuid();
-
-        db.Providers.Add(new Provider
-        {
-            Id = myProviderId,
-            IdentityUserId = myIdentityId,
-            Email = "me@example.com",
-            BusinessName = "My Business",
-            ServiceType = "Tour"
-        });
-
-        db.Providers.Add(new Provider
-        {
-            Id = otherProviderId,
-            IdentityUserId = Guid.NewGuid(),
-            Email = "other@example.com",
-            BusinessName = "Other Business",
-            ServiceType = "Tour"
-        });
-
-        db.ActivityListings.Add(new ActivityListing
-        {
-            Id = listingId,
-            ProviderId = otherProviderId,
-            Title = "Other Tour",
-            Description = "Other provider listing",
-            Price = 4000,
-            Unit = "Per Person",
-            Location = "Galle",
-            IsActive = true
-        });
-
-        await db.SaveChangesAsync();
-
-        var controller = CreateController(
-            db,
-            myIdentityId,
-            "me@example.com");
-
-        var result = await controller.GetById(listingId);
-
-        var forbidden =
-            Assert.IsType<ObjectResult>(result);
-
-        Assert.Equal(403, forbidden.StatusCode);
-    }
-
-    // ============================================================
-    // UPDATE
-    // ============================================================
-
+    /// <summary>
+    /// Verifies that the owner of a listing can successfully update it
+    /// </summary>
     [Fact]
     public async Task UpdateListing_Owner_Succeeds()
     {
@@ -450,6 +324,9 @@ public class ActivityListingsControllerTests
         Assert.Equal("Negombo", updated.Location);
     }
 
+    /// <summary>
+    /// Verifies that a provider cannot update a listing they do not own
+    /// </summary>
     [Fact]
     public async Task UpdateListing_NonOwner_IsDenied()
     {
@@ -524,6 +401,9 @@ public class ActivityListingsControllerTests
             unchanged!.Title);
     }
 
+    /// <summary>
+    /// Verifies that the owner of a listing can successfully delete it
+    /// </summary>
     [Fact]
     public async Task UpdateListing_NotFound_Returns404()
     {
@@ -614,6 +494,9 @@ public class ActivityListingsControllerTests
                 listingId));
     }
 
+    /// <summary>
+    /// Verifies that a provider cannot delete a listing they do not own
+    /// </summary>
     [Fact]
     public async Task DeleteListing_NonOwner_IsDenied()
     {

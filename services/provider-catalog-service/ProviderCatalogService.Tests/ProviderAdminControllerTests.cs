@@ -116,6 +116,10 @@ public class ProviderAdminControllerTests
         return controller;
     }
 
+    /// <summary>
+    /// Verifies that all provider applications are returned and that
+    /// the status filter narrows the results to the requested status
+    /// </summary>
     [Fact]
     public async Task GetApplications_ReturnsAllAndFiltersByStatus()
     {
@@ -138,6 +142,10 @@ public class ProviderAdminControllerTests
         Assert.NotNull(pendingResult);
     }
 
+    /// <summary>
+    /// Verifies that approving a pending application creates the provider
+    /// profile, updates the status, and publishes a Kafka event
+    /// </summary>
     [Fact]
     public async Task Approve_PendingApplication_SucceedsAndPublishesKafka()
     {
@@ -172,6 +180,10 @@ public class ProviderAdminControllerTests
         Assert.Single(kafka.PublishedMessages);
     }
 
+    /// <summary>
+    /// Verifies that rejecting a pending application sets the rejected
+    /// status and sends the rejection notification email
+    /// </summary>
     [Fact]
     public async Task Reject_PendingApplication_SetsStatusAndSendsEmail()
     {
@@ -205,6 +217,10 @@ public class ProviderAdminControllerTests
         Assert.Single(email.SentRejections);
     }
 
+    /// <summary>
+    /// Verifies that requesting a valid verification document returns
+    /// the correct file stream, content type, and download name
+    /// </summary>
     [Fact]
     public async Task DownloadDocument_ValidDoc_ReturnsFileStream()
     {

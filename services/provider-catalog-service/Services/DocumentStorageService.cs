@@ -9,6 +9,10 @@ public class DocumentStorageService
         _environment = environment;
     }
 
+    /// <summary>
+    /// Validates and saves an uploaded verification document to the local
+    /// provider-documents folder, returning its stored path and original name
+    /// </summary>
     public async Task<(string StoredPath, string OriginalFileName)> SaveAsync(
         IFormFile file)
     {
@@ -17,6 +21,7 @@ public class DocumentStorageService
 
         var extension = Path.GetExtension(file.FileName);
 
+        // Only PDF and common image formats are accepted
         var allowedExtensions = new[]
         {
             ".pdf",
@@ -41,6 +46,7 @@ public class DocumentStorageService
 
         Directory.CreateDirectory(uploadDirectory);
 
+        // Use a fresh GUID filename to avoid collisions and path traversal
         var storedFileName = $"{Guid.NewGuid()}{extension}";
 
         var fullPath = Path.Combine(

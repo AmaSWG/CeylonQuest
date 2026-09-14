@@ -22,6 +22,10 @@ public class SearchController : ControllerBase
         _db = db;
     }
 
+    /// <summary>
+    /// Searches across activity, restaurant, and accommodation listings with
+    /// optional keyword, type, location, price, day, sorting, and pagination filters
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> Search(
         [FromQuery] string? q = null,
@@ -35,10 +39,12 @@ public class SearchController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 9)
     {
+        // Clamp pagination values to safe bounds
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 9;
         if (pageSize > 50) pageSize = 50;
 
+        // Normalize all incoming filter values for case-insensitive comparison
         var keyword = q?.Trim().ToLower() ?? "";
         var filterType = type?.Trim().ToLower() ?? "all";
         var locFilter = location?.Trim().ToLower() ?? "";
@@ -47,7 +53,7 @@ public class SearchController : ControllerBase
 
         var results = new List<SearchResultItemDto>();
 
-        // 1. Search Activities / Experiences
+        // Search Activities / Experiences
         if (filterType == "all" || filterType == "experience" || filterType == "activity")
         {
             var expQuery = _db.ActivityListings
@@ -55,6 +61,7 @@ public class SearchController : ControllerBase
                 .Include(a => a.Provider)
                 .Where(a => a.IsActive);
 
+            // Apply the keyword search across the most relevant text fields
             if (!string.IsNullOrEmpty(keyword))
             {
                 expQuery = expQuery.Where(a =>
@@ -101,7 +108,7 @@ public class SearchController : ControllerBase
             results.AddRange(experiences);
         }
 
-        // 2. Search Restaurants / Dining
+        // Search Restaurants / Dining
         if (filterType == "all" || filterType == "restaurant" || filterType == "dining")
         {
             var restQuery = _db.RestaurantListings
@@ -109,6 +116,7 @@ public class SearchController : ControllerBase
                 .Include(r => r.Provider)
                 .Where(r => r.IsActive);
 
+            // Apply the keyword search across the most relevant text fields
             if (!string.IsNullOrEmpty(keyword))
             {
                 restQuery = restQuery.Where(r =>
@@ -152,7 +160,7 @@ public class SearchController : ControllerBase
             results.AddRange(restaurants);
         }
 
-        // 3. Search Accommodations (if any)
+        // Search Accommodations
         if (filterType == "all" || filterType == "accommodation" || filterType == "hotel")
         {
             var accQuery = _db.AccommodationListings
@@ -160,6 +168,7 @@ public class SearchController : ControllerBase
                 .Include(a => a.Provider)
                 .Where(a => a.IsActive);
 
+            // Apply the keyword search across the most relevant text fields
             if (!string.IsNullOrEmpty(keyword))
             {
                 accQuery = accQuery.Where(a =>
@@ -205,6 +214,7 @@ public class SearchController : ControllerBase
         // Pagination
         var totalCount = results.Count;
 
+        // Apply the requested sort order, defaulting to newest first
         IEnumerable<SearchResultItemDto> ordered = activeSort switch
         {
             "price_asc"  => results.OrderBy(x => x.Price),

@@ -37,6 +37,10 @@ public class BookingCreatedConsumer : KafkaConsumerBase
 
     protected override IReadOnlyList<string> Topics => new[] { BookingCreatedTopic };
 
+    /// <summary>
+    /// Handles a booking created event by deserializing the payload and
+    /// deducting the requested guest count from the listing's slot capacity
+    /// </summary>
     protected override async Task HandleMessageAsync(
         string topic,
         string? key,
@@ -54,6 +58,7 @@ public class BookingCreatedConsumer : KafkaConsumerBase
             return;
         }
 
+        // Ignore events missing the required identifiers or booking details
         if (evt == null || evt.ListingId == Guid.Empty || string.IsNullOrWhiteSpace(evt.BookingDate))
         {
             _logger.LogWarning("Received invalid {Topic} event, ignoring: {Value}", topic, value);

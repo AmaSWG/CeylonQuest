@@ -20,7 +20,10 @@ public class InventoryReportTests
         return new CatalogDbContext(options);
     }
 
-    // ── Test 1: Grouping by Category & Location with Slot-Level Capacity ─────────
+    /// <summary>
+    /// Verifies that the report groups listings by category and location,
+    /// aggregating slot-level capacity for each group
+    /// </summary>
     [Fact]
     public async Task Scenario1_GenerateReport_GroupsByCategoryAndLocation()
     {
@@ -61,7 +64,10 @@ public class InventoryReportTests
         Assert.Equal(25, kandyLoc.TotalCapacity); // 10 + 15 on that day
     }
 
-    // ── Test 2: Low Availability & Sold Out Highlights (Single Canonical Rule) ───
+    /// <summary>
+    /// Verifies that the report correctly flags sold-out and low-availability
+    /// slots using the canonical remaining-capacity thresholds
+    /// </summary>
     [Fact]
     public async Task Scenario2_LowAvailabilityHighlight_FlagsSoldOutAndLowSlots()
     {
@@ -102,7 +108,10 @@ public class InventoryReportTests
         Assert.Contains(report.LowAvailabilityAlerts, a => a.Status == "Low");
     }
 
-    // ── Test 3: Multi-Day Window Capacity & Occupancy Math ───────────────────────
+    /// <summary>
+    /// Verifies that a multi-day window aggregates capacity, booked, and
+    /// remaining counts consistently with the occupancy calculation
+    /// </summary>
     [Fact]
     public async Task MultiDayWindow_AggregatesCapacityAndOccupancyConsistently()
     {
@@ -151,7 +160,10 @@ public class InventoryReportTests
         Assert.Equal(report.Summary.TotalCapacity, report.Summary.BookedCapacity + report.Summary.RemainingCapacity);
     }
 
-    // ── Test 4: Scenario 3 — Filter by Location ─────────────────────────────────
+    /// <summary>
+    /// Verifies that filtering the report by location returns only
+    /// listings matching that location
+    /// </summary>
     [Fact]
     public async Task Scenario3_ApplyFilters_ByLocation_ReturnsOnlyMatchingLocation()
     {
@@ -173,7 +185,10 @@ public class InventoryReportTests
         Assert.Equal("Ella", report.ByLocation[0].Location);
     }
 
-    // ── Test 5: Scenario 3 — Filter by Category ─────────────────────────────────
+    /// <summary>
+    /// Verifies that filtering the report by category excludes
+    /// listings belonging to other categories
+    /// </summary>
     [Fact]
     public async Task Scenario3_ApplyFilters_ByCategory_ExcludesOtherCategories()
     {
@@ -196,7 +211,10 @@ public class InventoryReportTests
         Assert.Equal(20, report.ByCategory[0].TotalCapacity);
     }
 
-    // ── Test 6: Provider Scoping (Data Isolation) ───────────────────────────────
+    /// <summary>
+    /// Verifies that scoping the report to a provider returns only
+    /// listings belonging to that provider
+    /// </summary>
     [Fact]
     public async Task ProviderScoping_OnlyReturnsListingsBelongingToSpecificProvider()
     {
@@ -219,7 +237,10 @@ public class InventoryReportTests
         Assert.Equal(10, report.Summary.TotalCapacity);
     }
 
-    // ── Test 7: Regional Coverage Gaps Identification ───────────────────────────
+    /// <summary>
+    /// Verifies that the report identifies regional coverage gaps by
+    /// listing the categories missing from each location
+    /// </summary>
     [Fact]
     public async Task ServerSide_CoverageGaps_AccuratelyIdentifiesMissingCategories()
     {
@@ -252,6 +273,10 @@ public class InventoryReportTests
         Assert.Contains("Restaurant", ellaGap.MissingCategories);
     }
 
+    /// <summary>
+    /// Verifies that non-operating days are excluded from capacity totals
+    /// and are not incorrectly flagged as sold out or low availability
+    /// </summary>
     [Fact]
     public async Task NonOperatingDays_AreExcludedFromSlotsAndNotMarkedAsSoldOut()
     {

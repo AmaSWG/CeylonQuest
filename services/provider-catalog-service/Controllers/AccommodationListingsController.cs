@@ -24,6 +24,9 @@ public class AccommodationListingsController : ControllerBase
         _db = db;
     }
 
+    /// <summary>
+    /// Maps an accommodation listing entity to the response DTO returned by the API
+    /// </summary>
     private static AccommodationListingResponse ToDto(AccommodationListing a, string businessName = "") => new()
     {
         Id = a.Id,
@@ -43,7 +46,9 @@ public class AccommodationListingsController : ControllerBase
         CreatedAt = a.CreatedAt
     };
 
-    // ── 1. Create Accommodation Listing (Approved Providers Only) ───────────
+    /// <summary>
+    /// Creates a new accommodation listing for the currently authenticated approved provider
+    /// </summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateAccommodationListingRequest request)
     {
@@ -78,7 +83,9 @@ public class AccommodationListingsController : ControllerBase
         return Created($"/api/catalog/accommodation-listings/{listing.Id}", ToDto(listing, provider.BusinessName));
     }
 
-    // ── 2. Get My Accommodation Listings ────────────────────────────────────
+    /// <summary>
+    /// Retrieves all accommodation listings belonging to the currently authenticated approved provider
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetMyListings()
     {
@@ -96,7 +103,10 @@ public class AccommodationListingsController : ControllerBase
         return Ok(listings);
     }
 
-    // ── 3. Get Listing by ID (Ownership Check) ───────────────────────────────
+    /// <summary>
+    /// Retrieves a specific accommodation listing after verifying that it belongs to the
+    /// currently authenticated provider.
+    /// </summary>
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -118,7 +128,10 @@ public class AccommodationListingsController : ControllerBase
         return Ok(ToDto(listing));
     }
 
-    // ── 4. Update Accommodation Listing (Ownership Enforced) ────────────────
+    /// <summary>
+    /// Updates an existing accommodation listing after verifying that the currently
+    /// authenticated provider owns the listing.
+    /// </summary>
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateAccommodationListingRequest request)
     {
@@ -154,7 +167,10 @@ public class AccommodationListingsController : ControllerBase
         return Ok(ToDto(listing, provider.BusinessName));
     }
 
-    // ── 5. Delete Accommodation Listing (Ownership Enforced) ────────────────
+    /// <summary>
+    /// Deletes an accommodation listing after verifying that the currently authenticated
+    /// provider owns the listing.
+    /// </summary>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
@@ -176,7 +192,10 @@ public class AccommodationListingsController : ControllerBase
         return NoContent();
     }
 
-    // ── 6. Public Discovery for Visitors ────────────────────────────────────
+    /// <summary>
+    /// Retrieves active accommodation listings for public discovery, with optional
+    /// filtering by search term, property type, location, and guest capacity.
+    /// </summary>
     [AllowAnonymous]
     [HttpGet("public")]
     public async Task<IActionResult> GetPublicListings(
@@ -185,11 +204,13 @@ public class AccommodationListingsController : ControllerBase
         [FromQuery] string? location,
         [FromQuery] int? guests)
     {
+        // Only active listings are shown in public discovery
         var query = _db.AccommodationListings
             .AsNoTracking()
             .Include(a => a.Provider)
             .Where(a => a.IsActive);
 
+        // Search across the main listing details
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.ToLower().Trim();
@@ -201,6 +222,7 @@ public class AccommodationListingsController : ControllerBase
                 a.Amenities.ToLower().Contains(s));
         }
 
+        // Filter by property type when provided
         if (!string.IsNullOrWhiteSpace(propertyType))
         {
             var p = propertyType.ToLower().Trim();
@@ -226,15 +248,20 @@ public class AccommodationListingsController : ControllerBase
         return Ok(results);
     }
 
-    // ── Helper: Authenticate Approved Provider ────────────────────────────────
+    /// <summary>
+    /// Identifies the authenticated provider and verifies that the provider is approved
+    /// before allowing accommodation listing management
+    /// </summary>
     private async Task<(Provider? provider, string? errorMessage)> GetApprovedProviderAsync()
     {
         var identityUserId = GetIdentityUserId();
         var email = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email");
 
+        // A user must have an identifiable claim to be matched with a provider
         if (identityUserId is null && string.IsNullOrWhiteSpace(email))
             return (null, "User identity could not be verified from token.");
 
+        // Match the provider using the identity user ID or email from the token
         var provider = await _db.Providers.FirstOrDefaultAsync(p =>
             (identityUserId.HasValue && p.IdentityUserId == identityUserId.Value) ||
             (!string.IsNullOrEmpty(email) && p.Email.ToLower() == email.ToLower()));
@@ -242,6 +269,7 @@ public class AccommodationListingsController : ControllerBase
         if (provider is null)
             return (null, "Only approved providers can manage accommodation listings. Your application may still be pending or was rejected.");
 
+        // Link the provider to the identity user if the relationship has not been stored yet
         if (provider.IdentityUserId == null && identityUserId.HasValue)
         {
             provider.IdentityUserId = identityUserId.Value;
@@ -251,6 +279,9 @@ public class AccommodationListingsController : ControllerBase
         return (provider, null);
     }
 
+    /// <summary>
+    /// Extracts the authenticated user's identity ID from the available token claims
+    /// </summary>
     private Guid? GetIdentityUserId()
     {
         var raw = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");

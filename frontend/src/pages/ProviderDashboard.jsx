@@ -616,8 +616,7 @@ function ListingsTab({
   const [formLoading, setFormLoading] = useState(false)
   const [serviceToDelete, setServiceToDelete] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
-  const [selectedFiles, setSelectedFiles] = useState([]) 
-  const [existingImages, setExistingImages] = useState([]) 
+  
 
   const emptyForm = {
     // shared / activity
@@ -636,22 +635,22 @@ function ListingsTab({
     // restaurant
     name: '',
     cuisineType: '',
-    diningStyle: '',
+    diningStyle: 'Casual Dining',
     pricePerPerson: '',
-    priceRange: '',
+    priceRange: 'Moderate',
     openingHours: '',
     openingHoursOpen: '09:00',   
     openingHoursClose: '22:00',   
     setMenuDetails: '',
-    dietaryOptions: '',
+    dietaryOptions: 'Standard',
     seatingCapacity: 20,
-    groupSizeCategory: '',
+    groupSizeCategory: 'Table for One',
     // accommodation
     roomType: '',
-    propertyType: '',
+    propertyType: 'Boutique Hotel',
     pricePerNight: '',
     maxGuests: 2,
-    bedDetails: '',
+    bedDetails: '1 King Bed',
     minStayNights: 1,
     amenities: '',
     bathroomDetails: ''
@@ -720,8 +719,6 @@ function ListingsTab({
     setSlotsList([{ startTime: '08:00', endTime: addDurationToTime('08:00', '') }])
     setFormError(null)
     setModal('add')
-    setSelectedFiles([])
-    setExistingImages([])
   }
 
   const openEdit = (item) => {
@@ -751,12 +748,12 @@ function ListingsTab({
         diningStyle: item.diningStyle || 'Casual Dining',
         location: item.location || '',
         pricePerPerson: item.pricePerPerson ?? '',
-        priceRange: item.priceRange || '',
+        priceRange: item.priceRange || 'Moderate',
         openingHours: item.openingHours || '',
         openingHoursOpen: parsedHours.open,
         openingHoursClose: parsedHours.close,
         setMenuDetails: item.setMenuDetails || '',
-        dietaryOptions: item.dietaryOptions || '',
+        dietaryOptions: item.dietaryOptions || 'Standard',
         groupSizeCategory: item.groupSizeCategory || 'Table for Two',
         seatingCapacity: item.seatingCapacity || 20,
         isActive: item.isActive !== false
@@ -817,14 +814,14 @@ function ListingsTab({
     if (isHotel) {
       return {
         roomType: form.roomType.trim(),
-        propertyType: form.propertyType,
+        propertyType: form.propertyType || 'Boutique Hotel',
         location: form.location.trim(),
         pricePerNight: parseFloat(form.pricePerNight) || 0,
         maxGuests: parseInt(form.maxGuests, 10) || 1,
-        bedDetails: form.bedDetails,
+        bedDetails: form.bedDetails || '1 King Bed',
         minStayNights: parseInt(form.minStayNights, 10) || 1,
-        amenities: form.amenities,
-        bathroomDetails: form.bathroomDetails,
+        amenities: form.amenities || 'Free WiFi, AC',
+        bathroomDetails: form.bathroomDetails || 'En-suite Private Bathroom',
         description: form.description.trim(),
         isActive: form.isActive
       }
@@ -833,16 +830,16 @@ function ListingsTab({
       return {
         name: form.name.trim(),
         description: form.description.trim(),
-        cuisineType: form.cuisineType,
-        diningStyle: form.diningStyle,
+        cuisineType: form.cuisineType.trim(),
+        diningStyle: form.diningStyle || 'Casual Dining',
         location: form.location.trim(),
         pricePerPerson: parseFloat(form.pricePerPerson) || 0,
-        priceRange: form.priceRange,
-        openingHours: formatOpeningHours(form.openingHoursOpen, form.openingHoursClose),
-        setMenuDetails: form.setMenuDetails,
-        dietaryOptions: form.dietaryOptions,
+        priceRange: form.priceRange || 'Moderate',
+        openingHours: formatOpeningHours(form.openingHoursOpen, form.openingHoursClose) || '09:00 AM - 10:00 PM',
+        setMenuDetails: form.setMenuDetails || '',
+        dietaryOptions: form.dietaryOptions || 'Standard',
         groupSizeCategory: form.groupSizeCategory || 'Table for Two',
-        seatingCapacity: parseInt(form.seatingCapacity, 10) || 1,
+        seatingCapacity: parseInt(form.seatingCapacity, 10) || 20,
         isActive: form.isActive
       }
     }
@@ -866,7 +863,7 @@ function ListingsTab({
     }
   }
 
-    const validate = () => {
+  const validate = () => {
     if (isHotel) {
       if (!form.roomType.trim()) return { id: 'hotel-room', msg: 'Room type is required.' }
       if (!form.location.trim()) return { id: 'hotel-location', msg: 'Location is required.' }
@@ -875,16 +872,25 @@ function ListingsTab({
       if (isNaN(p) || p <= 0) return { id: 'hotel-price', msg: 'Price per night must be a positive amount.' }
       return null
     }
+  
     if (isRestaurant) {
-      if (!form.name.trim()) return { id: 'rest-name', msg: 'Restaurant / item name is required.' }
-      if (!form.cuisineType.trim()) return { id: 'rest-cuisine', msg: 'Cuisine type is required.' }
-      if (!form.location.trim()) return { id: 'rest-location', msg: 'Location is required.' }
-      if (!form.description.trim()) return { id: 'rest-desc', msg: 'Description is required.' }
+      if (!form.name?.trim()) return { id: 'rest-name', msg: 'Restaurant / item name is required.' }
+      if (!form.cuisineType?.trim()) return { id: 'rest-cuisine', msg: 'Cuisine type is required.' }
+      if (!form.location?.trim()) return { id: 'rest-location', msg: 'Location is required.' }
+      if (!form.description?.trim()) return { id: 'rest-desc', msg: 'Description is required.' }
       if (form.description.trim().length < 10) {
         return { id: 'rest-desc', msg: 'Description must be at least 10 characters long.' }
       }
       const p = parseFloat(form.pricePerPerson)
       if (isNaN(p) || p <= 0) return { id: 'rest-price', msg: 'Price per person must be a positive amount.' }
+      
+      // ── Opening Hours Validation ──
+      if (!form.openingHoursOpen || !form.openingHoursClose) {
+        return { id: 'rest-hours-open', msg: 'Opening and closing hours are required.' }
+      }
+      if (form.openingHoursClose <= form.openingHoursOpen) {
+        return { id: 'rest-hours-close', msg: 'Closing time must be after opening time.' }
+      }
       return null
     }
         
@@ -950,42 +956,14 @@ function ListingsTab({
         body: JSON.stringify(payload)
       })
 
-      let finalUrls = [...existingImages]
-
-      if (selectedFiles.length > 0) {
-        const uploadData = new FormData()
-        selectedFiles.forEach(file => uploadData.append('files', file))
-
-        const mediaResp = await fetch(catalogUrl('/api/catalog/media/upload-images'), {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: uploadData
-  })
-
-  if (mediaResp.ok) {
-    const { urls } = await mediaResp.json()
-    finalUrls = [...finalUrls, ...urls]
-  } else {
-    setFormError('Failed to upload images.')
-    setFormLoading(false)
-    return
-  }
-}
-
-  payload.imageUrls = JSON.stringify(finalUrls)
-
       if (resp.ok || resp.status === 201) {
         closeModal()
-        showToast(modal === 'edit' ? 'Listing updated.' : 'Listing created.')
+        showToast(modal === 'edit' ? 'Listing updated successfully.' : 'Listing created successfully.')
         onRefreshServices && onRefreshServices()
-      } else if (resp.status === 401) {
-        onLogout && onLogout()
-      } else if (resp.status === 403) {
-        const body = await resp.json().catch(() => ({}))
-        setFormError(body.message || 'Only approved providers can manage listings.')
       } else {
-        const body = await resp.json().catch(() => ({}))
-        setFormError(body.message || 'Error saving listing. Check your input.')
+        const data = await resp.json().catch(() => ({}))
+        const serverMsg = data.detail || data.message || data.title || (data.errors ? Object.values(data.errors).flat().join(', ') : 'Failed to save listing.')
+        setFormError(serverMsg)
       }
     } catch {
       setFormError('Network error. Please check your connection.')
@@ -1068,24 +1046,6 @@ function ListingsTab({
     if (filterStatus === 'inactive') return s.isActive === false
     return true
   })
-
-  const handleImageSelect = (e) => {
-  const files = Array.from(e.target.files)
-  if (existingImages.length + selectedFiles.length + files.length > 5) {
-    setFormError('You can upload a maximum of 5 images per listing.')
-    return
-  }
-  setSelectedFiles(prev => [...prev, ...files])
-  e.target.value = ''
-}
-
-const removeExistingImage = (idx) => {
-  setExistingImages(prev => prev.filter((_, i) => i !== idx))
-}
-
-const removeSelectedFile = (idx) => {
-  setSelectedFiles(prev => prev.filter((_, i) => i !== idx))
-}
 
   const pageTitle = isHotel ? 'Rooms and Accommodations'
                   : isRestaurant ? 'Menu and Dining'
@@ -1325,38 +1285,6 @@ const removeSelectedFile = (idx) => {
                     placeholder="e.g. Halal, Vegetarian, Vegan"
                   />
                 </div>
-
-                <div className="pd-form-group" style={{ marginTop: '14px' }}>
-                  <label style={{ fontWeight: 600, color: '#123b5d' }}>
-                    Listing Photos (Optional, up to 5 photos)
-                  </label>
-                  <input
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.webp"
-                    multiple
-                    onChange={handleImageSelect}
-                    disabled={existingImages.length + selectedFiles.length >= 5}
-                    style={{ marginTop: '6px' }}
-                  />
-                  
-                  {/* Thumbnails preview strip */}
-                  {(existingImages.length > 0 || selectedFiles.length > 0) && (
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
-                      {existingImages.map((url, i) => (
-                        <div key={`exist-${i}`} style={{ position: 'relative', width: 68, height: 54, borderRadius: 6, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
-                          <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          <button type="button" onClick={() => removeExistingImage(i)} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.65)', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: 11, cursor: 'pointer', lineHeight: '18px', padding: 0 }}>✕</button>
-                        </div>
-                      ))}
-                      {selectedFiles.map((file, i) => (
-                        <div key={`new-${i}`} style={{ position: 'relative', width: 68, height: 54, borderRadius: 6, overflow: 'hidden', border: '1px solid #168aad' }}>
-                          <img src={URL.createObjectURL(file)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          <button type="button" onClick={() => removeSelectedFile(i)} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.65)', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: 11, cursor: 'pointer', lineHeight: '18px', padding: 0 }}>✕</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </>
             )}
 
@@ -1494,38 +1422,6 @@ const removeSelectedFile = (idx) => {
                     placeholder="e.g. En-suite with hot water"
                   />
                 </div>
-
-                <div className="pd-form-group" style={{ marginTop: '14px' }}>
-                <label style={{ fontWeight: 600, color: '#123b5d' }}>
-                  Listing Photos (Optional, up to 5 photos)
-                </label>
-                <input
-                  type="file"
-                  accept=".jpg,.jpeg,.png,.webp"
-                  multiple
-                  onChange={handleImageSelect}
-                  disabled={existingImages.length + selectedFiles.length >= 5}
-                  style={{ marginTop: '6px' }}
-                />
-                
-                {/* Thumbnails preview strip */}
-                {(existingImages.length > 0 || selectedFiles.length > 0) && (
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
-                    {existingImages.map((url, i) => (
-                      <div key={`exist-${i}`} style={{ position: 'relative', width: 68, height: 54, borderRadius: 6, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
-                        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        <button type="button" onClick={() => removeExistingImage(i)} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.65)', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: 11, cursor: 'pointer', lineHeight: '18px', padding: 0 }}>✕</button>
-                      </div>
-                    ))}
-                    {selectedFiles.map((file, i) => (
-                      <div key={`new-${i}`} style={{ position: 'relative', width: 68, height: 54, borderRadius: 6, overflow: 'hidden', border: '1px solid #168aad' }}>
-                        <img src={URL.createObjectURL(file)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        <button type="button" onClick={() => removeSelectedFile(i)} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.65)', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: 11, cursor: 'pointer', lineHeight: '18px', padding: 0 }}>✕</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
               </>
             )}
 

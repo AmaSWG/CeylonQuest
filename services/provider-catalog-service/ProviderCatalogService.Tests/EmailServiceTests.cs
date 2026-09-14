@@ -10,6 +10,10 @@ namespace ProviderCatalogService.Tests;
 
 public class EmailServiceTests
 {
+    /// <summary>
+    /// Verifies that the rejection email sender does not throw when SMTP
+    /// settings are empty and the service is running in development mode
+    /// </summary>
     [Fact]
     public async Task SendApplicationRejectionEmailAsync_InDevMode_LogsWithoutThrowing()
     {

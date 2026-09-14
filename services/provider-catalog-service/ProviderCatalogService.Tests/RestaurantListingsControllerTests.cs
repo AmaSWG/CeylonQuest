@@ -50,7 +50,9 @@ public class RestaurantListingsControllerTests
         return controller;
     }
 
-    // ── 1. CreateListing_ApprovedProvider_Succeeds ──────────────────────────────
+    /// <summary>
+    /// Verifies that an approved provider can successfully create a new restaurant listing
+    /// </summary>
     [Fact]
     public async Task CreateListing_ApprovedProvider_Succeeds()
     {
@@ -95,7 +97,9 @@ public class RestaurantListingsControllerTests
         Assert.Equal("Bentota Beach", listing.Location);
     }
 
-    // ── 2. CreateListing_PendingProvider_IsDenied ───────────────────────────────
+    /// <summary>
+    /// Verifies that a provider without an approved profile is denied listing creation
+    /// </summary>
     [Fact]
     public async Task CreateListing_PendingProvider_IsDenied()
     {
@@ -119,7 +123,9 @@ public class RestaurantListingsControllerTests
         Assert.Equal(403, objectResult.StatusCode);
     }
 
-    // ── 3. CreateListing_RejectedProvider_IsDenied ──────────────────────────────
+    /// <summary>
+    /// Verifies that a rejected provider is denied listing creation
+    /// </summary>
     [Fact]
     public async Task CreateListing_RejectedProvider_IsDenied()
     {
@@ -143,7 +149,9 @@ public class RestaurantListingsControllerTests
         Assert.Equal(403, objectResult.StatusCode);
     }
 
-    // ── 4. GetListings_ReturnsProviderListings ──────────────────────────────────
+    /// <summary>
+    /// Verifies that only the authenticated provider's own listings are returned
+    /// </summary>
     [Fact]
     public async Task GetListings_ReturnsProviderListings()
     {
@@ -170,7 +178,9 @@ public class RestaurantListingsControllerTests
         Assert.All(list, l => Assert.Contains(l.Name, new[] { "Lunch Buffet", "Dinner Set" }));
     }
 
-    // ── 5. UpdateListing_Owner_Succeeds ─────────────────────────────────────────
+    /// <summary>
+    /// Verifies that the owner of a listing can successfully update it
+    /// </summary>
     [Fact]
     public async Task UpdateListing_Owner_Succeeds()
     {
@@ -222,7 +232,9 @@ public class RestaurantListingsControllerTests
         Assert.Equal("Galle Fort", updated.Location);
     }
 
-    // ── 6. UpdateListing_NonOwner_IsDenied ──────────────────────────────────────
+    /// <summary>
+    /// Verifies that a provider cannot update a listing they do not own
+    /// </summary>
     [Fact]
     public async Task UpdateListing_NonOwner_IsDenied()
     {
@@ -261,7 +273,9 @@ public class RestaurantListingsControllerTests
         Assert.Equal("Provider B Dining", unchanged!.Name);
     }
 
-    // ── 7. DeleteListing_Owner_Succeeds ─────────────────────────────────────────
+    /// <summary>
+    /// Verifies that the owner of a listing can successfully delete it
+    /// </summary>
     [Fact]
     public async Task DeleteListing_Owner_Succeeds()
     {
@@ -283,7 +297,9 @@ public class RestaurantListingsControllerTests
         Assert.Null(await db.RestaurantListings.FindAsync(listingId));
     }
 
-    // ── 8. DeleteListing_NonOwner_IsDenied ──────────────────────────────────────
+    /// <summary>
+    /// Verifies that a provider cannot delete a listing they do not own
+    /// </summary>
     [Fact]
     public async Task DeleteListing_NonOwner_IsDenied()
     {

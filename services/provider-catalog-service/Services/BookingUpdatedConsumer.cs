@@ -37,6 +37,10 @@ public class BookingUpdatedConsumer : KafkaConsumerBase
 
     protected override IReadOnlyList<string> Topics => new[] { BookingUpdatedTopic };
 
+    /// <summary>
+    /// Handles a booking updated event by deserializing the payload and
+    /// rebalancing capacity from the old slot to the new slot
+    /// </summary>
     protected override async Task HandleMessageAsync(
         string topic,
         string? key,
@@ -54,6 +58,7 @@ public class BookingUpdatedConsumer : KafkaConsumerBase
             return;
         }
 
+        // Ignore events missing the required listing identifier
         if (evt == null || evt.ListingId == Guid.Empty)
         {
             _logger.LogWarning("Received invalid {Topic} event, ignoring: {Value}", topic, value);
@@ -68,6 +73,7 @@ public class BookingUpdatedConsumer : KafkaConsumerBase
         using var scope = _scopeFactory.CreateScope();
         var availabilityService = scope.ServiceProvider.GetRequiredService<AvailabilityService>();
 
+        // Both the old and new dates must parse before rebalancing capacity
         if (DateOnly.TryParse(evt.OldBookingDate, out var oldDate) &&
             DateOnly.TryParse(evt.NewBookingDate, out var newDate))
         {

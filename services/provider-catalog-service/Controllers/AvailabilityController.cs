@@ -25,10 +25,13 @@ public class AvailabilityController : ControllerBase
         _db = db;
     }
 
-    // ── 1. GET Availability for Date (Public / Visitor & Provider) ───────────
+    /// <summary>
+    /// Retrieves the availability of a listing for a specific date
+    /// </summary>
     [HttpGet("{listingId:guid}")]
     public async Task<IActionResult> GetAvailability(Guid listingId, [FromQuery] string date)
     {
+        // Validate the date using the required YYYY-MM-DD format
         if (!DateOnly.TryParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
         {
             return BadRequest(new { message = "Invalid date format. Expected YYYY-MM-DD." });
@@ -43,7 +46,10 @@ public class AvailabilityController : ControllerBase
         return Ok(result);
     }
 
-    // ── 2. PUT Set Slot Capacity (Provider Management) ───────────────────────
+    /// <summary>
+    /// Sets or updates the capacity of a specific availability time slot
+    /// for a listing owned by the authenticated approved provider
+    /// </summary>
     [HttpPut("{listingId:guid}")]
     [Authorize(Roles = "Provider")]
     public async Task<IActionResult> SetAvailability(Guid listingId, [FromBody] SetAvailabilityRequest request)
@@ -54,7 +60,7 @@ public class AvailabilityController : ControllerBase
         if (request.Capacity <= 0)
             return BadRequest(new { message = "Capacity must be greater than 0." });
 
-        // TC60-13: Validate date format & reject past dates
+        // Validate the date format and reject availability changes for past dates
         if (!DateOnly.TryParseExact(request.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
             return BadRequest(new { message = "Invalid date format. Expected YYYY-MM-DD." });
 
@@ -64,7 +70,7 @@ public class AvailabilityController : ControllerBase
             return BadRequest(new { message = "Cannot create or modify availability for past dates." });
         }
 
-        // TC60-12: Resolve logged-in provider and check listing ownership
+        // Validate the date format and reject availability changes for past dates
         var (provider, errorMessage) = await GetApprovedProviderAsync();
         if (provider is null)
         {
@@ -77,6 +83,7 @@ public class AvailabilityController : ControllerBase
             return NotFound(new { message = "Listing not found." });
         }
 
+        // Providers can only modify availability for their own listings
         if (ownerId != provider.Id)
         {
             return StatusCode(403, new { message = "You do not have permission to modify availability for this listing." });
@@ -84,7 +91,7 @@ public class AvailabilityController : ControllerBase
 
         try
         {
-            // TC60-15: Will throw InvalidOperationException if capacity < bookedCount
+            // The service prevents capacity from being set below the booked count
             await _availabilityService.SetSlotCapacityAsync(listingId, parsedDate, request.TimeSlot, request.Capacity);
             return Ok(new { message = "Availability capacity updated successfully." });
         }
@@ -98,13 +105,17 @@ public class AvailabilityController : ControllerBase
         }
     }
 
-    // ── 3. POST Simulate Booking Event (Dev / Swagger simulation) ────────────
+    /// <summary>
+    /// Simulates a booking event by deducting the requested guest count
+    /// from the listing's availability
+    /// </summary>
     [HttpPost("simulate-booking-event")]
     public async Task<IActionResult> SimulateBooking([FromBody] SimulateBookingEventRequest request)
     {
         if (!ModelState.IsValid)
             return ValidationProblem(ModelState);
 
+        // Validate the booking date before updating availability
         if (!DateOnly.TryParseExact(request.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
             return BadRequest(new { message = "Invalid date format. Expected YYYY-MM-DD." });
 
@@ -114,13 +125,17 @@ public class AvailabilityController : ControllerBase
         return Ok(new { message = "Booking event simulated and capacity deducted.", availability = updated });
     }
 
-    // ── 4. POST Simulate Booking Canceled Event (Dev / Swagger simulation) ─────
+    /// <summary>
+    /// Simulates a booking cancellation event by restoring the requested
+    /// guest count to the listing's availability.
+    /// </summary>
     [HttpPost("simulate-booking-canceled-event")]
     public async Task<IActionResult> SimulateBookingCanceled([FromBody] SimulateBookingCanceledEventRequest request)
     {
         if (!ModelState.IsValid)
             return ValidationProblem(ModelState);
 
+        // Validate the cancellation date before restoring availability
         if (!DateOnly.TryParseExact(request.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
             return BadRequest(new { message = "Invalid date format. Expected YYYY-MM-DD." });
 
@@ -130,13 +145,17 @@ public class AvailabilityController : ControllerBase
         return Ok(new { message = "Booking cancellation simulated and capacity restored.", availability = updated });
     }
 
-    // ── 5. POST Simulate Booking Updated Event (Dev / Swagger simulation) ──────
+    /// <summary>
+    /// Simulates an updated booking event by adjusting availability between
+    /// the original and updated booking dates, time slots, and guest counts
+    /// </summary>
     [HttpPost("simulate-booking-updated-event")]
     public async Task<IActionResult> SimulateBookingUpdated([FromBody] SimulateBookingUpdatedEventRequest request)
     {
         if (!ModelState.IsValid)
             return ValidationProblem(ModelState);
 
+        // Validate both the original and updated booking dates
         if (!DateOnly.TryParseExact(request.OldDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedOldDate))
             return BadRequest(new { message = "Invalid OldDate format. Expected YYYY-MM-DD." });
 
@@ -157,7 +176,10 @@ public class AvailabilityController : ControllerBase
         return Ok(new { message = "Booking update simulated and capacity adjusted.", oldDateAvailability = updatedOld, newDateAvailability = updatedNew });
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Finds the owner of a listing by checking the supported activity,
+    /// restaurant, and accommodation listing types
+    /// </summary>
     private async Task<(bool found, Guid? ownerId)> GetListingOwnerAsync(Guid listingId)
     {
         var act = await _db.ActivityListings.AsNoTracking().FirstOrDefaultAsync(a => a.Id == listingId);
@@ -172,11 +194,16 @@ public class AvailabilityController : ControllerBase
         return (false, null);
     }
 
+    /// <summary>
+    /// Identifies the authenticated provider and verifies that the provider
+    /// profile exists before allowing provider-specific availability management
+    /// </summary>
     private async Task<(Provider? provider, string? errorMessage)> GetApprovedProviderAsync()
     {
         var identityUserId = GetIdentityUserId();
         var email = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email");
 
+        // A valid identity ID or email is required to identify the provider
         if (identityUserId is null && string.IsNullOrWhiteSpace(email))
             return (null, "User identity could not be verified from token.");
 
@@ -190,6 +217,10 @@ public class AvailabilityController : ControllerBase
         return (provider, null);
     }
 
+    /// <summary>
+    /// Extracts the authenticated user's identity ID from the available
+    /// NameIdentifier or subject token claim
+    /// </summary>
     private Guid? GetIdentityUserId()
     {
         var raw = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
