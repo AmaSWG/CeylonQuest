@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using CeylonQuest.Tests.Pages;
 using CeylonQuest.Tests.Utilities;
 using OpenQA.Selenium;
@@ -15,7 +16,9 @@ public class RestaurantListingsTests : BaseTest
         int Status,
         string Body);
 
-    // ENV VARIABLES
+    // =========================================================
+    // ENVIRONMENT VARIABLES
+    // =========================================================
 
     private string GetEnvironmentVariable(
         string variableName)
@@ -33,9 +36,9 @@ public class RestaurantListingsTests : BaseTest
         return value;
     }
 
-    
-    // UNIQUE NAME
-   
+    // =========================================================
+    // UNIQUE RESTAURANT NAME
+    // =========================================================
 
     private string CreateUniqueName(
         string prefix)
@@ -45,9 +48,9 @@ public class RestaurantListingsTests : BaseTest
             $"{DateTime.UtcNow:yyyyMMddHHmmssfff}";
     }
 
-    
+    // =========================================================
     // LOGIN
-
+    // =========================================================
 
     private void Login(
         string emailVariable = "QA_PROVIDER_EMAIL",
@@ -91,11 +94,22 @@ public class RestaurantListingsTests : BaseTest
         wait.Until(d =>
             d.FindElements(
                     By.Id("pd-nav-services"))
-                .Any(x => x.Displayed));
+                .Any(x =>
+                {
+                    try
+                    {
+                        return x.Displayed;
+                    }
+                    catch
+                    {
+                        return false;
+                    }
+                }));
     }
 
+    // =========================================================
     // CLEAR SESSION
-    
+    // =========================================================
 
     private void ClearSession()
     {
@@ -114,8 +128,9 @@ public class RestaurantListingsTests : BaseTest
                 $"{BaseUrl}/login");
     }
 
+    // =========================================================
     // API REQUEST
-    
+    // =========================================================
 
     private ApiResult SendApiRequest(
         string method,
@@ -203,14 +218,16 @@ public class RestaurantListingsTests : BaseTest
                     body,
                     authenticated);
 
-        if (string.IsNullOrWhiteSpace(result))
+        if (string.IsNullOrWhiteSpace(
+                result))
         {
             throw new InvalidOperationException(
                 "API request returned no result.");
         }
 
         using var document =
-            JsonDocument.Parse(result);
+            JsonDocument.Parse(
+                result);
 
         var status =
             document.RootElement
@@ -228,9 +245,9 @@ public class RestaurantListingsTests : BaseTest
             responseBody);
     }
 
-  
+    // =========================================================
     // CREATE RESTAURANT THROUGH API
-  
+    // =========================================================
 
     private string CreateRestaurantThroughApi(
         string restaurantName)
@@ -299,7 +316,8 @@ public class RestaurantListingsTests : BaseTest
                 .GetProperty("id")
                 .GetString();
 
-        if (string.IsNullOrWhiteSpace(id))
+        if (string.IsNullOrWhiteSpace(
+                id))
         {
             throw new InvalidOperationException(
                 "Created restaurant did not return an ID.");
@@ -308,9 +326,9 @@ public class RestaurantListingsTests : BaseTest
         return id;
     }
 
-   
+    // =========================================================
     // PUBLIC SEARCH
-  
+    // =========================================================
 
     private ApiResult SearchPublicRestaurant(
         string restaurantName)
@@ -328,29 +346,194 @@ public class RestaurantListingsTests : BaseTest
         string restaurantName)
     {
         if (result.Status != 200)
-        {
             return false;
-        }
 
         using var document =
             JsonDocument.Parse(
                 result.Body);
 
+        if (document.RootElement.ValueKind
+            != JsonValueKind.Array)
+        {
+            return false;
+        }
+
         return document.RootElement
             .EnumerateArray()
             .Any(item =>
-                string.Equals(
-                    item
-                        .GetProperty("name")
-                        .GetString(),
+            {
+                if (!item.TryGetProperty(
+                        "name",
+                        out var nameProperty))
+                {
+                    return false;
+                }
 
+                return string.Equals(
+                    nameProperty.GetString(),
                     restaurantName,
-
-                    StringComparison.OrdinalIgnoreCase));
+                    StringComparison.OrdinalIgnoreCase);
+            });
     }
 
+    // =========================================================
+    // GET PUBLIC RESTAURANT PROPERTY
+    //
+    // FIX FOR TC57-03 / TC57-04:
+    // Do not search the complete raw JSON string.
+    // Find the exact restaurant first, then read its property.
+    // =========================================================
+
+    private string? GetPublicRestaurantProperty(
+        string restaurantName,
+        string propertyName)
+    {
+        var result =
+            SearchPublicRestaurant(
+                restaurantName);
+
+        Assert.Equal(
+            200,
+            result.Status);
+
+        using var document =
+            JsonDocument.Parse(
+                result.Body);
+
+        if (document.RootElement.ValueKind
+            != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        foreach (var item in
+                 document.RootElement
+                     .EnumerateArray())
+        {
+            if (!item.TryGetProperty(
+                    "name",
+                    out var nameProperty))
+            {
+                continue;
+            }
+
+            var name =
+                nameProperty.GetString()
+                ?? string.Empty;
+
+            if (!name.Equals(
+                    restaurantName,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!item.TryGetProperty(
+                    propertyName,
+                    out var property))
+            {
+                return null;
+            }
+
+            return property.ValueKind switch
+            {
+                JsonValueKind.String =>
+                    property.GetString(),
+
+                JsonValueKind.Number =>
+                    property.ToString(),
+
+                JsonValueKind.True =>
+                    "true",
+
+                JsonValueKind.False =>
+                    "false",
+
+                _ =>
+                    property.ToString()
+            };
+        }
+
+        return null;
+    }
+
+    // =========================================================
+    // WAIT FOR UPDATED PUBLIC VALUE
+    //
+    // Gives the frontend/backend a few seconds to reflect
+    // the saved update before the assertion is made.
+    // =========================================================
+
+    private string WaitForPublicRestaurantProperty(
+        string restaurantName,
+        string propertyName,
+        Func<string, bool> expectedCondition)
+    {
+        string latestValue =
+            string.Empty;
+
+        for (int attempt = 0;
+             attempt < 10;
+             attempt++)
+        {
+            latestValue =
+                GetPublicRestaurantProperty(
+                    restaurantName,
+                    propertyName)
+                ?? string.Empty;
+
+            if (expectedCondition(
+                    latestValue))
+            {
+                return latestValue;
+            }
+
+            Thread.Sleep(
+                500);
+        }
+
+        return latestValue;
+    }
+
+    // =========================================================
+    // TIME NORMALIZATION
+    //
+    // Accepts common equivalent formats:
+    //
+    // 10:00 AM - 11:00 PM
+    // 10:00-23:00
+    // 10:00 - 23:00
+    // =========================================================
+
+    private bool OpeningHoursAreCorrect(
+        string value)
+    {
+        if (string.IsNullOrWhiteSpace(
+                value))
+        {
+            return false;
+        }
+
+        var normalized =
+            value
+                .Trim()
+                .ToUpperInvariant()
+                .Replace(" ", "");
+
+        return
+            normalized.Contains(
+                "10:00AM-11:00PM")
+            ||
+            normalized.Contains(
+                "10:00-23:00")
+            ||
+            normalized.Contains(
+                "10:00:00-23:00:00");
+    }
+
+    // =========================================================
     // CLEANUP DELETE
-   
+    // =========================================================
 
     private void DeleteRestaurantThroughApi(
         string restaurantId)
@@ -366,9 +549,10 @@ public class RestaurantListingsTests : BaseTest
             $"/api/catalog/restaurant-listings/{restaurantId}");
     }
 
-    
+    // =========================================================
     // TC57-01
- 
+    // CREATE RESTAURANT
+    // =========================================================
 
     [Fact]
     public void TC57_01_CreateRestaurant_WithValidDetails()
@@ -397,12 +581,20 @@ public class RestaurantListingsTests : BaseTest
 
         Assert.True(
             page.ListingExists(
-                restaurantName));
+                restaurantName),
+            "Created restaurant was not visible in My Listings.");
+
+        page.DeleteListing(
+            restaurantName);
+
+        page.WaitUntilRemoved(
+            restaurantName);
     }
 
-    
+    // =========================================================
     // TC57-02
-    
+    // PUBLIC SEARCH
+    // =========================================================
 
     [Fact]
     public void TC57_02_CreatedRestaurant_IsVisibleInPublicSearch()
@@ -430,7 +622,8 @@ public class RestaurantListingsTests : BaseTest
             Assert.True(
                 PublicResultsContainRestaurant(
                     result,
-                    restaurantName));
+                    restaurantName),
+                "Created restaurant was not visible in public search.");
         }
         finally
         {
@@ -439,8 +632,10 @@ public class RestaurantListingsTests : BaseTest
         }
     }
 
+    // =========================================================
     // TC57-03
-   
+    // UPDATE OPENING HOURS
+    // =========================================================
 
     [Fact]
     public void TC57_03_UpdateRestaurant_OpeningHours()
@@ -470,28 +665,44 @@ public class RestaurantListingsTests : BaseTest
         page.OpenEditForm(
             restaurantName);
 
+        // 10:00 AM -> 11:00 PM
         page.SetOpeningHours(
             "10:00",
             "23:00");
 
         page.SubmitUpdate();
 
-        var publicResult =
-            SearchPublicRestaurant(
-                restaurantName);
+        // Read the actual openingHours property,
+        // instead of searching entire raw JSON.
+        var openingHours =
+            WaitForPublicRestaurantProperty(
+                restaurantName,
+                "openingHours",
+                OpeningHoursAreCorrect);
 
-        Assert.Equal(
-            200,
-            publicResult.Status);
+        Assert.False(
+            string.IsNullOrWhiteSpace(
+                openingHours),
+            "Public restaurant response did not contain openingHours.");
 
-        Assert.Contains(
-            "10:00 AM - 11:00 PM",
-            publicResult.Body);
+        Assert.True(
+            OpeningHoursAreCorrect(
+                openingHours),
+            $"Opening hours were not updated correctly. " +
+            $"Actual API value: '{openingHours}'");
+
+        // Cleanup
+        page.DeleteListing(
+            restaurantName);
+
+        page.WaitUntilRemoved(
+            restaurantName);
     }
 
-    
+    // =========================================================
     // TC57-04
-    
+    // UPDATE PRICE RANGE
+    // =========================================================
 
     [Fact]
     public void TC57_04_UpdateRestaurant_PriceRange()
@@ -526,22 +737,37 @@ public class RestaurantListingsTests : BaseTest
 
         page.SubmitUpdate();
 
-        var publicResult =
-            SearchPublicRestaurant(
-                restaurantName);
+        var priceRange =
+            WaitForPublicRestaurantProperty(
+                restaurantName,
+                "priceRange",
+                value =>
+                    value.Equals(
+                        "Upscale",
+                        StringComparison.OrdinalIgnoreCase));
+
+        Assert.False(
+            string.IsNullOrWhiteSpace(
+                priceRange),
+            "Public restaurant response did not contain priceRange.");
 
         Assert.Equal(
-            200,
-            publicResult.Status);
-
-        Assert.Contains(
             "Upscale",
-            publicResult.Body);
+            priceRange,
+            ignoreCase: true);
+
+        // Cleanup
+        page.DeleteListing(
+            restaurantName);
+
+        page.WaitUntilRemoved(
+            restaurantName);
     }
 
-
+    // =========================================================
     // TC57-05
-  
+    // OTHER PROVIDER CANNOT EDIT
+    // =========================================================
 
     [Fact]
     public void TC57_05_EditRestaurant_NotOwnedByProvider_IsForbidden()
@@ -556,77 +782,83 @@ public class RestaurantListingsTests : BaseTest
             CreateRestaurantThroughApi(
                 restaurantName);
 
-        ClearSession();
+        try
+        {
+            ClearSession();
 
-        Login(
-            "QA_PROVIDER_B_EMAIL",
-            "QA_PROVIDER_B_PASSWORD");
+            Login(
+                "QA_PROVIDER_B_EMAIL",
+                "QA_PROVIDER_B_PASSWORD");
 
-        var requestBody =
-            JsonSerializer.Serialize(
-                new
-                {
-                    name =
-                        restaurantName,
+            var requestBody =
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        name =
+                            restaurantName,
 
-                    description =
-                        "Unauthorized restaurant edit attempt.",
+                        description =
+                            "Unauthorized restaurant edit attempt.",
 
-                    cuisineType =
-                        "Sri Lankan Cuisine",
+                        cuisineType =
+                            "Sri Lankan Cuisine",
 
-                    diningStyle =
-                        "Fine Dining",
+                        diningStyle =
+                            "Fine Dining",
 
-                    location =
-                        "Colombo City",
+                        location =
+                            "Colombo City",
 
-                    pricePerPerson =
-                        5000m,
+                        pricePerPerson =
+                            5000m,
 
-                    priceRange =
-                        "Upscale",
+                        priceRange =
+                            "Upscale",
 
-                    openingHours =
-                        "10:00 AM - 11:00 PM",
+                        openingHours =
+                            "10:00 AM - 11:00 PM",
 
-                    setMenuDetails =
-                        "Unauthorized menu change.",
+                        setMenuDetails =
+                            "Unauthorized menu change.",
 
-                    dietaryOptions =
-                        "Vegetarian",
+                        dietaryOptions =
+                            "Vegetarian",
 
-                    groupSizeCategory =
-                        "Table for Two",
+                        groupSizeCategory =
+                            "Table for Two",
 
-                    seatingCapacity =
-                        20,
+                        seatingCapacity =
+                            20,
 
-                    isActive =
-                        true
-                });
+                        isActive =
+                            true
+                    });
 
-        var result =
-            SendApiRequest(
-                "PUT",
-                $"/api/catalog/restaurant-listings/{restaurantId}",
-                requestBody);
+            var result =
+                SendApiRequest(
+                    "PUT",
+                    $"/api/catalog/restaurant-listings/{restaurantId}",
+                    requestBody);
 
-        Assert.Equal(
-            403,
-            result.Status);
+            Assert.Equal(
+                403,
+                result.Status);
+        }
+        finally
+        {
+            ClearSession();
 
-        ClearSession();
+            Login();
 
-        Login();
-
-        DeleteRestaurantThroughApi(
-            restaurantId);
+            DeleteRestaurantThroughApi(
+                restaurantId);
+        }
     }
 
-   
+    // =========================================================
     // TC57-06
-    
+    // OTHER PROVIDER CANNOT DELETE
+    // =========================================================
 
     [Fact]
     public void TC57_06_DeleteRestaurant_NotOwnedByProvider_IsForbidden()
@@ -641,40 +873,48 @@ public class RestaurantListingsTests : BaseTest
             CreateRestaurantThroughApi(
                 restaurantName);
 
-        ClearSession();
+        try
+        {
+            ClearSession();
 
-        Login(
-            "QA_PROVIDER_B_EMAIL",
-            "QA_PROVIDER_B_PASSWORD");
+            Login(
+                "QA_PROVIDER_B_EMAIL",
+                "QA_PROVIDER_B_PASSWORD");
 
-        var result =
-            SendApiRequest(
-                "DELETE",
-                $"/api/catalog/restaurant-listings/{restaurantId}");
+            var result =
+                SendApiRequest(
+                    "DELETE",
+                    $"/api/catalog/restaurant-listings/{restaurantId}");
 
-        Assert.Equal(
-            403,
-            result.Status);
+            Assert.Equal(
+                403,
+                result.Status);
 
-        var publicResult =
-            SearchPublicRestaurant(
-                restaurantName);
+            var publicResult =
+                SearchPublicRestaurant(
+                    restaurantName);
 
-        Assert.True(
-            PublicResultsContainRestaurant(
-                publicResult,
-                restaurantName));
+            Assert.True(
+                PublicResultsContainRestaurant(
+                    publicResult,
+                    restaurantName),
+                "Restaurant disappeared after unauthorized delete attempt.");
+        }
+        finally
+        {
+            ClearSession();
 
-        ClearSession();
+            Login();
 
-        Login();
-
-        DeleteRestaurantThroughApi(
-            restaurantId);
+            DeleteRestaurantThroughApi(
+                restaurantId);
+        }
     }
 
+    // =========================================================
     // TC57-07
-    
+    // DELETE OWN RESTAURANT
+    // =========================================================
 
     [Fact]
     public void TC57_07_DeleteOwnRestaurant()
@@ -709,12 +949,14 @@ public class RestaurantListingsTests : BaseTest
 
         Assert.False(
             page.ListingExists(
-                restaurantName));
+                restaurantName),
+            "Deleted restaurant was still visible.");
     }
 
-   
+    // =========================================================
     // TC57-08
-    
+    // DELETED RESTAURANT REMOVED FROM PUBLIC SEARCH
+    // =========================================================
 
     [Fact]
     public void TC57_08_DeletedRestaurant_IsRemovedFromPublicSearch()
@@ -758,13 +1000,14 @@ public class RestaurantListingsTests : BaseTest
         Assert.False(
             PublicResultsContainRestaurant(
                 afterDelete,
-                restaurantName));
+                restaurantName),
+            "Deleted restaurant was still returned by public search.");
     }
 
-    
+    // =========================================================
     // TC57-09
     // MISSING REQUIRED FIELD
-   
+    // =========================================================
 
     [Fact]
     public void TC57_09_MissingRequiredField_ShouldShowValidation()
@@ -786,7 +1029,7 @@ public class RestaurantListingsTests : BaseTest
         page.FillValidRestaurant(
             restaurantName);
 
-        // Name is required.
+        // Restaurant name is required.
         page.ClearRestaurantName();
 
         page.SubmitCreateWithoutWaitingForSuccess();
@@ -801,10 +1044,19 @@ public class RestaurantListingsTests : BaseTest
             "Restaurant was created even though a required field was missing.");
     }
 
-    
+    // =========================================================
     // TC57-10
     // INVALID OPENING HOURS
-
+    //
+    // IMPORTANT:
+    // Do NOT change this test just to make it green.
+    //
+    // If the application creates the restaurant when:
+    // Opening = 22:00
+    // Closing = 09:00
+    //
+    // this test should FAIL and should be reported to DEV.
+    // =========================================================
 
     [Fact]
     public void TC57_10_InvalidOpeningHours_ShouldShowValidation()
@@ -826,7 +1078,7 @@ public class RestaurantListingsTests : BaseTest
         page.FillValidRestaurant(
             restaurantName);
 
-        // Invalid time combination:
+        // Invalid according to the current test requirement:
         // Opening = 10:00 PM
         // Closing = 09:00 AM
         page.SetOpeningHours(

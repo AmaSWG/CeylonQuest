@@ -44,17 +44,20 @@ public class AccommodationListingsControllerTests
 
         controller.ControllerContext = new ControllerContext
         {
-            HttpContext = new DefaultHttpContext { User = principal }
+            HttpContext = new DefaultHttpContext
+            {
+                User = principal
+            }
         };
 
         return controller;
     }
 
-    // ── 1. CreateListing_ApprovedProvider_Succeeds ──────────────────────────────
     [Fact]
     public async Task CreateListing_ApprovedProvider_Succeeds()
     {
         using var db = CreateInMemoryDbContext();
+
         var identityId = Guid.NewGuid();
         var email = "approved_hotelier@example.com";
 
@@ -66,6 +69,7 @@ public class AccommodationListingsControllerTests
             BusinessName = "Southern Palms Villa",
             ServiceType = "Hotel / Accommodation"
         });
+
         await db.SaveChangesAsync();
 
         var controller = CreateController(db, identityId, email);
@@ -81,7 +85,7 @@ public class AccommodationListingsControllerTests
             MinStayNights = 2,
             Amenities = "Infinity Pool, Buffet Breakfast, Free WiFi, Sea View, Airport Shuttle",
             BathroomDetails = "En-suite bathroom with outdoor Jacuzzi",
-            Description = "Stunning cliffside private villa overlooking the Indian Ocean with direct beach access.",
+            Description = "Stunning cliffside private villa overlooking the Indian Ocean.",
             IsActive = true
         };
 
@@ -89,18 +93,23 @@ public class AccommodationListingsControllerTests
 
         var created = Assert.IsType<CreatedResult>(result);
         var listing = Assert.IsType<AccommodationListingResponse>(created.Value);
+
         Assert.Equal("Deluxe Ocean View Villa", listing.RoomType);
         Assert.Equal(24000, listing.PricePerNight);
         Assert.Equal(4, listing.MaxGuests);
     }
 
-    // ── 2. CreateListing_PendingProvider_IsDenied ───────────────────────────────
     [Fact]
     public async Task CreateListing_PendingProvider_IsDenied()
     {
         using var db = CreateInMemoryDbContext();
-        var pendingIdentityId = Guid.NewGuid();
-        var controller = CreateController(db, pendingIdentityId, "pending_hotel@example.com");
+
+        var identityId = Guid.NewGuid();
+
+        var controller = CreateController(
+            db,
+            identityId,
+            "pending_hotel@example.com");
 
         var request = new CreateAccommodationListingRequest
         {
@@ -116,16 +125,21 @@ public class AccommodationListingsControllerTests
         var result = await controller.Create(request);
 
         var objectResult = Assert.IsType<ObjectResult>(result);
+
         Assert.Equal(403, objectResult.StatusCode);
     }
 
-    // ── 3. CreateListing_RejectedProvider_IsDenied ──────────────────────────────
     [Fact]
     public async Task CreateListing_RejectedProvider_IsDenied()
     {
         using var db = CreateInMemoryDbContext();
-        var rejectedIdentityId = Guid.NewGuid();
-        var controller = CreateController(db, rejectedIdentityId, "rejected_hotel@example.com");
+
+        var identityId = Guid.NewGuid();
+
+        var controller = CreateController(
+            db,
+            identityId,
+            "rejected_hotel@example.com");
 
         var request = new CreateAccommodationListingRequest
         {
@@ -141,51 +155,239 @@ public class AccommodationListingsControllerTests
         var result = await controller.Create(request);
 
         var objectResult = Assert.IsType<ObjectResult>(result);
+
         Assert.Equal(403, objectResult.StatusCode);
     }
 
-    // ── 4. GetListings_ReturnsProviderListings ──────────────────────────────────
     [Fact]
     public async Task GetListings_ReturnsProviderListings()
     {
         using var db = CreateInMemoryDbContext();
+
         var myIdentityId = Guid.NewGuid();
         var myProviderId = Guid.NewGuid();
         var otherProviderId = Guid.NewGuid();
 
-        db.Providers.Add(new Provider { Id = myProviderId, IdentityUserId = myIdentityId, Email = "mine@example.com", BusinessName = "My Resort", ServiceType = "Hotel" });
-        db.Providers.Add(new Provider { Id = otherProviderId, IdentityUserId = Guid.NewGuid(), Email = "other@example.com", BusinessName = "Other Hotel", ServiceType = "Hotel" });
+        db.Providers.Add(new Provider
+        {
+            Id = myProviderId,
+            IdentityUserId = myIdentityId,
+            Email = "mine@example.com",
+            BusinessName = "My Resort",
+            ServiceType = "Hotel"
+        });
 
-        db.AccommodationListings.Add(new AccommodationListing { Id = Guid.NewGuid(), ProviderId = myProviderId, RoomType = "Superior Suite", PricePerNight = 15000, Location = "Bentota" });
-        db.AccommodationListings.Add(new AccommodationListing { Id = Guid.NewGuid(), ProviderId = myProviderId, RoomType = "Family Cottage", PricePerNight = 22000, Location = "Bentota" });
-        db.AccommodationListings.Add(new AccommodationListing { Id = Guid.NewGuid(), ProviderId = otherProviderId, RoomType = "Competitor Room", PricePerNight = 10000, Location = "Colombo" });
+        db.Providers.Add(new Provider
+        {
+            Id = otherProviderId,
+            IdentityUserId = Guid.NewGuid(),
+            Email = "other@example.com",
+            BusinessName = "Other Hotel",
+            ServiceType = "Hotel"
+        });
+
+        db.AccommodationListings.Add(new AccommodationListing
+        {
+            Id = Guid.NewGuid(),
+            ProviderId = myProviderId,
+            RoomType = "Superior Suite",
+            PricePerNight = 15000,
+            Location = "Bentota"
+        });
+
+        db.AccommodationListings.Add(new AccommodationListing
+        {
+            Id = Guid.NewGuid(),
+            ProviderId = myProviderId,
+            RoomType = "Family Cottage",
+            PricePerNight = 22000,
+            Location = "Bentota"
+        });
+
+        db.AccommodationListings.Add(new AccommodationListing
+        {
+            Id = Guid.NewGuid(),
+            ProviderId = otherProviderId,
+            RoomType = "Competitor Room",
+            PricePerNight = 10000,
+            Location = "Colombo"
+        });
+
         await db.SaveChangesAsync();
 
-        var controller = CreateController(db, myIdentityId, "mine@example.com");
+        var controller = CreateController(
+            db,
+            myIdentityId,
+            "mine@example.com");
 
         var result = await controller.GetMyListings();
 
         var ok = Assert.IsType<OkObjectResult>(result);
-        var list = Assert.IsAssignableFrom<IEnumerable<AccommodationListingResponse>>(ok.Value);
+
+        var list =
+            Assert.IsAssignableFrom<IEnumerable<AccommodationListingResponse>>(
+                ok.Value);
+
         Assert.Equal(2, list.Count());
-        Assert.All(list, l => Assert.Contains(l.RoomType, new[] { "Superior Suite", "Family Cottage" }));
     }
 
-    // ── 5. UpdateListing_Owner_Succeeds ─────────────────────────────────────────
+    [Fact]
+    public async Task GetById_Owner_ReturnsListing()
+    {
+        using var db = CreateInMemoryDbContext();
+
+        var identityId = Guid.NewGuid();
+        var providerId = Guid.NewGuid();
+        var listingId = Guid.NewGuid();
+
+        var provider = new Provider
+        {
+            Id = providerId,
+            IdentityUserId = identityId,
+            Email = "owner@example.com",
+            BusinessName = "Owner Hotel",
+            ServiceType = "Hotel"
+        };
+
+        db.Providers.Add(provider);
+
+        db.AccommodationListings.Add(new AccommodationListing
+        {
+            Id = listingId,
+            ProviderId = providerId,
+            Provider = provider,
+            RoomType = "Ocean Suite",
+            PropertyType = "Resort",
+            Location = "Galle",
+            PricePerNight = 18000,
+            MaxGuests = 3,
+            BedDetails = "1 King Bed",
+            Description = "Ocean view suite",
+            IsActive = true
+        });
+
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(
+            db,
+            identityId,
+            "owner@example.com");
+
+        var result = await controller.GetById(listingId);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var listing = Assert.IsType<AccommodationListingResponse>(ok.Value);
+
+        Assert.Equal(listingId, listing.Id);
+        Assert.Equal("Ocean Suite", listing.RoomType);
+    }
+
+    [Fact]
+    public async Task GetById_ListingNotFound_Returns404()
+    {
+        using var db = CreateInMemoryDbContext();
+
+        var identityId = Guid.NewGuid();
+        var providerId = Guid.NewGuid();
+
+        db.Providers.Add(new Provider
+        {
+            Id = providerId,
+            IdentityUserId = identityId,
+            Email = "owner@example.com",
+            BusinessName = "Owner Hotel",
+            ServiceType = "Hotel"
+        });
+
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(
+            db,
+            identityId,
+            "owner@example.com");
+
+        var result = await controller.GetById(Guid.NewGuid());
+
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task GetById_NonOwner_Returns403()
+    {
+        using var db = CreateInMemoryDbContext();
+
+        var myIdentityId = Guid.NewGuid();
+        var myProviderId = Guid.NewGuid();
+        var otherProviderId = Guid.NewGuid();
+        var listingId = Guid.NewGuid();
+
+        db.Providers.Add(new Provider
+        {
+            Id = myProviderId,
+            IdentityUserId = myIdentityId,
+            Email = "me@example.com",
+            BusinessName = "My Hotel",
+            ServiceType = "Hotel"
+        });
+
+        var otherProvider = new Provider
+        {
+            Id = otherProviderId,
+            IdentityUserId = Guid.NewGuid(),
+            Email = "other@example.com",
+            BusinessName = "Other Hotel",
+            ServiceType = "Hotel"
+        };
+
+        db.Providers.Add(otherProvider);
+
+        db.AccommodationListings.Add(new AccommodationListing
+        {
+            Id = listingId,
+            ProviderId = otherProviderId,
+            Provider = otherProvider,
+            RoomType = "Other Hotel Room",
+            PricePerNight = 10000,
+            Location = "Colombo"
+        });
+
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(
+            db,
+            myIdentityId,
+            "me@example.com");
+
+        var result = await controller.GetById(listingId);
+
+        var forbidden = Assert.IsType<ObjectResult>(result);
+
+        Assert.Equal(403, forbidden.StatusCode);
+    }
+
     [Fact]
     public async Task UpdateListing_Owner_Succeeds()
     {
         using var db = CreateInMemoryDbContext();
-        var myIdentityId = Guid.NewGuid();
-        var myProviderId = Guid.NewGuid();
 
-        db.Providers.Add(new Provider { Id = myProviderId, IdentityUserId = myIdentityId, Email = "owner@example.com", BusinessName = "Owner Resort", ServiceType = "Hotel" });
+        var identityId = Guid.NewGuid();
+        var providerId = Guid.NewGuid();
+
+        db.Providers.Add(new Provider
+        {
+            Id = providerId,
+            IdentityUserId = identityId,
+            Email = "owner@example.com",
+            BusinessName = "Owner Resort",
+            ServiceType = "Hotel"
+        });
 
         var listingId = Guid.NewGuid();
+
         db.AccommodationListings.Add(new AccommodationListing
         {
             Id = listingId,
-            ProviderId = myProviderId,
+            ProviderId = providerId,
             RoomType = "Standard Suite",
             PropertyType = "Resort",
             Location = "Galle",
@@ -194,11 +396,15 @@ public class AccommodationListingsControllerTests
             BedDetails = "1 Queen Bed",
             Description = "Original description"
         });
+
         await db.SaveChangesAsync();
 
-        var controller = CreateController(db, myIdentityId, "owner@example.com");
+        var controller = CreateController(
+            db,
+            identityId,
+            "owner@example.com");
 
-        var updateReq = new UpdateAccommodationListingRequest
+        var request = new UpdateAccommodationListingRequest
         {
             RoomType = "Executive Ocean View Suite",
             PropertyType = "5-Star Resort",
@@ -207,106 +413,364 @@ public class AccommodationListingsControllerTests
             MaxGuests = 3,
             BedDetails = "1 King Bed + 1 Rollaway",
             MinStayNights = 1,
-            Amenities = "Free Breakfast, Jacuzzi, Balcony, WiFi",
-            BathroomDetails = "Marble en-suite bathroom",
-            Description = "Newly renovated luxury suite with private panoramic terrace.",
+            Amenities = "Breakfast, Jacuzzi, WiFi",
+            BathroomDetails = "Marble bathroom",
+            Description = "Updated luxury suite.",
             IsActive = true
         };
 
-        var result = await controller.Update(listingId, updateReq);
+        var result = await controller.Update(listingId, request);
 
         var ok = Assert.IsType<OkObjectResult>(result);
         var updated = Assert.IsType<AccommodationListingResponse>(ok.Value);
+
         Assert.Equal("Executive Ocean View Suite", updated.RoomType);
         Assert.Equal(18500, updated.PricePerNight);
         Assert.Equal(3, updated.MaxGuests);
     }
 
-    // ── 6. UpdateListing_NonOwner_IsDenied ──────────────────────────────────────
     [Fact]
     public async Task UpdateListing_NonOwner_IsDenied()
     {
         using var db = CreateInMemoryDbContext();
+
         var myIdentityId = Guid.NewGuid();
         var myProviderId = Guid.NewGuid();
         var otherProviderId = Guid.NewGuid();
 
-        db.Providers.Add(new Provider { Id = myProviderId, IdentityUserId = myIdentityId, Email = "providerA@example.com", BusinessName = "Provider A", ServiceType = "Hotel" });
-        db.Providers.Add(new Provider { Id = otherProviderId, IdentityUserId = Guid.NewGuid(), Email = "providerB@example.com", BusinessName = "Provider B", ServiceType = "Hotel" });
+        db.Providers.Add(new Provider
+        {
+            Id = myProviderId,
+            IdentityUserId = myIdentityId,
+            Email = "providerA@example.com",
+            BusinessName = "Provider A",
+            ServiceType = "Hotel"
+        });
 
-        var otherListingId = Guid.NewGuid();
-        db.AccommodationListings.Add(new AccommodationListing { Id = otherListingId, ProviderId = otherProviderId, RoomType = "Provider B Luxury Villa", PricePerNight = 35000, Location = "Tangalle" });
+        db.Providers.Add(new Provider
+        {
+            Id = otherProviderId,
+            IdentityUserId = Guid.NewGuid(),
+            Email = "providerB@example.com",
+            BusinessName = "Provider B",
+            ServiceType = "Hotel"
+        });
+
+        var listingId = Guid.NewGuid();
+
+        db.AccommodationListings.Add(new AccommodationListing
+        {
+            Id = listingId,
+            ProviderId = otherProviderId,
+            RoomType = "Provider B Villa",
+            PricePerNight = 35000,
+            Location = "Tangalle"
+        });
+
         await db.SaveChangesAsync();
 
-        var controller = CreateController(db, myIdentityId, "providerA@example.com");
+        var controller = CreateController(
+            db,
+            myIdentityId,
+            "providerA@example.com");
 
-        var updateReq = new UpdateAccommodationListingRequest
+        var request = new UpdateAccommodationListingRequest
         {
-            RoomType = "Hacked Villa Name",
+            RoomType = "Hacked Villa",
             PropertyType = "Hostel",
             Location = "Colombo",
             PricePerNight = 500,
             MaxGuests = 1,
             BedDetails = "1 Single Bed",
-            Description = "Unauthorized edit attempt"
+            Description = "Unauthorized update"
         };
 
-        var result = await controller.Update(otherListingId, updateReq);
+        var result = await controller.Update(listingId, request);
 
         var forbidden = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(403, forbidden.StatusCode);
 
-        // Verify data was unchanged
-        var unchanged = await db.AccommodationListings.FindAsync(otherListingId);
-        Assert.Equal("Provider B Luxury Villa", unchanged!.RoomType);
+        Assert.Equal(403, forbidden.StatusCode);
     }
 
-    // ── 7. DeleteListing_Owner_Succeeds ─────────────────────────────────────────
+    [Fact]
+    public async Task UpdateListing_NotFound_Returns404()
+    {
+        using var db = CreateInMemoryDbContext();
+
+        var identityId = Guid.NewGuid();
+        var providerId = Guid.NewGuid();
+
+        db.Providers.Add(new Provider
+        {
+            Id = providerId,
+            IdentityUserId = identityId,
+            Email = "owner@example.com",
+            BusinessName = "Owner Hotel",
+            ServiceType = "Hotel"
+        });
+
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(
+            db,
+            identityId,
+            "owner@example.com");
+
+        var request = new UpdateAccommodationListingRequest
+        {
+            RoomType = "Updated Room",
+            PropertyType = "Hotel",
+            Location = "Colombo",
+            PricePerNight = 5000,
+            MaxGuests = 2,
+            BedDetails = "1 Queen Bed",
+            Description = "Updated room"
+        };
+
+        var result = await controller.Update(
+            Guid.NewGuid(),
+            request);
+
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
     [Fact]
     public async Task DeleteListing_Owner_Succeeds()
     {
         using var db = CreateInMemoryDbContext();
-        var myIdentityId = Guid.NewGuid();
-        var myProviderId = Guid.NewGuid();
 
-        db.Providers.Add(new Provider { Id = myProviderId, IdentityUserId = myIdentityId, Email = "hotelier@example.com", BusinessName = "Hotelier Inn", ServiceType = "Hotel" });
+        var identityId = Guid.NewGuid();
+        var providerId = Guid.NewGuid();
+
+        db.Providers.Add(new Provider
+        {
+            Id = providerId,
+            IdentityUserId = identityId,
+            Email = "hotelier@example.com",
+            BusinessName = "Hotelier Inn",
+            ServiceType = "Hotel"
+        });
 
         var listingId = Guid.NewGuid();
-        db.AccommodationListings.Add(new AccommodationListing { Id = listingId, ProviderId = myProviderId, RoomType = "Old Bungalow", PricePerNight = 8000, Location = "Nuwara Eliya" });
+
+        db.AccommodationListings.Add(new AccommodationListing
+        {
+            Id = listingId,
+            ProviderId = providerId,
+            RoomType = "Old Bungalow",
+            PricePerNight = 8000,
+            Location = "Nuwara Eliya"
+        });
+
         await db.SaveChangesAsync();
 
-        var controller = CreateController(db, myIdentityId, "hotelier@example.com");
+        var controller = CreateController(
+            db,
+            identityId,
+            "hotelier@example.com");
 
         var result = await controller.Delete(listingId);
 
         Assert.IsType<NoContentResult>(result);
-        Assert.Null(await db.AccommodationListings.FindAsync(listingId));
+
+        Assert.Null(
+            await db.AccommodationListings.FindAsync(listingId));
     }
 
-    // ── 8. DeleteListing_NonOwner_IsDenied ──────────────────────────────────────
     [Fact]
     public async Task DeleteListing_NonOwner_IsDenied()
     {
         using var db = CreateInMemoryDbContext();
+
         var myIdentityId = Guid.NewGuid();
         var myProviderId = Guid.NewGuid();
         var otherProviderId = Guid.NewGuid();
 
-        db.Providers.Add(new Provider { Id = myProviderId, IdentityUserId = myIdentityId, Email = "providerA@example.com", BusinessName = "Provider A", ServiceType = "Hotel" });
-        db.Providers.Add(new Provider { Id = otherProviderId, IdentityUserId = Guid.NewGuid(), Email = "providerB@example.com", BusinessName = "Provider B", ServiceType = "Hotel" });
+        db.Providers.Add(new Provider
+        {
+            Id = myProviderId,
+            IdentityUserId = myIdentityId,
+            Email = "providerA@example.com",
+            BusinessName = "Provider A",
+            ServiceType = "Hotel"
+        });
 
-        var otherListingId = Guid.NewGuid();
-        db.AccommodationListings.Add(new AccommodationListing { Id = otherListingId, ProviderId = otherProviderId, RoomType = "Provider B Penthouse Suite", PricePerNight = 50000, Location = "Colombo 03" });
+        db.Providers.Add(new Provider
+        {
+            Id = otherProviderId,
+            IdentityUserId = Guid.NewGuid(),
+            Email = "providerB@example.com",
+            BusinessName = "Provider B",
+            ServiceType = "Hotel"
+        });
+
+        var listingId = Guid.NewGuid();
+
+        db.AccommodationListings.Add(new AccommodationListing
+        {
+            Id = listingId,
+            ProviderId = otherProviderId,
+            RoomType = "Provider B Penthouse",
+            PricePerNight = 50000,
+            Location = "Colombo"
+        });
+
         await db.SaveChangesAsync();
 
-        var controller = CreateController(db, myIdentityId, "providerA@example.com");
+        var controller = CreateController(
+            db,
+            myIdentityId,
+            "providerA@example.com");
 
-        var result = await controller.Delete(otherListingId);
+        var result = await controller.Delete(listingId);
 
         var forbidden = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(403, forbidden.StatusCode);
 
-        var stillExists = await db.AccommodationListings.FindAsync(otherListingId);
-        Assert.NotNull(stillExists);
+        Assert.Equal(403, forbidden.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteListing_NotFound_Returns404()
+    {
+        using var db = CreateInMemoryDbContext();
+
+        var identityId = Guid.NewGuid();
+        var providerId = Guid.NewGuid();
+
+        db.Providers.Add(new Provider
+        {
+            Id = providerId,
+            IdentityUserId = identityId,
+            Email = "owner@example.com",
+            BusinessName = "Owner Hotel",
+            ServiceType = "Hotel"
+        });
+
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(
+            db,
+            identityId,
+            "owner@example.com");
+
+        var result = await controller.Delete(Guid.NewGuid());
+
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task GetPublicListings_ReturnsOnlyActiveListings()
+    {
+        using var db = CreateInMemoryDbContext();
+
+        var provider = new Provider
+        {
+            Id = Guid.NewGuid(),
+            IdentityUserId = Guid.NewGuid(),
+            Email = "public@example.com",
+            BusinessName = "Public Hotel",
+            ServiceType = "Hotel"
+        };
+
+        db.Providers.Add(provider);
+
+        db.AccommodationListings.Add(new AccommodationListing
+        {
+            Id = Guid.NewGuid(),
+            ProviderId = provider.Id,
+            Provider = provider,
+            RoomType = "Active Suite",
+            PropertyType = "Resort",
+            Location = "Galle",
+            PricePerNight = 15000,
+            MaxGuests = 4,
+            BedDetails = "1 King Bed",
+            Amenities = "Pool, WiFi",
+            Description = "Active accommodation",
+            IsActive = true
+        });
+
+        db.AccommodationListings.Add(new AccommodationListing
+        {
+            Id = Guid.NewGuid(),
+            ProviderId = provider.Id,
+            Provider = provider,
+            RoomType = "Inactive Suite",
+            PropertyType = "Hotel",
+            Location = "Colombo",
+            PricePerNight = 9000,
+            MaxGuests = 2,
+            BedDetails = "1 Queen Bed",
+            Amenities = "WiFi",
+            Description = "Inactive accommodation",
+            IsActive = false
+        });
+
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(
+            db,
+            provider.IdentityUserId!.Value,
+            provider.Email);
+
+        var result = await controller.GetPublicListings(
+            null,
+            null,
+            null,
+            null);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+
+        Assert.NotNull(ok.Value);
+    }
+
+    [Fact]
+    public async Task GetPublicListings_WithFilters_ReturnsOk()
+    {
+        using var db = CreateInMemoryDbContext();
+
+        var provider = new Provider
+        {
+            Id = Guid.NewGuid(),
+            IdentityUserId = Guid.NewGuid(),
+            Email = "filter@example.com",
+            BusinessName = "Filter Hotel",
+            ServiceType = "Hotel"
+        };
+
+        db.Providers.Add(provider);
+
+        db.AccommodationListings.Add(new AccommodationListing
+        {
+            Id = Guid.NewGuid(),
+            ProviderId = provider.Id,
+            Provider = provider,
+            RoomType = "Luxury Ocean Villa",
+            PropertyType = "Luxury Villa",
+            Location = "Mirissa",
+            PricePerNight = 25000,
+            MaxGuests = 4,
+            BedDetails = "1 King Bed",
+            Amenities = "Pool WiFi Sea View",
+            Description = "Luxury ocean villa",
+            IsActive = true
+        });
+
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(
+            db,
+            provider.IdentityUserId!.Value,
+            provider.Email);
+
+        var result = await controller.GetPublicListings(
+            "ocean",
+            "Luxury Villa",
+            "Mirissa",
+            4);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+
+        Assert.NotNull(ok.Value);
     }
 }

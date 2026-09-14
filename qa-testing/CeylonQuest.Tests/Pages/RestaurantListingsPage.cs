@@ -13,107 +13,202 @@ public class RestaurantListingsPage
     public RestaurantListingsPage(IWebDriver driver)
     {
         _driver = driver;
-        _wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20));
+
+        _wait = new WebDriverWait(
+            driver,
+            TimeSpan.FromSeconds(20));
     }
 
-    // =====================================================
+    // ============================================================
     // NAVIGATION
-    // =====================================================
+    // ============================================================
 
     private IWebElement ServicesNavigation =>
-        _wait.Until(d =>
-            d.FindElement(By.Id("pd-nav-services")));
+        WaitForVisibleAndEnabled(
+            By.Id("pd-nav-services"));
 
     private IWebElement AddListingButton =>
         _wait.Until(d =>
-            d.FindElement(By.Id("add-listing-btn")));
+        {
+            var byId =
+                d.FindElements(
+                        By.Id("add-listing-btn"))
+                    .FirstOrDefault(
+                        IsVisibleAndEnabled);
 
-    // =====================================================
-    // RESTAURANT FORM FIELDS
-    // =====================================================
+            if (byId != null)
+                return byId;
+
+            return d.FindElements(
+                    By.XPath(
+                        "//button[" +
+                        "contains(normalize-space(.),'Create New Dining Listing')" +
+                        " or contains(normalize-space(.),'New Dining Listing')" +
+                        " or contains(normalize-space(.),'Add Restaurant')" +
+                        "]"))
+                .FirstOrDefault(
+                    IsVisibleAndEnabled);
+        })!;
+
+    // ============================================================
+    // FORM FIELDS
+    // ============================================================
 
     private IWebElement NameInput =>
-        _wait.Until(d =>
-            d.FindElement(By.Id("rest-name")));
+        WaitForVisible(
+            By.Id("rest-name"));
 
     private IWebElement CuisineInput =>
-        _wait.Until(d =>
-            d.FindElement(By.Id("rest-cuisine")));
+        WaitForVisible(
+            By.Id("rest-cuisine"));
 
     private IWebElement DiningStyleSelect =>
-        _wait.Until(d =>
-            d.FindElement(By.Id("rest-style")));
+        WaitForVisible(
+            By.Id("rest-style"));
 
     private IWebElement LocationInput =>
-        _wait.Until(d =>
-            d.FindElement(By.Id("rest-location")));
+        WaitForVisible(
+            By.Id("rest-location"));
 
     private IWebElement DescriptionInput =>
-        _wait.Until(d =>
-            d.FindElement(By.Id("rest-desc")));
+        WaitForVisible(
+            By.Id("rest-desc"));
 
     private IWebElement PriceInput =>
-        _wait.Until(d =>
-            d.FindElement(By.Id("rest-price")));
+        WaitForVisible(
+            By.Id("rest-price"));
 
     private IWebElement PriceRangeSelect =>
-        _wait.Until(d =>
-            d.FindElement(By.Id("rest-range")));
+        WaitForVisible(
+            By.Id("rest-range"));
 
     private IWebElement GroupSizeSelect =>
-        _wait.Until(d =>
-            d.FindElement(By.Id("rest-group-size")));
+        WaitForVisible(
+            By.Id("rest-group-size"));
 
     private IWebElement OpeningTimeInput =>
-        _wait.Until(d =>
-            d.FindElement(By.Id("rest-hours-open")));
+        WaitForVisible(
+            By.Id("rest-hours-open"));
 
     private IWebElement ClosingTimeInput =>
-        _wait.Until(d =>
-            d.FindElement(By.Id("rest-hours-close")));
+        WaitForVisible(
+            By.Id("rest-hours-close"));
 
     private IWebElement MenuDetailsInput =>
-        _wait.Until(d =>
-            d.FindElement(By.Id("rest-menu")));
+        WaitForVisible(
+            By.Id("rest-menu"));
 
     private IWebElement DietaryOptionsInput =>
-        _wait.Until(d =>
-            d.FindElement(By.Id("rest-diet")));
+        WaitForVisible(
+            By.Id("rest-diet"));
 
-    // =====================================================
+    // ============================================================
     // OPEN PAGE
-    // =====================================================
+    // ============================================================
 
     public void Open()
     {
-        ServicesNavigation.Click();
+        var navigation =
+            ServicesNavigation;
+
+        ScrollIntoView(
+            navigation);
+
+        SafeClick(
+            navigation);
 
         _wait.Until(d =>
-            d.FindElements(
-                    By.XPath("//h1[normalize-space()='Menu and Dining']"))
-                .Any(e => e.Displayed));
+        {
+            bool addButtonVisible =
+                d.FindElements(
+                        By.Id("add-listing-btn"))
+                    .Any(
+                        SafeDisplayed);
+
+            bool headingVisible =
+                d.FindElements(
+                        By.XPath(
+                            "//*[self::h1 or self::h2 or self::h3][" +
+                            "contains(" +
+                            "translate(normalize-space(.)," +
+                            "'ABCDEFGHIJKLMNOPQRSTUVWXYZ'," +
+                            "'abcdefghijklmnopqrstuvwxyz')," +
+                            "'restaurant')" +
+                            " or contains(" +
+                            "translate(normalize-space(.)," +
+                            "'ABCDEFGHIJKLMNOPQRSTUVWXYZ'," +
+                            "'abcdefghijklmnopqrstuvwxyz')," +
+                            "'dining')" +
+                            "]"))
+                    .Any(
+                        SafeDisplayed);
+
+            return addButtonVisible
+                   ||
+                   headingVisible;
+        });
     }
 
-    // =====================================================
+    // ============================================================
     // OPEN CREATE FORM
-    // =====================================================
+    // ============================================================
 
     public void OpenCreateForm()
     {
-        AddListingButton.Click();
+        var addButton =
+            AddListingButton;
+
+        if (addButton == null)
+        {
+            throw new NoSuchElementException(
+                "Create New Dining Listing button was not found.");
+        }
+
+        ScrollIntoView(
+            addButton);
+
+        SafeClick(
+            addButton);
 
         _wait.Until(d =>
-            d.FindElements(
-                    By.XPath(
-                        "//h2[normalize-space()='Create New Dining Listing']"))
-                .Any(e => e.Displayed));
+        {
+            bool nameInputVisible =
+                d.FindElements(
+                        By.Id("rest-name"))
+                    .Any(
+                        SafeDisplayed);
+
+            bool formVisible =
+                d.FindElements(
+                        By.CssSelector("form"))
+                    .Any(f =>
+                    {
+                        try
+                        {
+                            return f.Displayed
+                                   &&
+                                   f.FindElements(
+                                           By.Id("rest-name"))
+                                       .Count > 0;
+                        }
+                        catch
+                        {
+                            return false;
+                        }
+                    });
+
+            return nameInputVisible
+                   ||
+                   formVisible;
+        });
     }
 
-    // =====================================================
+    // ============================================================
     // FILL VALID RESTAURANT
-    // =====================================================
+    // ============================================================
 
-    public void FillValidRestaurant(string restaurantName)
+    public void FillValidRestaurant(
+        string restaurantName)
     {
         SetText(
             NameInput,
@@ -123,9 +218,7 @@ public class RestaurantListingsPage
             CuisineInput,
             "Sri Lankan Cuisine");
 
-        // Explicitly select Dining Style
-        // so React receives the actual value.
-        SelectByText(
+        SelectOption(
             DiningStyleSelect,
             "Fine Dining");
 
@@ -139,22 +232,18 @@ public class RestaurantListingsPage
 
         SetText(
             PriceInput,
-            "3500");
+            "3500.01");
 
-        SelectByText(
+        SelectOption(
             PriceRangeSelect,
             "Moderate");
 
-        SelectByText(
+        SelectOption(
             GroupSizeSelect,
             "Table for Two");
 
-        SetTime(
-            OpeningTimeInput,
-            "09:00");
-
-        SetTime(
-            ClosingTimeInput,
+        SetOpeningHours(
+            "09:00",
             "22:00");
 
         SetText(
@@ -166,25 +255,27 @@ public class RestaurantListingsPage
             "Vegetarian options available.");
     }
 
-    // =====================================================
-    // VALIDATION HELPERS
-    // =====================================================
+    // ============================================================
+    // NAME
+    // ============================================================
 
     public void ClearRestaurantName()
     {
-        NameInput.Clear();
+        ClearInput(
+            NameInput);
     }
 
-    public void SetRestaurantName(string name)
+    public void SetRestaurantName(
+        string name)
     {
         SetText(
             NameInput,
             name);
     }
 
-    // =====================================================
-    // UPDATE OPENING HOURS
-    // =====================================================
+    // ============================================================
+    // OPENING HOURS
+    // ============================================================
 
     public void SetOpeningHours(
         string openingTime,
@@ -199,143 +290,241 @@ public class RestaurantListingsPage
             closingTime);
     }
 
-    // =====================================================
-    // UPDATE PRICE RANGE
-    // =====================================================
-
-    public void SelectPriceRange(string priceRange)
+    public string GetOpeningTime()
     {
-        SelectByText(
+        return OpeningTimeInput
+                   .GetAttribute("value")
+               ?? string.Empty;
+    }
+
+    public string GetClosingTime()
+    {
+        return ClosingTimeInput
+                   .GetAttribute("value")
+               ?? string.Empty;
+    }
+
+    // ============================================================
+    // PRICE RANGE
+    // ============================================================
+
+    public void SelectPriceRange(
+        string priceRange)
+    {
+        SelectOption(
             PriceRangeSelect,
             priceRange);
     }
 
-    // =====================================================
+    // ============================================================
     // CREATE
-    // =====================================================
+    // ============================================================
 
     public void SubmitCreate()
     {
-        var createButton =
-            _wait.Until(d =>
-                d.FindElement(
-                    By.XPath(
-                        "//div[contains(@class,'pd-modal')]" +
-                        "//button[@type='submit' and " +
-                        "contains(normalize-space()," +
-                        "'Create New Dining Listing')]")));
+        var button =
+            FindCreateSubmitButton();
 
-        _wait.Until(_ =>
-            createButton.Displayed &&
-            createButton.Enabled);
+        if (button == null)
+        {
+            throw new NoSuchElementException(
+                "Create New Dining Listing button was not found.");
+        }
 
-        createButton.Click();
+        EnsureHtmlFormIsValid(
+            button);
 
-        WaitForSaveResult();
+        ScrollIntoView(
+            button);
+
+        SafeClick(
+            button);
+
+        WaitForCreateResult();
     }
-
-    // =====================================================
-    // CREATE WITHOUT EXPECTING SUCCESS
-    // Used by TC57-09 and TC57-10
-    // =====================================================
 
     public void SubmitCreateWithoutWaitingForSuccess()
     {
-        var createButton =
-            _wait.Until(d =>
-                d.FindElement(
-                    By.XPath(
-                        "//div[contains(@class,'pd-modal')]" +
-                        "//button[@type='submit' and " +
-                        "contains(normalize-space()," +
-                        "'Create New Dining Listing')]")));
+        var button =
+            FindCreateSubmitButton();
 
-        _wait.Until(_ =>
-            createButton.Displayed &&
-            createButton.Enabled);
+        if (button == null)
+        {
+            throw new NoSuchElementException(
+                "Create New Dining Listing button was not found.");
+        }
 
-        createButton.Click();
+        ScrollIntoView(
+            button);
+
+        SafeClick(
+            button);
     }
 
-    // =====================================================
+    private IWebElement? FindCreateSubmitButton()
+    {
+        return _wait.Until(d =>
+        {
+            var buttons =
+                d.FindElements(
+                    By.CssSelector(
+                        "button[type='submit']"));
+
+            return buttons.FirstOrDefault(b =>
+                IsVisibleAndEnabled(b)
+                &&
+                (
+                    b.Text.Contains(
+                        "Create New Dining Listing",
+                        StringComparison.OrdinalIgnoreCase)
+                    ||
+                    b.Text.Contains(
+                        "Create Dining Listing",
+                        StringComparison.OrdinalIgnoreCase)
+                    ||
+                    b.Text.Contains(
+                        "Create",
+                        StringComparison.OrdinalIgnoreCase)
+                ));
+        });
+    }
+
+    // ============================================================
     // UPDATE
-    // =====================================================
+    // ============================================================
 
     public void SubmitUpdate()
     {
         var saveButton =
             _wait.Until(d =>
-                d.FindElement(
-                    By.XPath(
-                        "//div[contains(@class,'pd-modal')]" +
-                        "//button[@type='submit' and " +
-                        "contains(normalize-space()," +
-                        "'Save Changes')]")));
+                d.FindElements(
+                        By.CssSelector(
+                            "button[type='submit']"))
+                    .FirstOrDefault(b =>
+                        IsVisibleAndEnabled(b)
+                        &&
+                        (
+                            b.Text.Contains(
+                                "Save Changes",
+                                StringComparison.OrdinalIgnoreCase)
+                            ||
+                            b.Text.Contains(
+                                "Update",
+                                StringComparison.OrdinalIgnoreCase)
+                            ||
+                            b.Text.Equals(
+                                "Save",
+                                StringComparison.OrdinalIgnoreCase)
+                        )));
 
-        _wait.Until(_ =>
-            saveButton.Displayed &&
-            saveButton.Enabled);
+        if (saveButton == null)
+        {
+            throw new NoSuchElementException(
+                "Restaurant update button was not found.");
+        }
 
-        saveButton.Click();
+        EnsureHtmlFormIsValid(
+            saveButton);
+
+        ScrollIntoView(
+            saveButton);
+
+        SafeClick(
+            saveButton);
 
         WaitForSaveResult();
     }
 
-    // =====================================================
-    // FORM VALIDATION STATE
-    // =====================================================
+    // ============================================================
+    // VALIDATION STATE
+    // ============================================================
 
     public bool IsCreateFormStillOpen()
     {
-        return _driver
-            .FindElements(
-                By.XPath(
-                    "//h2[normalize-space()='Create New Dining Listing']"))
-            .Any(x => x.Displayed);
+        return IsRestaurantFormVisible();
     }
 
     public bool HasFormError()
     {
+        if (FindVisibleError() != null)
+            return true;
+
         return _driver
             .FindElements(
-                By.CssSelector(".pd-form-error"))
-            .Any(x =>
-                x.Displayed &&
-                !string.IsNullOrWhiteSpace(x.Text));
+                By.CssSelector(
+                    "input:invalid," +
+                    "select:invalid," +
+                    "textarea:invalid"))
+            .Any(
+                SafeDisplayed);
     }
 
     public string GetFormError()
     {
-        var error =
+        var custom =
+            FindVisibleError();
+
+        if (custom != null)
+            return custom.Text;
+
+        var invalid =
             _driver
                 .FindElements(
-                    By.CssSelector(".pd-form-error"))
-                .FirstOrDefault(x =>
-                    x.Displayed &&
-                    !string.IsNullOrWhiteSpace(x.Text));
+                    By.CssSelector(
+                        "input:invalid," +
+                        "select:invalid," +
+                        "textarea:invalid"))
+                .FirstOrDefault(
+                    SafeDisplayed);
 
-        return error?.Text ?? string.Empty;
+        if (invalid == null)
+            return string.Empty;
+
+        try
+        {
+            var message =
+                invalid.GetAttribute(
+                    "validationMessage");
+
+            if (!string.IsNullOrWhiteSpace(
+                    message))
+            {
+                return message;
+            }
+        }
+        catch
+        {
+        }
+
+        return "Restaurant form contains an invalid field.";
     }
 
-    // =====================================================
-    // LISTING CHECK
-    // =====================================================
+    // ============================================================
+    // LISTING
+    // ============================================================
 
-    public bool ListingExists(string restaurantName)
+    public bool ListingExists(
+        string restaurantName)
     {
-        return FindListingRow(restaurantName) != null;
+        return FindListingRow(
+                   restaurantName)
+               != null;
     }
 
-    public void WaitForListing(string restaurantName)
+    public void WaitForListing(
+        string restaurantName)
     {
         _wait.Until(_ =>
-            ListingExists(restaurantName));
+            ListingExists(
+                restaurantName));
     }
 
-    public string GetListingRowText(string restaurantName)
+    public string GetListingRowText(
+        string restaurantName)
     {
         var row =
-            FindListingRow(restaurantName);
+            FindListingRow(
+                restaurantName);
 
         if (row == null)
         {
@@ -346,114 +535,6 @@ public class RestaurantListingsPage
         return row.Text;
     }
 
-    // =====================================================
-    // EDIT
-    // =====================================================
-
-    public void OpenEditForm(string restaurantName)
-    {
-        var row =
-            FindListingRow(restaurantName);
-
-        if (row == null)
-        {
-            throw new InvalidOperationException(
-                $"Restaurant listing '{restaurantName}' was not found.");
-        }
-
-        var editButton =
-            row.FindElement(
-                By.XPath(
-                    ".//button[normalize-space()='Edit']"));
-
-        ((IJavaScriptExecutor)_driver)
-            .ExecuteScript(
-                "arguments[0].scrollIntoView({block:'center'});",
-                editButton);
-
-        _wait.Until(_ =>
-            editButton.Displayed &&
-            editButton.Enabled);
-
-        editButton.Click();
-
-        _wait.Until(d =>
-            d.FindElements(
-                    By.XPath(
-                        "//h2[normalize-space()='Edit Dining Listing']"))
-                .Any(e => e.Displayed));
-    }
-
-    // =====================================================
-    // DELETE
-    // =====================================================
-
-    public void DeleteListing(string restaurantName)
-    {
-        var row =
-            FindListingRow(restaurantName);
-
-        if (row == null)
-        {
-            throw new InvalidOperationException(
-                $"Restaurant listing '{restaurantName}' was not found.");
-        }
-
-        var deleteButton =
-            row.FindElement(
-                By.XPath(
-                    ".//button[normalize-space()='Delete']"));
-
-        ((IJavaScriptExecutor)_driver)
-            .ExecuteScript(
-                "arguments[0].scrollIntoView({block:'center'});",
-                deleteButton);
-
-        _wait.Until(_ =>
-            deleteButton.Displayed &&
-            deleteButton.Enabled);
-
-        deleteButton.Click();
-
-        _wait.Until(d =>
-            d.FindElements(
-                    By.CssSelector(".cq-confirm-overlay"))
-                .Any(x => x.Displayed));
-
-        var confirmDeleteButton =
-            _wait.Until(d =>
-                d.FindElements(
-                        By.CssSelector(
-                            ".cq-confirm-overlay .cq-confirm-btn--danger"))
-                    .FirstOrDefault(x =>
-                        x.Displayed &&
-                        x.Enabled));
-
-        if (confirmDeleteButton == null)
-        {
-            throw new InvalidOperationException(
-                "Delete confirmation button was not found.");
-        }
-
-        confirmDeleteButton.Click();
-
-        _wait.Until(d =>
-            !d.FindElements(
-                    By.CssSelector(".cq-confirm-overlay"))
-                .Any(x => x.Displayed));
-    }
-
-    public void WaitUntilRemoved(string restaurantName)
-    {
-        _wait.Until(_ =>
-            !ListingExists(
-                restaurantName));
-    }
-
-    // =====================================================
-    // FIND ROW
-    // =====================================================
-
     private IWebElement? FindListingRow(
         string restaurantName)
     {
@@ -462,103 +543,701 @@ public class RestaurantListingsPage
                 By.CssSelector(
                     ".pd-table tbody tr"));
 
-        return rows.FirstOrDefault(row =>
-            row.Text.Contains(
+        var result =
+            rows.FirstOrDefault(r =>
+                SafeDisplayed(r)
+                &&
+                r.Text.Contains(
+                    restaurantName,
+                    StringComparison.OrdinalIgnoreCase));
+
+        if (result != null)
+            return result;
+
+        rows =
+            _driver.FindElements(
+                By.CssSelector(
+                    "table tbody tr"));
+
+        result =
+            rows.FirstOrDefault(r =>
+                SafeDisplayed(r)
+                &&
+                r.Text.Contains(
+                    restaurantName,
+                    StringComparison.OrdinalIgnoreCase));
+
+        if (result != null)
+            return result;
+
+        var cards =
+            _driver.FindElements(
+                By.XPath(
+                    "//*[" +
+                    "contains(@class,'listing')" +
+                    " or contains(@class,'card')" +
+                    " or contains(@class,'service')" +
+                    "]"));
+
+        return cards.FirstOrDefault(c =>
+            SafeDisplayed(c)
+            &&
+            c.Text.Contains(
                 restaurantName,
                 StringComparison.OrdinalIgnoreCase));
     }
 
-    // =====================================================
-    // WAIT FOR SAVE RESULT
-    // =====================================================
+    // ============================================================
+    // EDIT
+    // ============================================================
+
+    public void OpenEditForm(
+        string restaurantName)
+    {
+        var row =
+            FindListingRow(
+                restaurantName);
+
+        if (row == null)
+        {
+            throw new InvalidOperationException(
+                $"Restaurant listing '{restaurantName}' was not found.");
+        }
+
+        ScrollIntoView(
+            row);
+
+        var editButton =
+            row.FindElements(
+                    By.XPath(
+                        ".//button[" +
+                        "contains(" +
+                        "translate(normalize-space(.)," +
+                        "'ABCDEFGHIJKLMNOPQRSTUVWXYZ'," +
+                        "'abcdefghijklmnopqrstuvwxyz')," +
+                        "'edit')" +
+                        "]"))
+                .FirstOrDefault(
+                    IsVisibleAndEnabled);
+
+        if (editButton == null)
+        {
+            throw new NoSuchElementException(
+                $"Edit button for '{restaurantName}' was not found.");
+        }
+
+        SafeClick(
+            editButton);
+
+        _wait.Until(d =>
+            d.FindElements(
+                    By.Id("rest-name"))
+                .Any(
+                    SafeDisplayed));
+    }
+
+    // ============================================================
+    // DELETE
+    // ============================================================
+
+    public void DeleteListing(
+        string restaurantName)
+    {
+        var row =
+            FindListingRow(
+                restaurantName);
+
+        if (row == null)
+        {
+            throw new InvalidOperationException(
+                $"Restaurant listing '{restaurantName}' was not found.");
+        }
+
+        ScrollIntoView(
+            row);
+
+        var deleteButton =
+            row.FindElements(
+                    By.XPath(
+                        ".//button[" +
+                        "contains(" +
+                        "translate(normalize-space(.)," +
+                        "'ABCDEFGHIJKLMNOPQRSTUVWXYZ'," +
+                        "'abcdefghijklmnopqrstuvwxyz')," +
+                        "'delete')" +
+                        "]"))
+                .FirstOrDefault(
+                    IsVisibleAndEnabled);
+
+        if (deleteButton == null)
+        {
+            throw new NoSuchElementException(
+                $"Delete button for '{restaurantName}' was not found.");
+        }
+
+        SafeClick(
+            deleteButton);
+
+        var confirmButton =
+            _wait.Until(d =>
+            {
+                var overlayButton =
+                    d.FindElements(
+                            By.CssSelector(
+                                ".cq-confirm-overlay " +
+                                ".cq-confirm-btn--danger"))
+                        .FirstOrDefault(
+                            IsVisibleAndEnabled);
+
+                if (overlayButton != null)
+                    return overlayButton;
+
+                return d.FindElements(
+                        By.XPath(
+                            "//button[" +
+                            "contains(normalize-space(.),'Delete Listing')" +
+                            " or normalize-space(.)='Delete'" +
+                            "]"))
+                    .FirstOrDefault(
+                        IsVisibleAndEnabled);
+            });
+
+        if (confirmButton == null)
+        {
+            throw new NoSuchElementException(
+                "Delete confirmation button was not found.");
+        }
+
+        SafeClick(
+            confirmButton);
+    }
+
+    public void WaitUntilRemoved(
+        string restaurantName)
+    {
+        _wait.Until(_ =>
+            !ListingExists(
+                restaurantName));
+    }
+
+    // ============================================================
+    // CREATE RESULT
+    // FIXED: SUCCESS IS CHECKED BEFORE ERROR
+    // ============================================================
+
+    private void WaitForCreateResult()
+    {
+        try
+        {
+            _wait.Until(_ =>
+            {
+                if (HasVisibleSuccessMessage())
+                    return true;
+
+                if (!IsRestaurantFormVisible())
+                    return true;
+
+                var error =
+                    FindVisibleError();
+
+                if (error != null)
+                {
+                    throw new InvalidOperationException(
+                        "Restaurant create failed: " +
+                        error.Text);
+                }
+
+                return false;
+            });
+        }
+        catch (WebDriverTimeoutException)
+        {
+            var diagnostic =
+                GetInvalidFieldDiagnostic();
+
+            if (!string.IsNullOrWhiteSpace(
+                    diagnostic))
+            {
+                throw new InvalidOperationException(
+                    "Restaurant form contains an invalid field: " +
+                    diagnostic);
+            }
+
+            var error =
+                FindVisibleError();
+
+            if (error != null)
+            {
+                throw new InvalidOperationException(
+                    "Restaurant create failed: " +
+                    error.Text);
+            }
+
+            throw;
+        }
+    }
+
+    // ============================================================
+    // SAVE RESULT
+    // FIXED: SUCCESS IS CHECKED BEFORE ERROR
+    // ============================================================
 
     private void WaitForSaveResult()
     {
-        _wait.Until(d =>
+        try
         {
-            var errors =
-                d.FindElements(
-                        By.CssSelector(".pd-form-error"))
-                    .Where(e =>
-                        e.Displayed &&
-                        !string.IsNullOrWhiteSpace(e.Text))
-                    .ToList();
+            _wait.Until(_ =>
+            {
+                if (HasVisibleSuccessMessage())
+                    return true;
 
-            if (errors.Count > 0)
+                if (!IsRestaurantFormVisible())
+                    return true;
+
+                var error =
+                    FindVisibleError();
+
+                if (error != null)
+                {
+                    throw new InvalidOperationException(
+                        "Restaurant update failed: " +
+                        error.Text);
+                }
+
+                return false;
+            });
+        }
+        catch (WebDriverTimeoutException)
+        {
+            var diagnostic =
+                GetInvalidFieldDiagnostic();
+
+            if (!string.IsNullOrWhiteSpace(
+                    diagnostic))
             {
                 throw new InvalidOperationException(
-                    "Restaurant form save failed: " +
-                    errors[0].Text);
+                    "Restaurant form contains an invalid field: " +
+                    diagnostic);
             }
 
-            var modals =
-                d.FindElements(
-                    By.CssSelector(".pd-modal"));
+            var error =
+                FindVisibleError();
 
-            return modals.Count == 0 ||
-                   modals.All(m => !m.Displayed);
+            if (error != null)
+            {
+                throw new InvalidOperationException(
+                    "Restaurant update failed: " +
+                    error.Text);
+            }
+
+            throw;
+        }
+    }
+
+    // ============================================================
+    // HTML VALIDATION
+    // ============================================================
+
+    private void EnsureHtmlFormIsValid(
+        IWebElement submitButton)
+    {
+        var result =
+            ((IJavaScriptExecutor)_driver)
+            .ExecuteScript(
+                @"
+                const button = arguments[0];
+                const form = button.closest('form');
+
+                if (!form)
+                    return true;
+
+                return form.checkValidity();
+                ",
+                submitButton);
+
+        if (result is bool valid &&
+            valid)
+        {
+            return;
+        }
+
+        var diagnostic =
+            GetInvalidFieldDiagnostic();
+
+        throw new InvalidOperationException(
+            "Restaurant form contains an invalid field. " +
+            diagnostic);
+    }
+
+    private string GetInvalidFieldDiagnostic()
+    {
+        try
+        {
+            var result =
+                ((IJavaScriptExecutor)_driver)
+                .ExecuteScript(
+                    @"
+                    const field =
+                        document.getElementById('rest-name');
+
+                    if (!field)
+                        return '';
+
+                    const form =
+                        field.closest('form');
+
+                    if (!form)
+                        return '';
+
+                    const fields =
+                        [...form.querySelectorAll(
+                            'input, select, textarea'
+                        )];
+
+                    const invalid =
+                        fields.filter(
+                            x => !x.checkValidity()
+                        );
+
+                    return invalid
+                        .map(x => {
+                            const id =
+                                x.id ||
+                                x.name ||
+                                x.type ||
+                                x.tagName;
+
+                            const message =
+                                x.validationMessage ||
+                                'invalid';
+
+                            return id + ': ' + message;
+                        })
+                        .join(' | ');
+                    ");
+
+            return result?.ToString()
+                   ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    // ============================================================
+    // ERROR / SUCCESS
+    // FIXED SECTION
+    // ============================================================
+
+    private IWebElement? FindVisibleError()
+    {
+        var elements =
+            _driver.FindElements(
+                By.CssSelector(
+                    ".pd-form-error," +
+                    ".Toastify__toast--error," +
+                    ".toast-error," +
+                    ".alert-danger," +
+                    ".error-message"));
+
+        return elements.FirstOrDefault(element =>
+        {
+            if (!SafeDisplayed(
+                    element))
+            {
+                return false;
+            }
+
+            var text =
+                element.Text
+                ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(
+                    text))
+            {
+                return false;
+            }
+
+            // Never classify a success notification as an error.
+            if (text.Contains(
+                    "success",
+                    StringComparison.OrdinalIgnoreCase)
+                ||
+                text.Contains(
+                    "listing created",
+                    StringComparison.OrdinalIgnoreCase)
+                ||
+                text.Contains(
+                    "listing updated",
+                    StringComparison.OrdinalIgnoreCase)
+                ||
+                text.Contains(
+                    "created successfully",
+                    StringComparison.OrdinalIgnoreCase)
+                ||
+                text.Contains(
+                    "updated successfully",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            return true;
         });
     }
 
-    // =====================================================
+    private bool HasVisibleSuccessMessage()
+    {
+        var elements =
+            _driver.FindElements(
+                By.XPath(
+                    "//*[" +
+                    "contains(" +
+                    "translate(normalize-space(.)," +
+                    "'ABCDEFGHIJKLMNOPQRSTUVWXYZ'," +
+                    "'abcdefghijklmnopqrstuvwxyz')," +
+                    "'listing created')" +
+                    " or contains(" +
+                    "translate(normalize-space(.)," +
+                    "'ABCDEFGHIJKLMNOPQRSTUVWXYZ'," +
+                    "'abcdefghijklmnopqrstuvwxyz')," +
+                    "'listing updated')" +
+                    " or contains(" +
+                    "translate(normalize-space(.)," +
+                    "'ABCDEFGHIJKLMNOPQRSTUVWXYZ'," +
+                    "'abcdefghijklmnopqrstuvwxyz')," +
+                    "'success')" +
+                    "]"));
+
+        return elements.Any(
+            SafeDisplayed);
+    }
+
+    // ============================================================
     // HELPERS
-    // =====================================================
+    // ============================================================
+
+    private IWebElement WaitForVisible(
+        By locator)
+    {
+        return _wait.Until(d =>
+            d.FindElements(
+                    locator)
+                .FirstOrDefault(
+                    SafeDisplayed))!;
+    }
+
+    private IWebElement WaitForVisibleAndEnabled(
+        By locator)
+    {
+        return _wait.Until(d =>
+            d.FindElements(
+                    locator)
+                .FirstOrDefault(
+                    IsVisibleAndEnabled))!;
+    }
+
+    private bool IsRestaurantFormVisible()
+    {
+        return _driver
+            .FindElements(
+                By.Id("rest-name"))
+            .Any(
+                SafeDisplayed);
+    }
+
+    private void ScrollIntoView(
+        IWebElement element)
+    {
+        ((IJavaScriptExecutor)_driver)
+            .ExecuteScript(
+                "arguments[0].scrollIntoView(" +
+                "{block:'center',inline:'center'});",
+                element);
+    }
+
+    private void SafeClick(
+        IWebElement element)
+    {
+        ScrollIntoView(
+            element);
+
+        _wait.Until(_ =>
+            SafeDisplayed(element)
+            &&
+            SafeEnabled(element));
+
+        try
+        {
+            element.Click();
+        }
+        catch (ElementClickInterceptedException)
+        {
+            JavaScriptClick(
+                element);
+        }
+        catch (WebDriverException)
+        {
+            JavaScriptClick(
+                element);
+        }
+    }
+
+    private void JavaScriptClick(
+        IWebElement element)
+    {
+        ((IJavaScriptExecutor)_driver)
+            .ExecuteScript(
+                "arguments[0].click();",
+                element);
+    }
 
     private static void SetText(
         IWebElement element,
         string value)
     {
-        element.Clear();
-        element.SendKeys(value);
+        element.Click();
+
+        element.SendKeys(
+            Keys.Control + "a");
+
+        element.SendKeys(
+            Keys.Backspace);
+
+        if (!string.IsNullOrEmpty(
+                value))
+        {
+            element.SendKeys(
+                value);
+        }
     }
 
-    private static void SelectByText(
+    private static void ClearInput(
+        IWebElement element)
+    {
+        element.Click();
+
+        element.SendKeys(
+            Keys.Control + "a");
+
+        element.SendKeys(
+            Keys.Backspace);
+    }
+
+    private static void SelectOption(
         IWebElement element,
-        string visibleText)
+        string expected)
     {
         var select =
-            new SelectElement(element);
+            new SelectElement(
+                element);
 
-        select.SelectByText(
-            visibleText);
+        var option =
+            select.Options.FirstOrDefault(o =>
+                string.Equals(
+                    o.Text.Trim(),
+                    expected,
+                    StringComparison.OrdinalIgnoreCase)
+                ||
+                string.Equals(
+                    o.GetAttribute("value"),
+                    expected,
+                    StringComparison.OrdinalIgnoreCase)
+                ||
+                o.Text.Contains(
+                    expected,
+                    StringComparison.OrdinalIgnoreCase));
+
+        if (option == null)
+        {
+            throw new NoSuchElementException(
+                $"Option '{expected}' was not found.");
+        }
+
+        option.Click();
     }
 
     private void SetTime(
         IWebElement element,
         string value)
     {
+        ScrollIntoView(
+            element);
+
         ((IJavaScriptExecutor)_driver)
             .ExecuteScript(
                 @"
-                const element = arguments[0];
-                const newValue = arguments[1];
+                const input = arguments[0];
+                const value = arguments[1];
 
-                const setter =
+                const descriptor =
                     Object.getOwnPropertyDescriptor(
                         HTMLInputElement.prototype,
                         'value'
-                    ).set;
+                    );
 
-                setter.call(
-                    element,
-                    newValue
-                );
+                if (descriptor && descriptor.set)
+                    descriptor.set.call(input, value);
+                else
+                    input.value = value;
 
-                element.dispatchEvent(
+                input.dispatchEvent(
                     new Event(
                         'input',
                         { bubbles: true }
                     )
                 );
 
-                element.dispatchEvent(
+                input.dispatchEvent(
                     new Event(
                         'change',
+                        { bubbles: true }
+                    )
+                );
+
+                input.dispatchEvent(
+                    new Event(
+                        'blur',
                         { bubbles: true }
                     )
                 );
                 ",
                 element,
                 value);
+    }
+
+    private static bool SafeDisplayed(
+        IWebElement element)
+    {
+        try
+        {
+            return element.Displayed;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool SafeEnabled(
+        IWebElement element)
+    {
+        try
+        {
+            return element.Enabled;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsVisibleAndEnabled(
+        IWebElement element)
+    {
+        return SafeDisplayed(element)
+               &&
+               SafeEnabled(element);
     }
 }
