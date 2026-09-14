@@ -25,5 +25,7 @@ public class CreateProviderApplicationRequest
     [Required]
     public string Description { get; set; } = string.Empty;
 
+    public List<IFormFile> LegalDocuments { get; set; } = new();
+
     public IFormFile? LegalDocument { get; set; }
 }

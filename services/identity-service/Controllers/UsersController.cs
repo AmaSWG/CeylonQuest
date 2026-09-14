@@ -97,9 +97,14 @@ public class UsersController : ControllerBase
 
         try
         {
-            var baseDir = _env.ContentRootPath;
-            var profile = await _profileService.UploadProfilePictureAsync(userId.Value, file, baseDir);
-            return Ok(new { message = "Profile picture updated successfully.", profile, profilePictureUrl = profile.ProfilePictureUrl });
+            // Direct Azure Blob Storage Upload
+            var profile = await _profileService.UploadProfilePictureAsync(userId.Value, file);
+            return Ok(new
+            {
+                message = "Profile picture updated successfully.",
+                profile,
+                profilePictureUrl = profile.ProfilePictureUrl
+            });
         }
         catch (ArgumentException ex)
         {
@@ -124,8 +129,8 @@ public class UsersController : ControllerBase
 
         try
         {
-            var baseDir = _env.ContentRootPath;
-            var profile = await _profileService.RemoveProfilePictureAsync(userId.Value, baseDir);
+            // Deletes from Azure Blob container
+            var profile = await _profileService.RemoveProfilePictureAsync(userId.Value);
             return Ok(new { message = "Profile picture removed successfully.", profile });
         }
         catch (UserNotFoundException)
