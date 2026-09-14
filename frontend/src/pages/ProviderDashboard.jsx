@@ -26,7 +26,8 @@ import {
   BadgeIcon
 } from '../components/Icons'
 import ConfirmModal from '../components/ConfirmModal'
-import { apiUrl } from '../api/client'
+import InventoryReportView from '../components/InventoryReportView' 
+import { apiUrl, catalogUrl } from '../api/client'
 
 // ── Helpers & Formatting ──────────────────────────────────────────────────────
 
@@ -121,7 +122,9 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
       <div className="pd-page-header">
         <div className="pd-page-header__left">
           <h1>Dashboard Overview</h1>
-          <p>Welcome back, {providerInfo?.businessName || providerInfo?.firstName || 'Provider'}! Here is your service performance summary.</p>
+          <p>
+            Welcome back, <span style={{ fontWeight: 'bold' }}>{providerInfo?.businessName || providerInfo?.firstName || 'Provider'}</span>!
+          </p>
         </div>
       </div>
 
@@ -130,32 +133,20 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
         <div className="pd-verification-banner__left">
           <div className="pd-verification-badge-icon"><VerifiedUserIcon size={24} /></div>
           <div>
-            <h2 className="pd-verification-banner__title">Verification Status: Verified & Approved Partner</h2>
+            <h2 className="pd-verification-banner__title">Verified and Approved Partner</h2>
             <p className="pd-verification-banner__desc">
               Your business is officially certified to accept visitor bookings and list tourism services across Sri Lanka.
             </p>
           </div>
         </div>
-        <button className="pd-quick-btn pd-quick-btn--secondary" onClick={() => onNavigate('business')}>
-          <StorefrontIcon size={16} /> View Business Profile
-        </button>
       </div>
 
       {/* Metric Cards */}
       <div className="pd-metrics-grid">
-        <div className="pd-metric-card">
-          <div className="pd-metric-icon pd-metric-icon--gold"><VerifiedUserIcon size={24} /></div>
-          <div className="pd-metric-info">
-            <div className="pd-metric-title">Verification</div>
-            <div className="pd-metric-value" style={{ fontSize: '18px', color: '#4f8a45' }}>Verified</div>
-            <div className="pd-metric-sub">Active Partner</div>
-          </div>
-        </div>
-
         <div className="pd-metric-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('services')}>
           <div className="pd-metric-icon pd-metric-icon--teal"><KitesurfingIcon size={24} /></div>
           <div className="pd-metric-info">
-            <div className="pd-metric-title">Activities & Services</div>
+            <div className="pd-metric-title">Listings</div>
             <div className="pd-metric-value">{activeServices.length} Active</div>
             <div className="pd-metric-sub">{services.length} Total Registered</div>
           </div>
@@ -183,7 +174,7 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
       {/* Quick Actions Bar */}
       <div className="pd-quick-actions">
         <button className="pd-quick-btn pd-quick-btn--primary" onClick={() => onNavigate('services')}>
-          <AddIcon size={16} /> Add New Activity / Service
+          <AddIcon size={16} /> Add New Listing
         </button>
         <button className="pd-quick-btn pd-quick-btn--secondary" onClick={() => onNavigate('business')}>
           <CreateIcon size={16} /> Edit Business Profile
@@ -214,13 +205,17 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
                 <span className="pd-field__label">Service Type</span>
                 <span className="pd-field__value">{providerInfo?.serviceType || '—'}</span>
               </div>
-              <div className="pd-field pd-field--full">
-                <span className="pd-field__label">Operating Location</span>
-                <span className="pd-field__value"><MyLocationIcon size={15} style={{ marginRight: 6 }} /> {providerInfo?.location || 'Sri Lanka'}</span>
-              </div>
-              <div className="pd-field pd-field--full">
+              <div className="pd-field">
                 <span className="pd-field__label">Business Contact</span>
-                <span className="pd-field__value"><LocalPhoneIcon size={15} style={{ marginRight: 6 }} /> {providerInfo?.phoneNumber || '—'}</span>
+                <span className="pd-field__value">
+                  <LocalPhoneIcon size={15} style={{ marginRight: 6 }} /> {providerInfo?.phoneNumber || '—'}
+                </span>
+              </div>
+              <div className="pd-field">
+                <span className="pd-field__label">Operating Location</span>
+                <span className="pd-field__value">
+                  <MyLocationIcon size={15} style={{ marginRight: 6 }} /> {providerInfo?.location || 'Sri Lanka'}
+                </span>
               </div>
             </div>
 
@@ -235,8 +230,11 @@ function OverviewTab({ providerInfo, services, bookings, notifications, onNaviga
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {activeServices.slice(0, 3).map(s => (
                   <li key={s.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #f3eee4', fontSize: '13.5px' }}>
-                    <span style={{ fontWeight: 600, color: '#123b5d' }}>{s.serviceName}</span>
-                    <span style={{ fontWeight: 700, color: '#168aad' }}>{formatCurrency(s.pricePerUnit)} <small style={{ color: '#888', fontWeight: 400 }}>/{s.unit}</small></span>
+                    <span style={{ fontWeight: 600, color: '#123b5d' }}>{s.title || s.name || s.roomType}</span>
+                    <span style={{ fontWeight: 700, color: '#168aad' }}>
+                      {formatCurrency(s.price || s.pricePerPerson || s.pricePerNight)}
+                      <small style={{ color: '#888', fontWeight: 400 }}>/{s.unit || (s.pricePerPerson ? 'person' : 'night')}</small>
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -402,12 +400,11 @@ function BusinessProfileTab({ token, onLogout, providerInfo, onUpdateSuccess, sh
             <span className="pd-badge pd-badge--active"> Verified & Approved</span>
           </div>
 
-          <div style={{ background: '#faf8f3', border: '1px solid #ede8dc', borderRadius: '12px', padding: '18px 20px', marginTop: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
-              <span style={{ fontSize: '20px' }}></span>
+          <div style={{ background: '#faf8f3', border: '1px solid #ede8dc', borderRadius: '12px', padding: '18px 20px', marginTop: '14px', textAlign: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '10px' }}>
               <div>
-                <strong style={{ color: '#123b5d', fontSize: '14px' }}>Official Partner Accreditation</strong>
-                <p style={{ margin: 0, color: '#666', fontSize: '12.5px' }}>Verified by CeylonQuest Quality & Safety Assurance Team.</p>
+                <strong style={{ color: '#123b5d', fontSize: '18px' }}>Officially Verified By</strong>
+                <p style={{ margin: 0, color: '#666', fontSize: '12.5px' }}>CeylonQuest Admin Team</p>
               </div>
             </div>
             <div className="pd-fields" style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #ede8dc' }}>
@@ -536,40 +533,265 @@ function BusinessProfileTab({ token, onLogout, providerInfo, onUpdateSuccess, sh
   )
 }
 
-// ── 3. Activity / Service Management Tab ──────────────────────────────────────
+// ── 3. Listing Management Tab (Activity / Restaurant / Accommodation) ─────────
 
-const EMPTY_SERVICE_FORM = {
-  serviceName: '',
-  description: '',
-  pricePerUnit: '',
-  unit: 'per person',
-  isActive: true
+const toDisplayTime = (hhmm) => {
+  if (!hhmm) return ''
+  const [hStr, mStr] = hhmm.split(':')
+  let h = parseInt(hStr, 10)
+  const m = mStr || '00'
+  const modifier = h >= 12 ? 'PM' : 'AM'
+  if (h === 0) h = 12
+  else if (h > 12) h -= 12
+  return `${String(h).padStart(2, '0')}:${m} ${modifier}`
 }
 
-function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast }) {
-  const [modal, setModal] = useState(null) // null | 'add' | 'edit'
+const toInputTime = (display) => {
+  if (!display) return '09:00'
+  const parts = display.trim().split(' ')
+  if (parts.length < 2) return display
+  const [timePart, modifier] = parts
+  let [hStr, mStr] = timePart.split(':')
+  let h = parseInt(hStr, 10)
+  if (modifier === 'PM' && h !== 12) h += 12
+  if (modifier === 'AM' && h === 12) h = 0
+  return `${String(h).padStart(2, '0')}:${mStr || '00'}`
+}
+
+const addDurationToTime = (startTimeStr, durationStr) => {
+  if (!startTimeStr) return '10:00'
+  const [hStr, mStr] = startTimeStr.split(':')
+  let totalMinutes = parseInt(hStr || 0, 10) * 60 + parseInt(mStr || 0, 10)
+
+  const durLower = (durationStr || '').toLowerCase()
+  const numVal = parseFloat(durLower) || 0
+
+  if (durLower.includes('hour')) {
+    totalMinutes += Math.round(numVal * 60)
+  } else if (durLower.includes('min')) {
+    totalMinutes += Math.round(numVal)
+  } else {
+    totalMinutes += 120
+  }
+
+  const endH = Math.floor(totalMinutes / 60) % 24
+  const endM = totalMinutes % 60
+  return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
+}
+
+
+const parseOpeningHours = (str) => {
+  const fallback = { open: '11:30', close: '22:00' }
+  if (!str) return fallback
+  const parts = str.split(' - ').map(s => s.trim())
+  if (parts.length !== 2) return fallback
+  return {
+    open: toInputTime(parts[0]),
+    close: toInputTime(parts[1])
+  }
+}
+
+
+const formatOpeningHours = (open, close) => {
+  if (!open || !close) return ''
+  return `${toDisplayTime(open)} - ${toDisplayTime(close)}`
+}
+
+function ListingsTab({
+  token,
+  onLogout,
+  services = [],
+  isHotel = false,
+  isRestaurant = false,
+  catalogEndpoint,
+  onRefreshServices,
+  showToast
+}) {
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [modal, setModal] = useState(null)
   const [editTarget, setEditTarget] = useState(null)
-  const [form, setForm] = useState(EMPTY_SERVICE_FORM)
+  const [slotsList, setSlotsList] = useState([{ startTime: '', endTime: '' }])
   const [formError, setFormError] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
-  const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all') // all | active | inactive
+  const [serviceToDelete, setServiceToDelete] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  
+
+  const emptyForm = {
+    // shared / activity
+    title: '',
+    description: '',
+    price: '',
+    unit: 'Per Person',
+    location: '',
+    maxParticipants: 10,
+    duration: '',
+    availableDays: '',
+    timeSlots: '',
+    validFrom: '',
+    validUntil: '',
+    isActive: true,
+    // restaurant
+    name: '',
+    cuisineType: '',
+    diningStyle: 'Casual Dining',
+    pricePerPerson: '',
+    priceRange: 'Moderate',
+    openingHours: '',
+    openingHoursOpen: '09:00',   
+    openingHoursClose: '22:00',   
+    setMenuDetails: '',
+    dietaryOptions: 'Standard',
+    seatingCapacity: 20,
+    groupSizeCategory: 'Table for One',
+    // accommodation
+    roomType: '',
+    propertyType: 'Boutique Hotel',
+    pricePerNight: '',
+    maxGuests: 2,
+    bedDetails: '1 King Bed',
+    minStayNights: 1,
+    amenities: '',
+    bathroomDetails: ''
+  }
+  const [form, setForm] = useState(emptyForm)
+
+  // ── Time slot helpers (activities only) ──
+  const recalculateAllSlots = (currentSlots, duration) => {
+    let nextStart = currentSlots[0]?.startTime || '08:00'
+    return currentSlots.map(() => {
+      const start = nextStart
+      const end = addDurationToTime(start, duration)
+      nextStart = end
+      return { startTime: start, endTime: end }
+    })
+  }
+
+  const handleSlotCountChange = (count) => {
+    const num = parseInt(count, 10) || 1
+    setSlotsList(prev => {
+      const next = [...prev]
+      while (next.length < num) {
+        const last = next[next.length - 1] || { startTime: '09:00', endTime: '11:00' }
+        next.push({
+          startTime: last.endTime,
+          endTime: addDurationToTime(last.endTime, form.duration)
+        })
+      }
+      return recalculateAllSlots(next.slice(0, num), form.duration)
+    })
+  }
+
+  const updateSlotStartTime = (index, newStartVal) => {
+    setSlotsList(prev => {
+      const next = [...prev]
+      next[index] = { startTime: newStartVal, endTime: addDurationToTime(newStartVal, form.duration) }
+      for (let i = index + 1; i < next.length; i++) {
+        const prevEnd = next[i - 1].endTime
+        next[i] = { startTime: prevEnd, endTime: addDurationToTime(prevEnd, form.duration) }
+      }
+      return next
+    })
+  }
+
+  const updateSlotEndTime = (index, newEndVal) => {
+    setSlotsList(prev => {
+      const next = [...prev]
+      next[index] = { ...next[index], endTime: newEndVal }
+      for (let i = index + 1; i < next.length; i++) {
+        const prevEnd = next[i - 1].endTime
+        next[i] = { startTime: prevEnd, endTime: addDurationToTime(prevEnd, form.duration) }
+      }
+      return next
+    })
+  }
+
+  const handleDurationChange = (e) => {
+    const newDur = e.target.value
+    setForm(prev => ({ ...prev, duration: newDur }))
+    setSlotsList(prev => recalculateAllSlots(prev, newDur))
+  }
 
   const openAdd = () => {
-    setForm(EMPTY_SERVICE_FORM)
+    setEditTarget(null)
+    setForm(emptyForm)
+    setSlotsList([{ startTime: '08:00', endTime: addDurationToTime('08:00', '') }])
     setFormError(null)
     setModal('add')
   }
 
-  const openEdit = (service) => {
-    setEditTarget(service)
-    setForm({
-      serviceName: service.serviceName,
-      description: service.description || '',
-      pricePerUnit: String(service.pricePerUnit),
-      unit: service.unit || 'per person',
-      isActive: service.isActive !== false
-    })
+  const openEdit = (item) => {
+    setEditTarget(item)
+    if (isHotel) {
+      setForm({
+        ...emptyForm,
+        roomType: item.roomType || '',
+        propertyType: item.propertyType || '',
+        location: item.location || '',
+        pricePerNight: item.pricePerNight ?? '',
+        maxGuests: item.maxGuests || 2,
+        bedDetails: item.bedDetails || '',
+        minStayNights: item.minStayNights || 1,
+        amenities: item.amenities || '',
+        bathroomDetails: item.bathroomDetails || '',
+        description: item.description || '',
+        isActive: item.isActive !== false
+      })
+    } else if (isRestaurant) {
+      const parsedHours = parseOpeningHours(item.openingHours || '')
+      setForm({
+        ...emptyForm,
+        name: item.name || '',
+        description: item.description || '',
+        cuisineType: item.cuisineType || '',
+        diningStyle: item.diningStyle || 'Casual Dining',
+        location: item.location || '',
+        pricePerPerson: item.pricePerPerson ?? '',
+        priceRange: item.priceRange || 'Moderate',
+        openingHours: item.openingHours || '',
+        openingHoursOpen: parsedHours.open,
+        openingHoursClose: parsedHours.close,
+        setMenuDetails: item.setMenuDetails || '',
+        dietaryOptions: item.dietaryOptions || 'Standard',
+        groupSizeCategory: item.groupSizeCategory || 'Table for Two',
+        seatingCapacity: item.seatingCapacity || 20,
+        isActive: item.isActive !== false
+      })
+    } else {
+      const currentDuration = item.duration || '2 Hours'
+      const parsedSlots = (item.timeSlots || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(s => {
+          const parts = s.split(' - ')
+          if (parts.length === 2) {
+            return { startTime: toInputTime(parts[0]), endTime: toInputTime(parts[1].split(' ')[0]) }
+          }
+          const single = toInputTime(s)
+          return { startTime: single, endTime: addDurationToTime(single, currentDuration) }
+        })
+      if (parsedSlots.length === 0) {
+        parsedSlots.push({ startTime: '08:00', endTime: addDurationToTime('08:00', currentDuration) })
+      }
+      setSlotsList(parsedSlots)
+      setForm({
+        ...emptyForm,
+        title: item.title || '',
+        description: item.description || '',
+        price: item.price ?? '',
+        unit: item.unit || 'Per Person',
+        location: item.location || '',
+        maxParticipants: item.maxParticipants || 10,
+        duration: currentDuration,
+        availableDays: item.availableDays || '',
+        timeSlots: item.timeSlots || '',
+        validFrom: item.validFrom ? item.validFrom.slice(0, 10) : '',
+        validUntil: item.validUntil ? item.validUntil.slice(0, 10) : '',
+        isActive: item.isActive !== false
+      })
+    }
     setFormError(null)
     setModal('edit')
   }
@@ -577,53 +799,171 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
   const closeModal = () => {
     setModal(null)
     setEditTarget(null)
+    setFormError(null)
+    setForm(emptyForm)
+    setSlotsList([{ startTime: '08:00', endTime: '10:00' }])
   }
 
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target
     setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+    if (formError) setFormError(null)
+  }
+
+  const buildPayload = () => {
+    if (isHotel) {
+      return {
+        roomType: form.roomType.trim(),
+        propertyType: form.propertyType || 'Boutique Hotel',
+        location: form.location.trim(),
+        pricePerNight: parseFloat(form.pricePerNight) || 0,
+        maxGuests: parseInt(form.maxGuests, 10) || 1,
+        bedDetails: form.bedDetails || '1 King Bed',
+        minStayNights: parseInt(form.minStayNights, 10) || 1,
+        amenities: form.amenities || 'Free WiFi, AC',
+        bathroomDetails: form.bathroomDetails || 'En-suite Private Bathroom',
+        description: form.description.trim(),
+        isActive: form.isActive
+      }
+    }
+    if (isRestaurant) {
+      return {
+        name: form.name.trim(),
+        description: form.description.trim(),
+        cuisineType: form.cuisineType.trim(),
+        diningStyle: form.diningStyle || 'Casual Dining',
+        location: form.location.trim(),
+        pricePerPerson: parseFloat(form.pricePerPerson) || 0,
+        priceRange: form.priceRange || 'Moderate',
+        openingHours: formatOpeningHours(form.openingHoursOpen, form.openingHoursClose) || '09:00 AM - 10:00 PM',
+        setMenuDetails: form.setMenuDetails || '',
+        dietaryOptions: form.dietaryOptions || 'Standard',
+        groupSizeCategory: form.groupSizeCategory || 'Table for Two',
+        seatingCapacity: parseInt(form.seatingCapacity, 10) || 20,
+        isActive: form.isActive
+      }
+    }
+    const validSlots = slotsList.filter(s => s.startTime && s.endTime)
+    const serializedTimeSlots = validSlots
+      .map(s => `${toDisplayTime(s.startTime)} - ${toDisplayTime(s.endTime)}`)
+      .join(', ')
+    return {
+      title: form.title.trim(),
+      description: form.description.trim(),
+      price: parseFloat(form.price) || 0,
+      unit: form.unit.trim(),
+      location: form.location.trim(),
+      maxParticipants: parseInt(form.maxParticipants, 10) || 1,
+      duration: form.duration.trim(),
+      availableDays: form.availableDays.trim(),
+      timeSlots: serializedTimeSlots,
+      validFrom: form.validFrom || null,
+      validUntil: form.validUntil || null,
+      isActive: form.isActive
+    }
+  }
+
+  const validate = () => {
+    if (isHotel) {
+      if (!form.roomType.trim()) return { id: 'hotel-room', msg: 'Room type is required.' }
+      if (!form.location.trim()) return { id: 'hotel-location', msg: 'Location is required.' }
+      if (!form.description.trim()) return { id: 'hotel-desc', msg: 'Description is required.' }
+      const p = parseFloat(form.pricePerNight)
+      if (isNaN(p) || p <= 0) return { id: 'hotel-price', msg: 'Price per night must be a positive amount.' }
+      return null
+    }
+  
+    if (isRestaurant) {
+      if (!form.name?.trim()) return { id: 'rest-name', msg: 'Restaurant / item name is required.' }
+      if (!form.cuisineType?.trim()) return { id: 'rest-cuisine', msg: 'Cuisine type is required.' }
+      if (!form.location?.trim()) return { id: 'rest-location', msg: 'Location is required.' }
+      if (!form.description?.trim()) return { id: 'rest-desc', msg: 'Description is required.' }
+      if (form.description.trim().length < 10) {
+        return { id: 'rest-desc', msg: 'Description must be at least 10 characters long.' }
+      }
+      const p = parseFloat(form.pricePerPerson)
+      if (isNaN(p) || p <= 0) return { id: 'rest-price', msg: 'Price per person must be a positive amount.' }
+      
+      // ── Opening Hours Validation ──
+      if (!form.openingHoursOpen || !form.openingHoursClose) {
+        return { id: 'rest-hours-open', msg: 'Opening and closing hours are required.' }
+      }
+      if (form.openingHoursClose <= form.openingHoursOpen) {
+        return { id: 'rest-hours-close', msg: 'Closing time must be after opening time.' }
+      }
+      return null
+    }
+        
+    // ── Experience / Activity Validation ──
+    if (!form.title.trim()) return { id: 'exp-title', msg: 'Experience title is required.' }
+    if (!form.location.trim()) return { id: 'exp-location', msg: 'Operating location is required.' }
+    if (!form.description.trim()) return { id: 'exp-desc', msg: 'Description & inclusions are required.' }
+    if (!form.duration?.trim()) return { id: 'exp-duration', msg: 'Duration is required (e.g. "2 Hours" or "45 Mins").' }
+    if (!form.availableDays?.trim()) {
+      return { id: 'exp-days', msg: 'Available operating days are required (e.g. "Daily", "Mon–Fri", or "Weekends").' }
+    }
+
+    const p = parseFloat(form.price)
+    if (isNaN(p) || p <= 0) return { id: 'exp-price', msg: 'Price must be a valid positive amount.' }
+    if (slotsList.filter(s => s.startTime && s.endTime).length === 0) {
+      return { id: 'exp-duration', msg: 'At least one complete time slot is required.' }
+    }
+
+    const today = new Date().toISOString().split('T')[0]
+    if (form.validFrom && form.validFrom < today) {
+      return { id: 'exp-valid-from', msg: 'Valid From date cannot be in the past.' }
+    }
+    if (form.validFrom && form.validUntil && form.validUntil < form.validFrom) {
+      return { id: 'exp-valid-until', msg: 'Valid Until date must be on or after the Valid From date.' }
+    }
+
+    return null
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const err = validate()
+    if (err) { 
+      setFormError(err.msg)
+      
+      setTimeout(() => {
+        const el = document.getElementById(err.id)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          el.focus()
+        }
+      }, 50)
+      return 
+    }
+
     setFormError(null)
     setFormLoading(true)
 
-    const payload = {
-      serviceName: form.serviceName.trim(),
-      description: form.description.trim(),
-      pricePerUnit: parseFloat(form.pricePerUnit),
-      unit: form.unit.trim(),
-      isActive: Boolean(form.isActive)
-    }
-
-    if (isNaN(payload.pricePerUnit) || payload.pricePerUnit <= 0) {
-      setFormError('Price must be a valid positive number.')
-      setFormLoading(false)
-      return
-    }
+    const payload = buildPayload()
 
     try {
-      const url = modal === 'edit' ? `/api/provider/prices/${editTarget.id}` : '/api/provider/prices'
+      const url = modal === 'edit'
+        ? catalogUrl(`${catalogEndpoint}/${editTarget.id}`)
+        : catalogUrl(catalogEndpoint)
       const method = modal === 'edit' ? 'PUT' : 'POST'
+
       const resp = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
         body: JSON.stringify(payload)
       })
 
       if (resp.ok || resp.status === 201) {
         closeModal()
-        showToast(modal === 'edit' ? 'Activity/Service updated successfully.' : 'New Activity/Service published.')
+        showToast(modal === 'edit' ? 'Listing updated successfully.' : 'Listing created successfully.')
         onRefreshServices && onRefreshServices()
-      } else if (resp.status === 400 || resp.status === 422) {
-        const body = await resp.json().catch(() => ({}))
-        const first = body.errors && Object.values(body.errors).flat()[0]
-        setFormError(first || body.message || 'Validation error. Check your input.')
-      } else if (resp.status === 401) {
-        onLogout && onLogout()
       } else {
-        setFormError('Server error. Please try again.')
+        const data = await resp.json().catch(() => ({}))
+        const serverMsg = data.detail || data.message || data.title || (data.errors ? Object.values(data.errors).flat().join(', ') : 'Failed to save listing.')
+        setFormError(serverMsg)
       }
     } catch {
       setFormError('Network error. Please check your connection.')
@@ -632,173 +972,667 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
     }
   }
 
-  const handleToggleStatus = async (service) => {
-    const newStatus = !service.isActive
+  const handleToggleStatus = async (item) => {
+    const newStatus = !item.isActive
+    let payload
+    if (isHotel) {
+      payload = {
+        roomType: item.roomType, propertyType: item.propertyType, location: item.location,
+        pricePerNight: item.pricePerNight, maxGuests: item.maxGuests, bedDetails: item.bedDetails,
+        minStayNights: item.minStayNights, amenities: item.amenities,
+        bathroomDetails: item.bathroomDetails, description: item.description, isActive: newStatus
+      }
+    } else if (isRestaurant) {
+      payload = {
+        name: item.name, description: item.description, cuisineType: item.cuisineType,
+        diningStyle: item.diningStyle, location: item.location, pricePerPerson: item.pricePerPerson,
+        priceRange: item.priceRange, openingHours: item.openingHours,
+        setMenuDetails: item.setMenuDetails, dietaryOptions: item.dietaryOptions,groupSizeCategory: item.groupSizeCategory || 'Table for Two',
+        seatingCapacity: item.seatingCapacity, isActive: newStatus
+      }
+    } else {
+      payload = {
+        title: item.title, description: item.description, price: item.price, unit: item.unit,
+        location: item.location, maxParticipants: item.maxParticipants, duration: item.duration,
+        availableDays: item.availableDays, timeSlots: item.timeSlots,
+        validFrom: item.validFrom, validUntil: item.validUntil, isActive: newStatus
+      }
+    }
     try {
-      const resp = await fetch(apiUrl(`/api/provider/prices/${service.id}`), {
+      const resp = await fetch(catalogUrl(`${catalogEndpoint}/${item.id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          serviceName: service.serviceName,
-          description: service.description || '',
-          pricePerUnit: service.pricePerUnit,
-          unit: service.unit,
-          isActive: newStatus
-        })
+        body: JSON.stringify(payload)
       })
       if (resp.ok) {
-        showToast(`Activity ${newStatus ? 'activated' : 'deactivated'}.`)
+        showToast(`Listing ${newStatus ? 'activated' : 'deactivated'}.`)
         onRefreshServices && onRefreshServices()
-      } else {
-        showToast('Failed to update status.')
-      }
-    } catch {
-      showToast('Network error. Please check connection.')
-    }
+      } else showToast('Failed to update status.')
+    } catch { showToast('Network error.') }
   }
 
-  const [serviceToDelete, setServiceToDelete] = useState(null)
-  const [deleteLoading, setDeleteLoading] = useState(false)
-
-  const handleDelete = (serviceId) => {
-    setServiceToDelete(serviceId)
-  }
-
-  const executeDeleteService = async () => {
+  const executeDelete = async () => {
     if (!serviceToDelete) return
     setDeleteLoading(true)
     try {
-      const resp = await fetch(apiUrl(`/api/provider/prices/${serviceToDelete}`), {
+      const resp = await fetch(catalogUrl(`${catalogEndpoint}/${serviceToDelete}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
-      if (resp.status === 204) {
-        showToast('Activity/Service deleted.')
+      if (resp.status === 204 || resp.ok) {
+        showToast('Listing deleted.')
         setServiceToDelete(null)
         onRefreshServices && onRefreshServices()
       } else if (resp.status === 401) {
         onLogout && onLogout()
       } else {
-        showToast('Failed to delete item.')
+        const body = await resp.json().catch(() => ({}))
+        showToast(body.message || 'Failed to delete listing.')
       }
-    } catch {
-      showToast('Network error. Please check connection.')
-    } finally {
-      setDeleteLoading(false)
-    }
+    } catch { showToast('Network error.') }
+    finally { setDeleteLoading(false) }
   }
 
-  // Filtered List
+  const primaryName = (item) => isRestaurant ? item.name : isHotel ? item.roomType : item.title
+
   const filtered = services.filter(s => {
-    const matchSearch = s.serviceName.toLowerCase().includes(search.toLowerCase()) ||
-      (s.description && s.description.toLowerCase().includes(search.toLowerCase()))
+    const q = search.toLowerCase().trim()
+    const matchSearch = !q ||
+      (primaryName(s) || '').toLowerCase().includes(q) ||
+      (s.description || '').toLowerCase().includes(q) ||
+      (s.location || '').toLowerCase().includes(q)
     if (!matchSearch) return false
     if (filterStatus === 'active') return s.isActive !== false
     if (filterStatus === 'inactive') return s.isActive === false
     return true
   })
 
+  const pageTitle = isHotel ? 'Rooms and Accommodations'
+                  : isRestaurant ? 'Menu and Dining'
+                  : 'Experience Listings'
+  const createLabel = isHotel ? 'Create New Accommodation'
+                    : isRestaurant ? 'Create New Dining Listing'
+                    : 'Create New Experience'
+  const editLabel = isHotel ? 'Edit Accommodation Listing'
+                  : isRestaurant ? 'Edit Dining Listing'
+                  : 'Edit Experience Listing'
+  const emptyLabel = isHotel ? 'No accommodation listings found'
+                   : isRestaurant ? 'No dining listing found'
+                   : 'No experience listings found'
+  const emptyMsg = isHotel ? 'Create Your First Accommodation Listing'
+                 : isRestaurant ? 'Create Your First Dining Listing'
+                 : 'Create Your First Tourism Experience Listing'
+
   return (
     <div className="pd-activities-tab">
       <ConfirmModal
         isOpen={Boolean(serviceToDelete)}
-        title="Delete Activity / Service"
-        message="Are you sure you want to delete this activity/service? This action cannot be undone."
-        confirmText="Delete Activity"
+        title="Delete Listing"
+        message="Are you sure you want to delete this listing? It will no longer be discoverable by visitors."
+        confirmText="Delete"
         cancelText="Cancel"
         confirmVariant="danger"
-        onConfirm={executeDeleteService}
+        onConfirm={executeDelete}
         onCancel={() => setServiceToDelete(null)}
         loading={deleteLoading}
       />
+
       <div className="pd-page-header">
         <div className="pd-page-header__left">
-          <h1>Activity & Service Management</h1>
-          <p>Add, edit, deactivate, or remove tourism activities and services you offer to visitors.</p>
+          <h1>{pageTitle}</h1>
+          <p>Create, edit, activate, or remove listings you offer to visitors.</p>
         </div>
-        <button className="pd-quick-btn pd-quick-btn--primary" onClick={openAdd} id="add-activity-btn">
-          <AddIcon size={16} /> Add New Activity / Service
+        <button className="pd-quick-btn pd-quick-btn--primary" onClick={openAdd} id="add-listing-btn">
+          <AddIcon size={16} /> {createLabel}
         </button>
       </div>
 
       {modal && (
-        <Modal title={modal === 'edit' ? 'Edit Activity / Service' : 'Add New Activity / Service'} onClose={closeModal}>
+        <Modal title={modal === 'edit' ? editLabel : createLabel} onClose={closeModal} wide>
           <form onSubmit={handleSubmit} className="pd-modal__form" noValidate>
-            {formError && <div className="pd-form-error">{formError}</div>}
-
-            <div className="pd-form-group">
-              <label htmlFor="srv-name">Activity / Service Name *</label>
-              <input
-                id="srv-name"
-                name="serviceName"
-                type="text"
-                value={form.serviceName}
-                onChange={handleFormChange}
-                placeholder="e.g. Half-Day Yala Safari Tour"
-                required
-              />
-            </div>
-
-            <div className="pd-form-group">
-              <label htmlFor="srv-desc">Description & Inclusions</label>
-              <textarea
-                id="srv-desc"
-                name="description"
-                rows="3"
-                value={form.description}
-                onChange={handleFormChange}
-                placeholder="Provide details about duration, inclusions, difficulty, and meeting points..."
-              />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-              <div className="pd-form-group">
-                <label htmlFor="srv-price">Price (LKR) *</label>
-                <input
-                  id="srv-price"
-                  name="pricePerUnit"
-                  type="number"
-                  min="0.01"
-                  step="100"
-                  value={form.pricePerUnit}
-                  onChange={handleFormChange}
-                  placeholder="e.g. 7500"
-                  required
-                />
+            {formError && (
+              <div className="pd-form-error" style={{ marginTop: '14px', marginBottom: '8px' }}>
+                {formError}
               </div>
+            )}
 
-              <div className="pd-form-group">
-                <label htmlFor="srv-unit">Pricing Unit *</label>
+            {/* ───────── RESTAURANT FORM ───────── */}
+            {isRestaurant && (
+              <>
+                <div className="pd-form-group">
+                  <label htmlFor="rest-name">Menu Item / Restaurant Name *</label>
+                  <input
+                    id="rest-name"
+                    name="name"
+                    type="text"
+                    value={form.name}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Seafood Platter for Two"
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="rest-cuisine">Cuisine Type *</label>
+                    <input
+                      id="rest-cuisine"
+                      name="cuisineType"
+                      type="text"
+                      value={form.cuisineType}
+                      onChange={handleFormChange}
+                      placeholder="e.g. Sri Lankan & Seafood"
+                      required
+                    />
+                  </div>
+                  <div className="pd-form-group">
+                    <label htmlFor="rest-style">Dining Style *</label>
+                    <select id="rest-style" name="diningStyle" value={form.diningStyle} onChange={handleFormChange}>
+                      <option>Casual Dining</option>
+                      <option>Fine Dining</option>
+                      <option>Set Menu</option>
+                      <option>Buffet</option>
+                      <option>Street Food</option>
+                      <option>Cafe / Bistro</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="rest-location">Location *</label>
+                  <input
+                    id="rest-location"
+                    name="location"
+                    type="text"
+                    value={form.location}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Galle Fort, Galle"
+                    required
+                  />
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="rest-desc">Description *</label>
+                  <textarea
+                    id="rest-desc"
+                    name="description"
+                    rows="3"
+                    value={form.description}
+                    onChange={handleFormChange}
+                    placeholder="Describe the menu, ambiance, signature dishes..."
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="rest-price">Price per Person (LKR) *</label>
+                    <input
+                      id="rest-price"
+                      name="pricePerPerson"
+                      type="number"
+                      min="0.01"
+                      step="100"
+                      value={form.pricePerPerson}
+                      onChange={handleFormChange}
+                      placeholder="e.g. 3500"
+                      required
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div className="pd-form-group">
+                    <label htmlFor="rest-range">Price Range</label>
+                    <select
+                      id="rest-range"
+                      name="priceRange"
+                      value={form.priceRange}
+                      onChange={handleFormChange}
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    >
+                      <option value="Budget">Budget</option>
+                      <option value="Moderate">Moderate</option>
+                      <option value="Upscale">Upscale</option>
+                      <option value="Fine Dining">Fine Dining</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'start' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="rest-group-size">Group Size Category *</label>
+                    <select
+                      id="rest-group-size"
+                      name="groupSizeCategory"
+                      value={form.groupSizeCategory}
+                      onChange={handleFormChange}
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    >
+                      <option value="Table for One">Table for One</option>
+                      <option value="Table for Two">Table for Two</option>
+                      <option value="Small Group (4 or Less)">Small Group (4 or Less)</option>
+                      <option value="Moderate Group (10 or Less)">Moderate Group (10 or Less)</option>
+                      <option value="Large Group (More than 10)">Large Group (More than 10)</option>
+                    </select>
+                  </div>
+
+                  {/* Only render the second column when Large Group is selected */}
+                  {form.groupSizeCategory === 'Large Group (More than 10)' && (
+                    <div className="pd-form-group">
+                      <label htmlFor="rest-seats">Exact Seating Capacity *</label>
+                      <input
+                        id="rest-seats"
+                        name="seatingCapacity"
+                        type="number"
+                        min="11"
+                        max="1000"
+                        value={form.seatingCapacity}
+                        onChange={handleFormChange}
+                        placeholder="e.g. 42"
+                        required
+                        style={{ width: '100%', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="pd-form-group">
+                      <label htmlFor="rest-hours-open">Opening Time *</label>
+                      <input
+                        id="rest-hours-open"
+                        name="openingHoursOpen"
+                        type="time"
+                        value={form.openingHoursOpen}
+                        onChange={handleFormChange}
+                        required
+                        style={{ width: '100%', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div className="pd-form-group">
+                      <label htmlFor="rest-hours-close">Closing Time *</label>
+                      <input
+                        id="rest-hours-close"
+                        name="openingHoursClose"
+                        type="time"
+                        value={form.openingHoursClose}
+                        onChange={handleFormChange}
+                        required
+                        style={{ width: '100%', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="rest-menu">Menu Details</label>
+                  <textarea
+                    id="rest-menu"
+                    name="setMenuDetails"
+                    rows="3"
+                    value={form.setMenuDetails}
+                    onChange={handleFormChange}
+                    placeholder="Courses included, fixed price menus, tasting menus..."
+                  />
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="rest-diet">Dietary Options</label>
+                  <input
+                    id="rest-diet"
+                    name="dietaryOptions"
+                    type="text"
+                    value={form.dietaryOptions}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Halal, Vegetarian, Vegan"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* ───────── ACCOMMODATION FORM ───────── */}
+            {isHotel && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="hotel-room">Room Type *</label>
+                    <input
+                      id="hotel-room"
+                      name="roomType"
+                      type="text"
+                      value={form.roomType}
+                      onChange={handleFormChange}
+                      placeholder="e.g. Deluxe Ocean View Suite"
+                      required
+                    />
+                  </div>
+                  <div className="pd-form-group">
+                    <label htmlFor="hotel-prop">Property Type *</label>
+                    <select id="hotel-prop" name="propertyType" value={form.propertyType} onChange={handleFormChange}>
+                      <option>Boutique Hotel</option>
+                      <option>Luxury Resort</option>
+                      <option>Villa</option>
+                      <option>Guesthouse</option>
+                      <option>Bungalow</option>
+                      <option>Hostel</option>
+                      <option>Homestay</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="hotel-location">Location *</label>
+                  <input
+                    id="hotel-location"
+                    name="location"
+                    type="text"
+                    value={form.location}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Unawatuna, Southern Province"
+                    required
+                  />
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="hotel-desc">Description *</label>
+                  <textarea
+                    id="hotel-desc"
+                    name="description"
+                    rows="3"
+                    value={form.description}
+                    onChange={handleFormChange}
+                    placeholder="Describe the room, view, amenities, house rules..."
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="hotel-price">Price per Night (LKR) *</label>
+                    <input
+                      id="hotel-price"
+                      name="pricePerNight"
+                      type="number"
+                      min="0.01"
+                      step="100"
+                      value={form.pricePerNight}
+                      onChange={handleFormChange}
+                      placeholder = "e.g. 8500"
+                      required
+                    />
+                  </div>
+                  <div className="pd-form-group">
+                    <label htmlFor="hotel-guests">Max Guests *</label>
+                    <input
+                      id="hotel-guests"
+                      name="maxGuests"
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={form.maxGuests}
+                      onChange={handleFormChange}
+                      required
+                    />
+                  </div>
+                  <div className="pd-form-group">
+                    <label htmlFor="hotel-minstay">Min Stay (nights)</label>
+                    <input
+                      id="hotel-minstay"
+                      name="minStayNights"
+                      type="number"
+                      min="1"
+                      max="365"
+                      value={form.minStayNights}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="hotel-bed">Bed Details *</label>
+                  <input
+                    id="hotel-bed"
+                    name="bedDetails"
+                    type="text"
+                    value={form.bedDetails}
+                    onChange={handleFormChange}
+                    placeholder="e.g. 1 King Bed + 1 Sofa Bed"
+                    required
+                  />
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="hotel-amenities">Amenities</label>
+                  <input
+                    id="hotel-amenities"
+                    name="amenities"
+                    type="text"
+                    value={form.amenities}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Free WiFi, AC, Breakfast, Pool"
+                  />
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="hotel-bath">Bathroom Details</label>
+                  <input
+                    id="hotel-bath"
+                    name="bathroomDetails"
+                    type="text"
+                    value={form.bathroomDetails}
+                    onChange={handleFormChange}
+                    placeholder="e.g. En-suite with hot water"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* ───────── ACTIVITY FORM ───────── */}
+            {!isHotel && !isRestaurant && (
+              <>
+                <div className="pd-form-group">
+                  <label htmlFor="exp-title">Experience Title *</label>
+                  <input
+                    id="exp-title"
+                    name="title"
+                    type="text"
+                    value={form.title}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Guided Snorkeling at Pigeon Island"
+                    required
+                  />
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="exp-location">Operating Location *</label>
+                  <input
+                    id="exp-location"
+                    name="location"
+                    type="text"
+                    value={form.location}
+                    onChange={handleFormChange}
+                    placeholder="e.g. Nilaveli, Trincomalee"
+                    required
+                  />
+                </div>
+
+                <div className="pd-form-group">
+                  <label htmlFor="exp-desc">Description & Inclusions *</label>
+                  <textarea
+                    id="exp-desc"
+                    name="description"
+                    rows="3"
+                    value={form.description}
+                    onChange={handleFormChange}
+                    placeholder="Describe the experience, itinerary, gear provided, and meeting point..."
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="exp-price">Price (LKR) *</label>
+                    <input
+                      id="exp-price"
+                      name="price"
+                      type="number"
+                      min="0.01"
+                      step="100"
+                      value={form.price}
+                      onChange={handleFormChange}
+                      placeholder="e.g. 8500"
+                      required
+                    />
+                  </div>
+
+                  <div className="pd-form-group">
+                    <label htmlFor="exp-unit">Pricing Unit *</label>
+                    <select id="exp-unit" name="unit" value={form.unit} onChange={handleFormChange}>
+                      <option value="Per Person">Per Person</option>
+                      <option value="Per Pair">Per Two Persons</option>
+                      <option value="Per Group">Per Group</option>
+                      <option value="Per Hour">Per Hour</option>
+                      <option value="Per Day">Per Day</option>
+                    </select>
+                  </div>
+
+                  <div style={{ maxWidth: 90 }} className="pd-form-group">
+                    <label htmlFor="exp-max">Max Guests</label>
+                    <input
+                      id="exp-max"
+                      name="maxParticipants"
+                      type="number"
+                      min="1"
+                      value={form.maxParticipants}
+                      onChange={handleFormChange}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="exp-valid-from">Valid From</label>
+                    <input
+                      id="exp-valid-from"
+                      name="validFrom"
+                      type="date"
+                      min={new Date().toISOString().split('T')[0]}
+                      value={form.validFrom}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+
+                  <div className="pd-form-group">
+                    <label htmlFor="exp-valid-until">Valid Until</label>
+                    <input
+                      id="exp-valid-until"
+                      name="validUntil"
+                      type="date"
+                      min={form.validFrom || new Date().toISOString().split('T')[0]}
+                      value={form.validUntil}
+                      onChange={handleFormChange}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '4px' }}>
+                  <div className="pd-form-group">
+                    <label htmlFor="exp-duration">Duration *</label>
+                    <input
+                      id="exp-duration"
+                      name="duration"
+                      type="text"
+                      value={form.duration}
+                      onChange={handleDurationChange}
+                      placeholder="e.g. 2 Hours or 45 Mins"
+                      required
+                    />
+                  </div>
+
+                  <div className="pd-form-group">
+                    <label htmlFor="exp-days">Available Days *</label>
+                    <input
+                      id="exp-days"
+                      name="availableDays"
+                      type="text"
+                      value={form.availableDays}
+                      onChange={handleFormChange}
+                      placeholder="e.g. Daily / Mon–Fri"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Dynamic Time Slots Section */}
+                <div style={{ marginTop: '16px', background: '#faf8f3', padding: '16px', borderRadius: '10px', border: '1px solid #ede8dc' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <label style={{ fontWeight: 600, fontSize: '13.5px', color: '#123b5d' }}>Daily Time Slots Configuration</label>
+                    <select
+                      value={slotsList.length}
+                      onChange={(e) => handleSlotCountChange(e.target.value)}
+                      style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}
+                    >
+                      {[1, 2, 3, 4, 5, 6].map(n => (
+                        <option key={n} value={n}>{n} {n === 1 ? 'Slot' : 'Slots'}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '10px' }}>
+                    {slotsList.map((slot, idx) => (
+                      <div key={idx} style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '10px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#168aad' }}>Slot {idx + 1}</span>
+                          <span style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>{form.duration || 'Duration not set'}</span>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ fontSize: '10px', color: '#888', display: 'block', marginBottom: '2px' }}>Start</label>
+                            <input
+                              type="time"
+                              value={slot.startTime}
+                              onChange={(e) => updateSlotStartTime(idx, e.target.value)}
+                              style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                              required
+                            />
+                          </div>
+                          <span style={{ color: '#888', fontSize: '12px', paddingBottom: '6px', marginLeft: '12px', marginTop: '30px' }}>to</span>
+                          <div style={{ flex: 1 }}>
+                            <label style={{ fontSize: '10px', color: '#888', display: 'block', marginBottom: '2px' }}>End</label>
+                            <input
+                              type="time"
+                              value={slot.endTime}
+                              onChange={(e) => updateSlotEndTime(idx, e.target.value)}
+                              style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="pd-checkbox-group" style={{ marginTop: '8px' }}>
+              <label className="pd-checkbox-label">
                 <input
-                  id="srv-unit"
-                  name="unit"
-                  type="text"
-                  value={form.unit}
+                  type="checkbox"
+                  name="isActive"
+                  checked={form.isActive}
                   onChange={handleFormChange}
-                  placeholder="per person, per group, per hour"
-                  required
                 />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0' }}>
-              <input
-                id="srv-active"
-                name="isActive"
-                type="checkbox"
-                checked={form.isActive}
-                onChange={handleFormChange}
-                style={{ width: '18px', height: '18px', accentColor: '#168aad' }}
-              />
-              <label htmlFor="srv-active" style={{ fontSize: '13.5px', fontWeight: 600, color: '#123b5d', cursor: 'pointer' }}>
-                Active & visible for bookings
+                <span>Active and bookable by visitors immediately</span>
               </label>
             </div>
 
             <div className="pd-modal__actions">
-              <button type="button" className="pd-cancel-btn" onClick={closeModal} disabled={formLoading}>Cancel</button>
-              <button type="submit" className="pd-save-btn" disabled={formLoading}>
-                {formLoading ? 'Saving…' : modal === 'edit' ? 'Update Activity' : 'Publish Activity'}
+              <button type="button" className="pd-cancel-btn" onClick={closeModal} disabled={formLoading}>
+                Cancel
+              </button>
+              <button type="submit" className="pd-quick-btn pd-quick-btn--primary" disabled={formLoading}>
+                {formLoading ? 'Saving…' : (modal === 'edit' ? 'Save Changes' : createLabel)}
               </button>
             </div>
           </form>
@@ -808,11 +1642,11 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
       {/* Filter and Search Bar */}
       <div className="pd-filter-bar">
         <div className="pd-search-wrap">
-          <span className="pd-search-icon"></span>
+          <span className="pd-search-icon"><ManageSearchIcon size={18} /></span>
           <input
             type="text"
             className="pd-search-input"
-            placeholder="Search activities or descriptions..."
+            placeholder="Search your listings..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -831,57 +1665,145 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
         </div>
       </div>
 
-      {/* Table of Services */}
+      {/* Listings Table */}
       <div className="pd-card">
         <div className="pd-card__body" style={{ padding: 0 }}>
           {filtered.length === 0 ? (
             <div className="pd-empty">
-              <div className="pd-empty__icon"></div>
-              <p className="pd-empty__title">No activities found</p>
-              <p className="pd-empty__msg">
-                {search || filterStatus !== 'all' ? 'Try adjusting your search query or filter.' : 'Click "Add New Activity" to publish your first service offering.'}
-              </p>
+              <div className="pd-empty__icon"><KitesurfingIcon size={32} /></div>
+              <p className="pd-empty__title">{emptyLabel}</p>
+              <button className="pd-quick-btn pd-quick-btn--primary" onClick={openAdd} style={{ marginTop: '12px' }}>
+                <AddIcon size={16} /> {emptyMsg}
+              </button>
             </div>
           ) : (
             <div className="pd-table-wrap" style={{ border: 'none', borderRadius: 0 }}>
               <table className="pd-table">
                 <thead>
-                  <tr>
-                    <th>Activity / Service</th>
-                    <th>Description & Details</th>
-                    <th>Price (LKR)</th>
-                    <th>Unit</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
+                  {isRestaurant ? (
+                    <tr>
+                      <th>Name</th>
+                      <th>Cuisine</th>
+                      <th>Location</th>
+                      <th>Price / Person</th>
+                      <th>Seating</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  ) : isHotel ? (
+                    <tr>
+                      <th>Room Type</th>
+                      <th>Property</th>
+                      <th>Location</th>
+                      <th>Price / Night</th>
+                      <th>Max Guests</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <th>Experience Title</th>
+                      <th>Location</th>
+                      <th>Price (LKR)</th>
+                      <th>Time Slots</th>
+                      <th>Max Guests</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  )}
                 </thead>
                 <tbody>
                   {filtered.map(s => (
                     <tr key={s.id}>
-                      <td style={{ fontWeight: 700, color: '#123b5d' }}>{s.serviceName}</td>
-                      <td style={{ color: '#666666', maxWidth: '280px' }}>{s.description || '—'}</td>
-                      <td style={{ fontWeight: 700, color: '#168aad' }}>{formatCurrency(s.pricePerUnit)}</td>
-                      <td>{s.unit}</td>
+                      {isRestaurant ? (
+                        <>
+                          <td style={{ fontWeight: 600, color: '#123b5d' }}>
+                            <div>{s.name}</div>
+                            <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 400 }}>
+                              {s.description?.slice(0, 60)}{s.description?.length > 60 ? '…' : ''}
+                            </div>
+                          </td>
+                          <td>
+                            {s.cuisineType}
+                            <div style={{ fontSize: '11px', color: '#888' }}>{s.diningStyle}</div>
+                          </td>
+                          <td>{s.location}</td>
+                          <td style={{ fontWeight: 700, color: '#4f8a45' }}>
+                            LKR {Number(s.pricePerPerson).toLocaleString()}
+                            {s.priceRange && (
+                              <div style={{ fontSize: '11px', color: '#888', fontWeight: 400 }}>{s.priceRange}</div>
+                            )}
+                          </td>
+                          <td>
+                            {s.groupSizeCategory === 'Large Group (More than 10)' ? (
+                              <>
+                                Large Group
+                                <div style={{ fontSize: '11px', color: '#888' }}>
+                                  {s.seatingCapacity} seats
+                                </div>
+                              </>
+                            ) : (
+                              s.groupSizeCategory || `${s.seatingCapacity} seats`
+                            )}
+                          </td>
+                        </>
+                      ) : isHotel ? (
+                        <>
+                          <td style={{ fontWeight: 600, color: '#123b5d' }}>
+                            <div>{s.roomType}</div>
+                            <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 400 }}>
+                              {s.description?.slice(0, 60)}{s.description?.length > 60 ? '…' : ''}
+                            </div>
+                          </td>
+                          <td>{s.propertyType}</td>
+                          <td>{s.location}</td>
+                          <td style={{ fontWeight: 700, color: '#4f8a45' }}>
+                            LKR {Number(s.pricePerNight).toLocaleString()}
+                          </td>
+                          <td>{s.maxGuests} guests</td>
+                        </>
+                      ) : (
+                        <>
+                          <td style={{ fontWeight: 600, color: '#123b5d' }}>
+                            <div>{s.title}</div>
+                            <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 400 }}>
+                              {s.description?.slice(0, 60)}{s.description?.length > 60 ? '…' : ''}
+                            </div>
+                          </td>
+                          <td>{s.location}</td>
+                          <td style={{ fontWeight: 700, color: '#4f8a45' }}>
+                            LKR {Number(s.price).toLocaleString()}{' '}
+                            <span style={{ fontSize: '11px', color: '#777', fontWeight: 400 }}>/ {s.unit}</span>
+                          </td>
+                          <td style={{ fontSize: '12px', color: '#475569', maxWidth: '180px' }}>
+                            {s.timeSlots ? (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {s.timeSlots.split(',').map((slot, i) => (
+                                  <span key={i} style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                                    {slot.trim()}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : '—'}
+                          </td>
+                          <td>{s.maxParticipants} guests</td>
+                        </>
+                      )}
                       <td>
-                        <span className={`pd-badge pd-badge--${s.isActive !== false ? 'active' : 'inactive'}`}>
-                          {s.isActive !== false ? 'Active' : 'Inactive'}
-                        </span>
+                        <button
+                          type="button"
+                          className={`pd-badge pd-badge--${s.isActive ? 'active' : 'inactive'}`}
+                          style={{ cursor: 'pointer', border: 'none' }}
+                          onClick={() => handleToggleStatus(s)}
+                          title="Click to toggle status"
+                        >
+                          {s.isActive ? 'Active' : 'Inactive'}
+                        </button>
                       </td>
                       <td>
                         <div className="pd-row-actions">
-                          <button
-                            className="pd-row-btn pd-row-btn--toggle"
-                            title={s.isActive !== false ? 'Deactivate this activity' : 'Activate this activity'}
-                            onClick={() => handleToggleStatus(s)}
-                          >
-                            {s.isActive !== false ? 'Deactivate' : 'Activate'}
-                          </button>
-                          <button className="pd-row-btn pd-row-btn--edit" onClick={() => openEdit(s)}>
-                            Edit
-                          </button>
-                          <button className="pd-row-btn pd-row-btn--delete" onClick={() => handleDelete(s.id)}>
-                            Delete
-                          </button>
+                          <button className="pd-row-btn" onClick={() => openEdit(s)}>Edit</button>
+                          <button className="pd-row-btn pd-row-btn--delete" onClick={() => setServiceToDelete(s.id)}>Delete</button>
                         </div>
                       </td>
                     </tr>
@@ -889,732 +1811,6 @@ function ActivitiesTab({ token, onLogout, services, onRefreshServices, showToast
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── 4. Booking Management Tab ─────────────────────────────────────────────────
-
-function BookingsTab({ bookings, onUpdateBookingStatus }) {
-  const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all') // all | pending | confirmed | completed | cancelled
-  const [selectedBooking, setSelectedBooking] = useState(null)
-
-  const handleStatusChange = (bookingId, newStatus) => {
-    onUpdateBookingStatus && onUpdateBookingStatus(bookingId, newStatus)
-    if (selectedBooking && selectedBooking.id === bookingId) {
-      setSelectedBooking(prev => ({ ...prev, status: newStatus }))
-    }
-  }
-
-  const filtered = bookings.filter(b => {
-    const matchSearch = b.visitorName.toLowerCase().includes(search.toLowerCase()) ||
-      b.id.toLowerCase().includes(search.toLowerCase()) ||
-      b.activityName.toLowerCase().includes(search.toLowerCase())
-    if (!matchSearch) return false
-    if (filterStatus !== 'all' && b.status.toLowerCase() !== filterStatus.toLowerCase()) return false
-    return true
-  })
-
-  return (
-    <div className="pd-bookings-tab">
-      <div className="pd-page-header">
-        <div className="pd-page-header__left">
-          <h1>Booking Management</h1>
-          <p>Review visitor reservations, view complete booking details, and manage reservation statuses.</p>
-        </div>
-      </div>
-
-      {/* Booking Details Modal */}
-      {selectedBooking && (
-        <Modal title={`Booking Details (${selectedBooking.id})`} onClose={() => setSelectedBooking(null)} wide>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid #f0ece3' }}>
-              <div>
-                <h3 style={{ margin: '0 0 4px', color: '#123b5d' }}>{selectedBooking.activityName}</h3>
-                <span style={{ fontSize: '13px', color: '#777' }}>Booking Ref: <strong>{selectedBooking.id}</strong></span>
-              </div>
-              <span className={`pd-badge pd-badge--${selectedBooking.status.toLowerCase()}`} style={{ fontSize: '12px', padding: '5px 12px' }}>
-                {selectedBooking.status}
-              </span>
-            </div>
-
-            <div className="pd-fields">
-              <div className="pd-field">
-                <span className="pd-field__label">Visitor Name</span>
-                <span className="pd-field__value"> {selectedBooking.visitorName}</span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Email Address</span>
-                <span className="pd-field__value"> {selectedBooking.visitorEmail}</span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Contact Phone</span>
-                <span className="pd-field__value"> {selectedBooking.visitorPhone}</span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Scheduled Date</span>
-                <span className="pd-field__value"> {formatDate(selectedBooking.date)}</span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Time Slot</span>
-                <span className="pd-field__value"> {selectedBooking.timeSlot}</span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Party Size / Guests</span>
-                <span className="pd-field__value"> {selectedBooking.guests} People</span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Payment Status</span>
-                <span className="pd-field__value" style={{ color: '#4f8a45', fontWeight: 600 }}> {selectedBooking.paymentStatus}</span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Total Amount</span>
-                <span className="pd-field__value" style={{ color: '#168aad', fontWeight: 800, fontSize: '16px' }}>{formatCurrency(selectedBooking.totalAmount)}</span>
-              </div>
-              <div className="pd-field pd-field--full">
-                <span className="pd-field__label">Special Requests / Notes</span>
-                <span className="pd-field__value" style={{ background: '#faf8f3', padding: '10px 12px', borderRadius: '8px', border: '1px solid #ede8dc' }}>
-                  {selectedBooking.specialRequests || 'No special requests provided.'}
-                </span>
-              </div>
-            </div>
-
-            <div style={{ paddingTop: '16px', borderTop: '1px solid #f0ece3', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#123b5d' }}>Manage Status:</span>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {selectedBooking.status === 'Pending' && (
-                  <button className="pd-quick-btn pd-quick-btn--primary" onClick={() => handleStatusChange(selectedBooking.id, 'Confirmed')}>
-                    <CheckCircleIcon size={16} /> Confirm Booking
-                  </button>
-                )}
-                {selectedBooking.status === 'Confirmed' && (
-                  <button className="pd-quick-btn pd-quick-btn--primary" onClick={() => handleStatusChange(selectedBooking.id, 'Completed')}>
-                    <CheckCircleIcon size={16} /> Mark Completed
-                  </button>
-                )}
-                {selectedBooking.status !== 'Cancelled' && (
-                  <button className="pd-quick-btn pd-quick-btn--secondary" style={{ color: '#e74c3c', borderColor: '#e74c3c' }} onClick={() => handleStatusChange(selectedBooking.id, 'Cancelled')}>
-                    <CancelIcon size={16} /> Cancel Reservation
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Filter and Search Bar */}
-      <div className="pd-filter-bar">
-        <div className="pd-search-wrap">
-          <span className="pd-search-icon"><ManageSearchIcon size={18} /></span>
-          <input
-            type="text"
-            className="pd-search-input"
-            placeholder="Search by visitor, ID, or activity..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-
-        <div className="pd-filter-pills">
-          <button className={`pd-filter-pill ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => setFilterStatus('all')}>
-            All ({bookings.length})
-          </button>
-          <button className={`pd-filter-pill ${filterStatus === 'pending' ? 'active' : ''}`} onClick={() => setFilterStatus('pending')}>
-            Pending ({bookings.filter(b => b.status === 'Pending').length})
-          </button>
-          <button className={`pd-filter-pill ${filterStatus === 'confirmed' ? 'active' : ''}`} onClick={() => setFilterStatus('confirmed')}>
-            Confirmed ({bookings.filter(b => b.status === 'Confirmed').length})
-          </button>
-          <button className={`pd-filter-pill ${filterStatus === 'completed' ? 'active' : ''}`} onClick={() => setFilterStatus('completed')}>
-            Completed ({bookings.filter(b => b.status === 'Completed').length})
-          </button>
-        </div>
-      </div>
-
-      {/* Bookings Table */}
-      <div className="pd-card">
-        <div className="pd-card__body" style={{ padding: 0 }}>
-          {filtered.length === 0 ? (
-            <div className="pd-empty">
-              <div className="pd-empty__icon"><CalendarMonthIcon size={32} /></div>
-              <p className="pd-empty__title">No bookings found</p>
-              <p className="pd-empty__msg">No reservation records match the active search and status filter.</p>
-            </div>
-          ) : (
-            <div className="pd-table-wrap" style={{ border: 'none', borderRadius: 0 }}>
-              <table className="pd-table">
-                <thead>
-                  <tr>
-                    <th>Ref #</th>
-                    <th>Visitor</th>
-                    <th>Activity / Service</th>
-                    <th>Scheduled Date</th>
-                    <th>Guests</th>
-                    <th>Total</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(b => (
-                    <tr key={b.id}>
-                      <td style={{ fontWeight: 700, color: '#168aad' }}>{b.id}</td>
-                      <td>
-                        <div style={{ fontWeight: 600, color: '#123b5d' }}>{b.visitorName}</div>
-                        <div style={{ fontSize: '11.5px', color: '#888' }}>{b.visitorEmail}</div>
-                      </td>
-                      <td style={{ color: '#333' }}>{b.activityName}</td>
-                      <td>{formatDate(b.date)}</td>
-                      <td>{b.guests}</td>
-                      <td style={{ fontWeight: 700, color: '#123b5d' }}>{formatCurrency(b.totalAmount)}</td>
-                      <td>
-                        <span className={`pd-badge pd-badge--${b.status.toLowerCase()}`}>{b.status}</span>
-                      </td>
-                      <td>
-                        <div className="pd-row-actions">
-                          <button className="pd-row-btn pd-row-btn--view" onClick={() => setSelectedBooking(b)}>
-                            Details
-                          </button>
-                          {b.status === 'Pending' && (
-                            <button className="pd-row-btn pd-row-btn--confirm" onClick={() => handleStatusChange(b.id, 'Confirmed')}>
-                              Confirm
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── 5. Notifications Tab ──────────────────────────────────────────────────────
-
-function NotificationsTab({ notifications, onMarkAllRead, onToggleRead, onClearAll }) {
-  const [filter, setFilter] = useState('all') // all | booking | verification | provider
-
-  const filtered = notifications.filter(n => {
-    if (filter === 'all') return true
-    return n.category === filter
-  })
-
-  const unreadCount = notifications.filter(n => !n.read).length
-
-  return (
-    <div className="pd-notifications-tab">
-      <div className="pd-page-header">
-        <div className="pd-page-header__left">
-          <h1>Notifications</h1>
-          <p>Stay updated on new visitor reservations, accreditation verification, and system updates.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {unreadCount > 0 && (
-            <button className="pd-quick-btn pd-quick-btn--secondary" onClick={onMarkAllRead}>
-              <CheckCircleIcon size={16} /> Mark All Read
-            </button>
-          )}
-          {notifications.length > 0 && (
-            <button className="pd-quick-btn pd-quick-btn--secondary" onClick={onClearAll}>
-              <DeleteSweepIcon size={16} /> Clear All
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="pd-filter-pills" style={{ marginBottom: '20px' }}>
-        <button className={`pd-filter-pill ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
-          All ({notifications.length})
-        </button>
-        <button className={`pd-filter-pill ${filter === 'booking' ? 'active' : ''}`} onClick={() => setFilter('booking')}>
-          <CalendarMonthIcon size={14} style={{ marginRight: 6 }} /> Bookings ({notifications.filter(n => n.category === 'booking').length})
-        </button>
-        <button className={`pd-filter-pill ${filter === 'verification' ? 'active' : ''}`} onClick={() => setFilter('verification')}>
-          <VerifiedUserIcon size={14} style={{ marginRight: 6 }} /> Verification ({notifications.filter(n => n.category === 'verification').length})
-        </button>
-        <button className={`pd-filter-pill ${filter === 'provider' ? 'active' : ''}`} onClick={() => setFilter('provider')}>
-          <NotificationsActiveIcon size={14} style={{ marginRight: 6 }} /> Updates ({notifications.filter(n => n.category === 'provider').length})
-        </button>
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="pd-card">
-          <div className="pd-card__body">
-            <div className="pd-empty">
-              <div className="pd-empty__icon"><NotificationsActiveIcon size={32} /></div>
-              <p className="pd-empty__title">No notifications</p>
-              <p className="pd-empty__msg">You have caught up with all notifications in this category.</p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="pd-notif-list">
-          {filtered.map(n => (
-            <div
-              key={n.id}
-              className={`pd-notif-item ${!n.read ? 'pd-notif-item--unread' : ''}`}
-              style={{ cursor: 'pointer' }}
-              onClick={() => onToggleRead && onToggleRead(n.id)}
-            >
-              <div
-                className="pd-notif-icon"
-                style={{
-                  background: n.category === 'booking' ? 'rgba(22, 138, 173, 0.15)' : n.category === 'verification' ? 'rgba(79, 138, 69, 0.15)' : 'rgba(214, 168, 95, 0.2)',
-                  color: n.category === 'booking' ? '#168aad' : n.category === 'verification' ? '#4f8a45' : '#b8860b'
-                }}
-              >
-                {n.category === 'booking' ? (
-                  <CalendarMonthIcon size={20} />
-                ) : n.category === 'verification' ? (
-                  <VerifiedUserIcon size={20} />
-                ) : (
-                  <NotificationsActiveIcon size={20} />
-                )}
-              </div>
-              <div className="pd-notif-content">
-                <h3 className="pd-notif-title">{n.title}</h3>
-                <p className="pd-notif-desc">{n.desc}</p>
-                <span className="pd-notif-time">{n.time}</span>
-              </div>
-              {!n.read && <div className="pd-notif-dot" title="Unread" />}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── 6. Account Profile Tab ────────────────────────────────────────────────────
-
-function AccountTab({ token, onLogout, showToast, onProfileUpdate }) {
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState(null)
-  const [editing, setEditing] = useState(false)
-  const [formData, setFormData] = useState({})
-  const [saveLoading, setSaveLoading] = useState(false)
-  const [saveError, setSaveError] = useState(null)
-  const [avatarUploading, setAvatarUploading] = useState(false)
-  const [avatarError, setAvatarError] = useState(null)
-  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false)
-
-  const onLogoutRef = useRef(onLogout)
-  useEffect(() => { onLogoutRef.current = onLogout }, [onLogout])
-  const onProfileUpdateRef = useRef(onProfileUpdate)
-  useEffect(() => { onProfileUpdateRef.current = onProfileUpdate }, [onProfileUpdate])
-
-  const fetchProfile = useCallback(async () => {
-    const activeToken = token || localStorage.getItem('authToken')
-    if (!activeToken) {
-      setLoadError('Session expired. Please log in again.')
-      setLoading(false)
-      onLogoutRef.current && onLogoutRef.current()
-      return
-    }
-
-    setLoading(true)
-    setLoadError(null)
-    try {
-      const resp = await fetch(apiUrl('/api/users/me'), {
-        headers: { Authorization: `Bearer ${activeToken}` }
-      })
-      if (resp.ok) {
-        const data = await resp.json()
-        setProfile(data)
-        onProfileUpdateRef.current && onProfileUpdateRef.current(data)
-        setFormData({
-          firstName: data.firstName || '',
-          lastName: data.lastName || '',
-          phoneNumber: data.phoneNumber || '',
-          nationality: data.nationality || ''
-        })
-      } else if (resp.status === 401) {
-        setLoadError('Session expired or unauthorized. Please log in again.')
-        onLogoutRef.current && onLogoutRef.current()
-      } else {
-        setLoadError('Failed to load profile. Please try again.')
-      }
-    } catch {
-      setLoadError('Network error. Please check your connection.')
-    } finally {
-      setLoading(false)
-    }
-  }, [token])
-
-  useEffect(() => {
-    fetchProfile()
-  }, [fetchProfile])
-
-  const handleEdit = () => {
-    setSaveError(null)
-    setEditing(true)
-  }
-
-  const handleCancel = () => {
-    setFormData({
-      firstName: profile?.firstName || '',
-      lastName: profile?.lastName || '',
-      phoneNumber: profile?.phoneNumber || '',
-      nationality: profile?.nationality || ''
-    })
-    setSaveError(null)
-    setEditing(false)
-  }
-
-  const handleChange = (e) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
-  }
-
-  const handleSave = async (e) => {
-    e.preventDefault()
-    setSaveError(null)
-    setSaveLoading(true)
-
-    const activeToken = token || localStorage.getItem('authToken')
-    try {
-      const resp = await fetch(apiUrl('/api/users/me'), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${activeToken}`
-        },
-        body: JSON.stringify(formData)
-      })
-
-      if (resp.ok) {
-        const body = await resp.json()
-        const updated = body.profile ?? body
-        setProfile(updated)
-        onProfileUpdateRef.current && onProfileUpdateRef.current(updated)
-        setFormData({
-          firstName: updated.firstName,
-          lastName: updated.lastName,
-          phoneNumber: updated.phoneNumber,
-          nationality: updated.nationality
-        })
-        setEditing(false)
-        showToast('Personal account profile updated successfully.')
-      } else if (resp.status === 401) {
-        onLogoutRef.current && onLogoutRef.current()
-      } else if (resp.status === 400 || resp.status === 422) {
-        const body = await resp.json().catch(() => ({}))
-        const first = body.errors && Object.values(body.errors).flat()[0]
-        setSaveError(first || body.message || 'Validation error. Check your input.')
-      } else {
-        setSaveError('Server error. Please try again.')
-      }
-    } catch {
-      setSaveError('Network error. Please check your connection.')
-    } finally {
-      setSaveLoading(false)
-    }
-  }
-
-  const handleAvatarChange = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    if (!file.type.startsWith('image/')) {
-      setAvatarError('Please select a valid image file (JPG, PNG, WebP).')
-      return
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setAvatarError('Image must be smaller than 5 MB.')
-      return
-    }
-
-    setAvatarError(null)
-    setAvatarUploading(true)
-
-    const activeToken = token || localStorage.getItem('authToken')
-    try {
-      const data = new FormData()
-      data.append('file', file)
-
-      const resp = await fetch(apiUrl('/api/users/me/profile-picture'), {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${activeToken}`
-        },
-        body: data
-      })
-
-      if (resp.ok) {
-        const result = await resp.json()
-        const updated = result.profile ?? { ...profile, profilePictureUrl: result.profilePictureUrl }
-        setProfile(updated)
-        onProfileUpdateRef.current && onProfileUpdateRef.current(updated)
-        showToast('Profile picture updated successfully.')
-      } else {
-        const errBody = await resp.json().catch(() => ({}))
-        setAvatarError(errBody.message || 'Failed to upload profile picture.')
-      }
-    } catch {
-      setAvatarError('Network error while uploading photo.')
-    } finally {
-      setAvatarUploading(false)
-      e.target.value = ''
-    }
-  }
-
-  const handleRemoveAvatar = async () => {
-    setAvatarError(null)
-    setAvatarUploading(true)
-
-    const activeToken = token || localStorage.getItem('authToken')
-    try {
-      const resp = await fetch(apiUrl('/api/users/me/profile-picture'), {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${activeToken}`
-        }
-      })
-
-      if (resp.ok) {
-        const result = await resp.json()
-        const updated = result.profile ?? { ...profile, profilePictureUrl: null }
-        setProfile(updated)
-        onProfileUpdateRef.current && onProfileUpdateRef.current(updated)
-        setShowRemoveConfirm(false)
-        showToast('Profile picture removed.')
-      } else {
-        const errBody = await resp.json().catch(() => ({}))
-        setAvatarError(errBody.message || 'Failed to remove profile picture.')
-      }
-    } catch {
-      setAvatarError('Network error while removing photo.')
-    } finally {
-      setAvatarUploading(false)
-    }
-  }
-
-  return (
-    <div className="pd-account-tab">
-      <ConfirmModal
-        isOpen={showRemoveConfirm}
-        title="Remove Profile Picture"
-        message="Are you sure you want to remove your profile picture?"
-        confirmText="Remove Photo"
-        cancelText="Cancel"
-        confirmVariant="danger"
-        onConfirm={handleRemoveAvatar}
-        onCancel={() => setShowRemoveConfirm(false)}
-        loading={avatarUploading}
-      />
-
-      <div className="pd-page-header">
-        <div className="pd-page-header__left">
-          <h1>Account Settings</h1>
-          <p>Manage your personal profile and account credentials.</p>
-        </div>
-      </div>
-
-      <div className="pd-card">
-        <div className="pd-card__body">
-          {loading && <LoadingState label="Loading profile information…" />}
-          {loadError && !loading && (
-            <div className="pd-form-error" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span>{loadError}</span>
-              <button
-                type="button"
-                onClick={fetchProfile}
-                style={{
-                  background: '#123b5d',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}
-              >
-                Retry
-              </button>
-            </div>
-          )}
-
-          {!loading && profile && !editing && (
-            <>
-              <div className="pd-identity">
-                <div className="pd-avatar-wrapper">
-                  <div className="pd-avatar" aria-hidden="true">
-                    {profile.profilePictureUrl ? (
-                      <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="pd-avatar__img" />
-                    ) : (
-                      initials(profile.firstName, profile.lastName)
-                    )}
-                  </div>
-                  <label className="pd-avatar-upload-btn" title="Upload / Change profile photo">
-                    <PhotoCameraIcon size={14} />
-                    <input
-                      type="file"
-                      accept="image/png, image/jpeg, image/webp"
-                      onChange={handleAvatarChange}
-                      disabled={avatarUploading}
-                      style={{ display: 'none' }}
-                    />
-                  </label>
-                </div>
-
-                <div className="pd-identity__info">
-                  <h2 className="pd-identity__name">{profile.firstName} {profile.lastName}</h2>
-                  <p className="pd-identity__email">{profile.email}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
-                    <span className="pd-identity__badge"><BadgeIcon size={13} style={{ marginRight: 4 }} /> Provider Account</span>
-                    {profile.profilePictureUrl && (
-                      <button
-                        type="button"
-                        className="pd-avatar-remove-text-btn"
-                        onClick={() => setShowRemoveConfirm(true)}
-                        disabled={avatarUploading}
-                      >
-                        <DeleteSweepIcon size={13} style={{ marginRight: 4 }} /> Remove Photo
-                      </button>
-                    )}
-                  </div>
-                  {avatarUploading && <div className="pd-avatar-status">Uploading photo…</div>}
-                  {avatarError && <div className="pd-avatar-error">{avatarError}</div>}
-                </div>
-                <button className="pd-edit-btn" onClick={handleEdit} id="edit-account-profile-btn">
-                  <CreateIcon size={14} style={{ marginRight: 6 }} /> Edit Profile
-                </button>
-              </div>
-
-              <div className="pd-fields">
-                <div className="pd-field">
-                  <span className="pd-field__label">First Name</span>
-                  <span className="pd-field__value">{profile.firstName}</span>
-                </div>
-                <div className="pd-field">
-                  <span className="pd-field__label">Last Name</span>
-                  <span className="pd-field__value">{profile.lastName}</span>
-                </div>
-                <div className="pd-field">
-                  <span className="pd-field__label">Email Address</span>
-                  <span className="pd-field__value">{profile.email}</span>
-                </div>
-                <div className="pd-field">
-                  <span className="pd-field__label">Contact Phone</span>
-                  <span className="pd-field__value">{profile.phoneNumber || '—'}</span>
-                </div>
-                <div className="pd-field">
-                  <span className="pd-field__label">Nationality</span>
-                  <span className="pd-field__value">{profile.nationality || '—'}</span>
-                </div>
-                <div className="pd-field">
-                  <span className="pd-field__label">Member Since</span>
-                  <span className="pd-field__value">{formatDate(profile.createdAt)}</span>
-                </div>
-              </div>
-            </>
-          )}
-
-          {!loading && profile && editing && (
-            <form onSubmit={handleSave} className="pd-edit-form" noValidate>
-              <div className="pd-identity" style={{ marginBottom: '24px' }}>
-                <div className="pd-avatar-wrapper">
-                  <div className="pd-avatar" aria-hidden="true">
-                    {profile.profilePictureUrl ? (
-                      <img src={formatAvatarUrl(profile.profilePictureUrl)} alt="" className="pd-avatar__img" />
-                    ) : (
-                      initials(formData.firstName, formData.lastName)
-                    )}
-                  </div>
-                  <label className="pd-avatar-upload-btn" title="Upload / Change profile photo">
-                    <PhotoCameraIcon size={14} />
-                    <input
-                      type="file"
-                      accept="image/png, image/jpeg, image/webp"
-                      onChange={handleAvatarChange}
-                      disabled={avatarUploading}
-                      style={{ display: 'none' }}
-                    />
-                  </label>
-                </div>
-                <div className="pd-identity__info">
-                  <h2 className="pd-identity__name">{formData.firstName} {formData.lastName}</h2>
-                  <p className="pd-identity__email">{profile.email}</p>
-                  {avatarUploading && <div className="pd-avatar-status">Uploading photo…</div>}
-                  {avatarError && <div className="pd-avatar-error">{avatarError}</div>}
-                </div>
-              </div>
-
-              {saveError && <div className="pd-form-error">{saveError}</div>}
-
-              <div className="pd-form-grid">
-                <div className="pd-form-group">
-                  <label htmlFor="acc-firstName">First Name *</label>
-                  <input
-                    id="acc-firstName"
-                    name="firstName"
-                    type="text"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="pd-form-group">
-                  <label htmlFor="acc-lastName">Last Name *</label>
-                  <input
-                    id="acc-lastName"
-                    name="lastName"
-                    type="text"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="pd-form-group">
-                  <label htmlFor="acc-email">Email Address</label>
-                  <input id="acc-email" type="email" value={profile.email} disabled aria-readonly="true" />
-                  <p className="pd-field-note">Email address cannot be changed.</p>
-                </div>
-                <div className="pd-form-group">
-                  <label htmlFor="acc-phone">Phone Number *</label>
-                  <input
-                    id="acc-phone"
-                    name="phoneNumber"
-                    type="tel"
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="pd-form-group pd-form-group--full">
-                  <label htmlFor="acc-nationality">Nationality *</label>
-                  <input
-                    id="acc-nationality"
-                    name="nationality"
-                    type="text"
-                    value={formData.nationality}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="pd-form-actions">
-                <button type="submit" className="pd-save-btn" disabled={saveLoading}>
-                  {saveLoading ? 'Saving…' : 'Save Changes'}
-                </button>
-                <button type="button" className="pd-cancel-btn" onClick={handleCancel} disabled={saveLoading}>
-                  Cancel
-                </button>
-              </div>
-            </form>
           )}
         </div>
       </div>
@@ -1650,69 +1846,83 @@ function ProviderDashboard({ onLogout }) {
   const token = localStorage.getItem('authToken')
   const role = localStorage.getItem('userRole')
 
-  // Auth Guard
   useEffect(() => {
     if (!token || role !== 'Provider') {
       onLogout && onLogout()
     }
   }, [token, role, onLogout])
 
-  // Sync Bookings to LocalStorage
   useEffect(() => {
     try {
       localStorage.setItem('ceylonquest_provider_bookings', JSON.stringify(bookings))
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, [bookings])
 
-  // Sync Notifications to LocalStorage
   useEffect(() => {
     try {
       localStorage.setItem('ceylonquest_provider_notifications', JSON.stringify(notifications))
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, [notifications])
 
   const showToast = useCallback((msg) => setToast(msg), [])
 
-  // Fetch Provider Info
   const fetchProviderInfo = useCallback(async () => {
     if (!token) return
     try {
-      const resp = await fetch(apiUrl('/api/provider/info'), {
+      const resp = await fetch(catalogUrl('/api/catalog/provider/profile'), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
         setProviderInfo(await resp.json())
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, [token])
 
-  // Fetch Services & Prices
+  // ── Category detection ──
+  const serviceTypeLower = (providerInfo?.serviceType || '').toLowerCase()
+  const isHotel =
+    serviceTypeLower.includes('hotel') ||
+    serviceTypeLower.includes('accommodat') ||
+    serviceTypeLower.includes('villa') ||
+    serviceTypeLower.includes('resort') ||
+    serviceTypeLower.includes('room')
+  const isRestaurant =
+    serviceTypeLower.includes('restaurant') ||
+    serviceTypeLower.includes('dining') ||
+    serviceTypeLower.includes('dinner') ||
+    serviceTypeLower.includes('food') ||
+    serviceTypeLower.includes('cafe') ||
+    serviceTypeLower.includes('catering')
+
+  const catalogEndpoint = isHotel
+    ? '/api/catalog/accommodation-listings'
+    : isRestaurant
+    ? '/api/catalog/restaurant-listings'
+    : '/api/catalog/activity-listings'
+
   const fetchServices = useCallback(async () => {
-    if (!token) return
+    if (!token || !providerInfo) return
     try {
-      const resp = await fetch(apiUrl('/api/provider/prices'), {
+      const resp = await fetch(catalogUrl(catalogEndpoint), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
-        setServices(await resp.json())
+        const data = await resp.json()
+        setServices(data)
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('Failed to load listings', err)
     }
-  }, [token])
+  }, [token, catalogEndpoint, providerInfo])
 
   useEffect(() => {
     fetchProviderInfo()
-    fetchServices()
-  }, [fetchProviderInfo, fetchServices])
+  }, [fetchProviderInfo])
 
-  // Handlers for Bookings & Notifications
+  useEffect(() => {
+    fetchServices()
+  }, [fetchServices])
+
   const handleUpdateBookingStatus = (bookingId, newStatus) => {
     setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b))
     showToast(`Booking ${bookingId} marked as ${newStatus}.`)
@@ -1749,7 +1959,7 @@ function ProviderDashboard({ onLogout }) {
       if (resp.ok) {
         setUserProfile(await resp.json())
       }
-    } catch { }
+    } catch {}
   }, [token])
 
   useEffect(() => {
@@ -1761,8 +1971,15 @@ function ProviderDashboard({ onLogout }) {
   const navItems = [
     { key: 'overview',      icon: <DashboardIcon size={18} />,          label: 'Overview' },
     { key: 'business',      icon: <StorefrontIcon size={18} />,         label: 'Business Profile' },
-    { key: 'services',      icon: <KitesurfingIcon size={18} />,        label: 'Activities & Services' },
+    {
+      key: 'services',
+      icon: <KitesurfingIcon size={18} />,
+      label: isHotel ? 'Rooms & Accommodations'
+           : isRestaurant ? 'Menu & Dining'
+           : 'Activities & Services'
+    },
     { key: 'bookings',      icon: <CalendarMonthIcon size={18} />,       label: 'Bookings' },
+    { key: 'reports',       icon: <CalendarMonthIcon size={18} />,            label: 'Inventory Reports' },
     { key: 'notifications', icon: <NotificationsActiveIcon size={18} />, label: 'Notifications', badge: unreadNotifCount > 0 ? unreadNotifCount : null },
     { key: 'account',       icon: <PermIdentityIcon size={18} />,        label: 'Account' }
   ]
@@ -1771,11 +1988,10 @@ function ProviderDashboard({ onLogout }) {
     <div className="pd-page">
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
 
-      {/* ── Sidebar ── */}
       <aside className="pd-sidebar">
         <div className="pd-sidebar__brand">
           <img src="/dashboard-logo.png" alt="CeylonQuest" className="pd-sidebar__logo-img" />
-          <span className="pd-sidebar__role">Provider Hub</span>
+          <span className="pd-sidebar__role">Provider Portal</span>
         </div>
 
         <ul className="pd-sidebar__nav">
@@ -1810,13 +2026,12 @@ function ProviderDashboard({ onLogout }) {
               </div>
             </div>
           )}
-          <button className="pd-logout-btn" onClick={handleLogout} id="pd-logout-btn">
+          <button className="pd-logout-btn" id="pd-logout-btn" onClick={handleLogout}>
             <span className="pd-nav-icon"><LogoutIcon size={18} /></span> Log Out
           </button>
         </div>
       </aside>
 
-      {/* ── Main Content Body ── */}
       <main className="pd-main">
         {activeTab === 'overview' && (
           <OverviewTab
@@ -1839,10 +2054,13 @@ function ProviderDashboard({ onLogout }) {
         )}
 
         {activeTab === 'services' && (
-          <ActivitiesTab
+          <ListingsTab
             token={token}
             onLogout={handleLogout}
             services={services}
+            isHotel={isHotel}
+            isRestaurant={isRestaurant}
+            catalogEndpoint={catalogEndpoint}
             onRefreshServices={fetchServices}
             showToast={showToast}
           />
@@ -1852,6 +2070,14 @@ function ProviderDashboard({ onLogout }) {
           <BookingsTab
             bookings={bookings}
             onUpdateBookingStatus={handleUpdateBookingStatus}
+          />
+        )}
+
+        {activeTab === 'reports' && (
+          <InventoryReportView
+            token={token}
+            onLogout={handleLogout}
+            isAdmin={false}
           />
         )}
 

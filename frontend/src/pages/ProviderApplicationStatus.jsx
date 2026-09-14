@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import '../styles/ProviderApplicationStatus.css'
-import { apiUrl } from '../api/client'
+import { apiUrl, catalogUrl } from '../api/client'
 
 function formatDate(iso) {
   if (!iso) return '—'
@@ -46,7 +46,7 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
     setSearchedEmail(cleanEmail)
 
     try {
-      const resp = await fetch(apiUrl(`/api/provider-applications/status?email=${encodeURIComponent(cleanEmail)}`))
+      const resp = await fetch(catalogUrl(`/api/catalog/provider-applications/status?email=${encodeURIComponent(cleanEmail)}`))
 
       if (resp.ok) {
         const data = await resp.json()
@@ -96,7 +96,7 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
         <div className="pas-header">
           <div className="pas-logo" onClick={onBack} style={{ cursor: 'pointer' }}>
             <img src="/dashboard-logo.png" alt="CeylonQuest" className="pas-logo__img" />
-            <span className="pas-logo__badge">Provider Verification</span>
+            <span className="pas-logo__badge">Provider Status</span>
           </div>
           <h1 className="pas-title">Track Application Status</h1>
           <p className="pas-subtitle">
@@ -323,19 +323,14 @@ function ProviderApplicationStatus({ onBack, onApply, onLogin, onActivate }) {
         </div>
 
         <div className="pas-footer-nav">
-          {onBack && (
-            <button type="button" className="pas-footer-btn" onClick={onBack}>
-              ← Back to Registration
+          {onActivate && (
+            <button type="button" className="pas-footer-btn" onClick={onActivate}>
+              Provider Login →
             </button>
           )}
           {onApply && (
             <button type="button" className="pas-footer-btn" onClick={onApply}>
               Apply as Provider →
-            </button>
-          )}
-          {onLogin && (
-            <button type="button" className="pas-footer-btn" onClick={onLogin}>
-              Provider Login →
             </button>
           )}
         </div>

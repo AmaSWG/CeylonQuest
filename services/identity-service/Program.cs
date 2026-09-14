@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 using Shared.Kafka;
 using System.Text.Json.Serialization;
+using Shared.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -109,6 +110,8 @@ if (!builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddHostedService<ProviderApprovedConsumer>();
 }
 
+builder.Services.AddScoped<IBlobStorageService, BlobStorageService>();
+
 var app = builder.Build();
 
 // Fail loudly at startup rather than silently at first use. These values are secrets
@@ -194,10 +197,11 @@ if (!app.Environment.IsEnvironment("Testing"))
             }
         }
         catch (Exception ex)
-        {
-            var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
-            logger.LogError(ex, "Failed to apply migrations or seeds on startup");
-        }
+			{
+				Console.WriteLine("DATABASE MIGRATION ERROR:");
+				Console.WriteLine(ex.ToString());
+				throw;
+			}
     }
 }
 else

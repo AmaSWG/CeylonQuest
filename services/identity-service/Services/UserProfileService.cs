@@ -2,6 +2,7 @@ using IdentityService.Data;
 using IdentityService.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Shared.Storage;
 
 namespace IdentityService.Services;
 
@@ -13,10 +14,14 @@ public class UserNotFoundException : Exception
 public class UserProfileService
 {
     private readonly ApplicationDbContext _db;
+    private readonly IBlobStorageService _blobStorage;
+    private readonly string _avatarContainer;
 
-    public UserProfileService(ApplicationDbContext db)
+    public UserProfileService(ApplicationDbContext db, IBlobStorageService blobStorage, IConfiguration configuration)
     {
         _db = db;
+        _blobStorage = blobStorage;
+        _avatarContainer = configuration["AzureStorage:ProfilePicturesContainer"] ?? "profile-images";
     }
 
     public async Task<UserProfileResponse> GetProfileAsync(Guid userId)
@@ -49,7 +54,7 @@ public class UserProfileService
         return MapToResponse(user);
     }
 
-    public async Task<UserProfileResponse> UploadProfilePictureAsync(Guid userId, IFormFile file, string baseDirectory)
+    public async Task<UserProfileResponse> UploadProfilePictureAsync(Guid userId, IFormFile file)
     {
         if (file == null || file.Length == 0)
             throw new ArgumentException("No image file was uploaded.");
@@ -67,36 +72,33 @@ public class UserProfileService
         if (user is null)
             throw new UserNotFoundException($"User {userId} not found.");
 
-        var avatarsFolder = Path.Combine(baseDirectory, "uploads", "avatars");
-        Directory.CreateDirectory(avatarsFolder);
-
-        // Clean up previous uploaded avatar file if local
+        // 1. Delete previous avatar from Azure if one exists
         if (!string.IsNullOrWhiteSpace(user.ProfilePictureUrl))
         {
             try
             {
-                var oldFileName = Path.GetFileName(user.ProfilePictureUrl);
-                var oldFilePath = Path.Combine(avatarsFolder, oldFileName);
-                if (File.Exists(oldFilePath)) File.Delete(oldFilePath);
+                await _blobStorage.DeleteAsync(user.ProfilePictureUrl, _avatarContainer);
             }
-            catch { }
+            catch { /* Ignore if old blob is not found */ }
         }
 
-        var newFileName = $"{userId}_{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}{ext}";
-        var newFilePath = Path.Combine(avatarsFolder, newFileName);
+        // 2. Upload new avatar stream to Azure Blob Container
+        var blobName = $"{userId}_{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}{ext}";
+        var contentType = (file.Headers != null && !string.IsNullOrWhiteSpace(file.ContentType))
+            ? file.ContentType
+            : (ext == ".png" ? "image/png" : ext == ".webp" ? "image/webp" : "image/jpeg");
 
-        using (var stream = new FileStream(newFilePath, FileMode.Create))
-        {
-            await file.CopyToAsync(stream);
-        }
+        await using var stream = file.OpenReadStream();
+        var blobUrl = await _blobStorage.UploadAsync(stream, blobName, _avatarContainer, contentType);
 
-        user.ProfilePictureUrl = $"/api/users/avatar/{newFileName}";
+        // 3. Save direct Azure Blob URL in database
+        user.ProfilePictureUrl = blobUrl;
         await _db.SaveChangesAsync();
 
         return MapToResponse(user);
     }
 
-    public async Task<UserProfileResponse> RemoveProfilePictureAsync(Guid userId, string baseDirectory)
+    public async Task<UserProfileResponse> RemoveProfilePictureAsync(Guid userId)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user is null)
@@ -106,10 +108,7 @@ public class UserProfileService
         {
             try
             {
-                var avatarsFolder = Path.Combine(baseDirectory, "uploads", "avatars");
-                var oldFileName = Path.GetFileName(user.ProfilePictureUrl);
-                var oldFilePath = Path.Combine(avatarsFolder, oldFileName);
-                if (File.Exists(oldFilePath)) File.Delete(oldFilePath);
+                await _blobStorage.DeleteAsync(user.ProfilePictureUrl, _avatarContainer);
             }
             catch { }
         }

@@ -61,7 +61,7 @@ Reset Password
 
 {resetLink}
 
-This link will expire after the configured amount of time.
+This link will expire after 30 minutes.
 
 If you did not request a password reset, you can safely ignore this email.";
 
@@ -110,6 +110,84 @@ If you did not request a password reset, you can safely ignore this email.";
 
             _logger.LogError(ex, "Failed to send password reset email to {Email}", recipientEmail);
         }
+    }
+	
+	public async Task SendProviderOtpEmailAsync(
+        string recipientEmail,
+		string businessName,
+        string otp,
+		CancellationToken cancellationToken = default)
+    {
+		if (string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            throw new ArgumentException("Recipient email cannot be empty.", nameof(recipientEmail));
+        }
+		
+		var isDevelopment = IsDevelopmentEnvironment();
+        var host = _config["Email:Host"];
+        var portStr = _config["Email:Port"];
+        var port = int.TryParse(portStr, out var p) ? p : 587;
+        var username = _config["Email:Username"];
+        var password = _config["Email:Password"];
+        var fromAddress = _config["Email:From"] ?? "noreply@ceylonquest.com";
+        var fromName = _config["Email:FromName"] ?? "CeylonQuest";
+        var enableSsl = bool.TryParse(_config["Email:EnableSsl"], out var ssl) ? ssl : true;
+
+        var subject = "Your CeylonQuest Provider Application has been Approved!";
+        var body = $@"Hello,
+
+		A CeylonQuest Admin has reviewed and approved your provider application.
+
+		Use this OTP to finish setting up your provider account and start creating new experiences.
+
+		6-digit OTP
+
+		{otp}
+
+		This otp will expire after 5 minutes.
+		
+		If you did not request this, please ignore this email.";
+		
+		if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+		{
+			if (isDevelopment)
+			{
+				_logger.LogInformation("[DEV] Provider OTP email for {Email} ({Business})", recipientEmail, businessName);
+				_logger.LogInformation("[DEV] OTP Code: {Otp}", otp);
+				return;
+			}
+				_logger.LogError("SMTP credentials not configured. Cannot send provider OTP email in production.");
+				return;
+			}
+			try
+			{
+				using var message = new MailMessage();
+				message.From = new MailAddress(fromAddress, fromName);
+				message.To.Add(new MailAddress(recipientEmail));
+				message.Subject = subject;
+				message.Body = body;
+				message.IsBodyHtml = false;
+				using var client = new SmtpClient(host, port);
+				client.EnableSsl = enableSsl;
+				client.Credentials = new NetworkCredential(username, password);
+				using (cancellationToken.Register(() => client.SendAsyncCancel()))
+				{
+					await client.SendMailAsync(message);
+				}
+				_logger.LogInformation("Provider OTP email sent successfully to {Email}", recipientEmail);
+			}
+			catch (Exception ex)
+			{
+				if (isDevelopment)
+				{
+					_logger.LogWarning(ex, "[DEV] SMTP send failed; falling back to console output.");
+					_logger.LogInformation("[DEV] Provider OTP email for {Email}", recipientEmail);
+					_logger.LogInformation("[DEV] OTP Code: {Otp}", otp);
+					return;
+				}
+				_logger.LogError(ex, "Failed to send provider OTP email to {Email}", recipientEmail);
+		}
+
     }
 
     private bool IsDevelopmentEnvironment()

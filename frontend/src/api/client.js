@@ -23,4 +23,10 @@ export function apiUrl(path) {
   return `${API_BASE}${path}`
 }
 
-export { API_BASE }
+const CATALOG_BASE = (import.meta.env.VITE_CATALOG_API_BASE_URL || '').replace(/\/$/, '')
+
+export function catalogUrl(path) {
+  return `${CATALOG_BASE}${path}`
+}
+
+export { API_BASE, CATALOG_BASE }

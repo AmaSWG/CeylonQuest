@@ -6,6 +6,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      '/api/catalog': {
+        target: 'http://localhost:5141',
+        changeOrigin: true,
+        secure: false,
+      },
       '/api': {
         // DEV SHORTCUT: proxying directly to the Identity Service,
         // bypassing the API Gateway (localhost:5000).

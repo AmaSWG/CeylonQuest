@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import '../styles/ProviderApplication.css'
-import { apiUrl } from '../api/client'
+import { FolderIcon } from '../components/Icons'
+import { apiUrl, catalogUrl } from '../api/client'
 
 function ProviderSuccessToast({ message, onClose }) {
   useEffect(() => {
@@ -25,10 +26,20 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
-
+  const [selectedFiles, setSelectedFiles] = useState([])
+  
   const handleFileChange = (e) => {
-    const file = e.target.files[0]
-    setFileName(file ? file.name : '')
+    const newFiles = Array.from(e.target.files)
+    if (selectedFiles.length + newFiles.length > 5) {
+      setError('You can upload a maximum of 5 verification documents.')
+      return
+    }
+    setSelectedFiles(prev => [...prev, ...newFiles])
+    setError(null)
+  }
+
+  const handleRemoveFile = (indexToRemove) => {
+    setSelectedFiles(prev => prev.filter((_, idx) => idx !== indexToRemove))
   }
 
   const handleSubmit = async (event) => {
@@ -40,8 +51,12 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
     const form = event.target
     const fd = new FormData(form)
 
+    selectedFiles.forEach(file => {
+      fd.append('LegalDocuments', file)
+    })
+
     try {
-      const resp = await fetch(apiUrl('/api/provider-applications'), {
+      const resp = await fetch(catalogUrl('/api/catalog/provider-applications'), {
         method: 'POST',
         body: fd
       }).catch(() => null)
@@ -143,6 +158,11 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
             </div>
 
             <div className="form-group">
+              <label htmlFor="p-phone"><span className="provider-app-required-star">*</span> Business Contact Number</label>
+              <input id="p-phone" name="phoneNumber" type="tel" placeholder="e.g. +94 77 123 4567" required />
+            </div>
+
+            <div className="form-group">
               <label htmlFor="pa-location"><span className="provider-app-required-star">*</span> Business Location</label>
               <div className="field-wrap">
                 <input
@@ -169,30 +189,36 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
             </div>
 
             <div className="form-group">
-              <label htmlFor="pa-legalDoc"><span className="provider-app-required-star">*</span> Legal &amp; Registration Document</label>
+              <label htmlFor="pa-legalDoc"><span className="provider-app-required-star">*</span> Business and Legal Verification Documents (1 to 5 files)</label>
               <div className="field-wrap">
                 <div className="file-upload-zone">
                   <input
                     type="file"
                     id="pa-legalDoc"
                     name="legalDocument"
-                    accept=".pdf,.jpg,.jpeg,.png,.docx,.doc"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png"
                     onChange={handleFileChange}
-                    required
+                    disabled={selectedFiles.length >= 5}
                   />
-                  <div className="file-upload-icon"></div>
-                  {fileName ? (
-                    <span className="file-upload-label">{fileName}</span>
-                  ) : (
-                    <>
-                      <span className="file-upload-label">Click to upload business certificate</span>
-                      <span className="file-upload-hint">PDF, JPEG, PNG, or DOCX accepted</span>
-                    </>
-                  )}
+                  <div className="file-upload-icon"><FolderIcon/></div>
+                  <span className="file-upload-label">
+                    {selectedFiles.length === 0 ? 'Click to select certificates (PDF, JPG, PNG)' : `+ Add more documents (${selectedFiles.length}/5)`}
+                  </span>
                 </div>
-                <small>
-                  Upload your Business Registration (BR), Tourism License, or trade certificate.
-                </small>
+                  {selectedFiles.length > 0 && (
+                    <ul style={{ listStyle: 'none', padding: 0, marginTop: 10 }}>
+                      {selectedFiles.map((f, idx) => (
+                        <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f1f5f9', padding: '6px 12px', borderRadius: 6, marginBottom: 4, fontSize: 13 }}>
+                          <span>📄 {f.name} ({(f.size / 1024 / 1024).toFixed(2)} MB)</span>
+                          <button type="button" onClick={() => handleRemoveFile(idx)} style={{ color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <small style={{ color: '#64748b' }}>
+                    Upload BR Certificate, Tourism License, or Tax Registration. 1 document is mandatory; up to 5 allowed.
+                  </small>
               </div>
             </div>
           </div>

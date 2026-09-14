@@ -1,13 +1,9 @@
-/* =====================================================
-   ProviderDashboard.css — CeylonQuest Provider Dashboard
-   Prefix: pd-
-   ===================================================== */
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* ── Layout ── */
 .pd-page {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   background-color: #f7f3e8;
   font-family: 'Inter', system-ui, sans-serif;
@@ -212,7 +208,7 @@
   content: "";
   position: absolute;
   top: 0;
-  left: 36px;
+  left: 50%;
   width: 60px;
   height: 4px;
   background-color: #d6a85f;
@@ -408,6 +404,7 @@
   margin: 0;
   color: #555555;
   font-size: 13px;
+  text-align: justify;
 }
 
 /* ── Identity Block (Account / Business) ── */
@@ -444,12 +441,14 @@
   color: #123b5d;
   font-size: 20px;
   font-weight: 700;
+  text-align: left;
 }
 
 .pd-identity__email {
   margin: 0 0 6px;
   color: #888888;
   font-size: 13.5px;
+  text-align: left;
 }
 
 .pd-identity__badge {
@@ -1335,4 +1334,5 @@
   .pd-card__body { padding: 20px 18px; }
   .pd-fields { grid-template-columns: 1fr; }
   .pd-form-grid { grid-template-columns: 1fr; }
+  .pd-metrics-grid {grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));}
 }
