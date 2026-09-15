@@ -143,9 +143,9 @@ export default function InventoryReportView({ token, onLogout, isAdmin = false }
   return (
     <div className="cq-inv-report">
       {/* ── Page Header ── */}
-      <div className="pd-page-header" style={{ marginBottom: '16px' }}>
+      <div className="pd-page-header pd-mb-16">
         <div className="pd-page-header__left">
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h1 className="cq-report-header-title">
             <BarChartIcon size={26} />
             {isAdmin ? 'Island-wide Listings & Inventory Report' : 'Live Availability & Capacity Report'}
           </h1>
@@ -271,14 +271,14 @@ export default function InventoryReportView({ token, onLogout, isAdmin = false }
 
       {/* ── Loading / Error States ── */}
       {loading && (
-        <div className="pd-loading" style={{ margin: '30px 0' }}>
+        <div className="pd-loading cq-my-30">
           <div className="pd-spinner" />
           <span>Aggregating real-time availability metrics…</span>
         </div>
       )}
 
       {error && (
-        <div className="cq-report-alert cq-report-alert--danger" style={{ marginBottom: '20px' }}>
+        <div className="cq-report-alert cq-report-alert--danger cq-mb-20">
           {error}
         </div>
       )}
@@ -363,13 +363,13 @@ export default function InventoryReportView({ token, onLogout, isAdmin = false }
                           const occ = cat.totalCapacity > 0 ? Math.round((cat.bookedCapacity / cat.totalCapacity) * 100) : 0
                           return (
                             <tr key={idx}>
-                              <td style={{ fontWeight: '600', color: '#123b5d' }}>
+                              <td className="cq-td-primary-600">
                                 {cat.displayName || cat.category}
                               </td>
                               <td>{cat.listingCount}</td>
                               <td>{cat.totalCapacity} spots</td>
                               <td>{cat.bookedCapacity}</td>
-                              <td><strong style={{ color: '#16a34a' }}>{cat.remainingCapacity}</strong></td>
+                              <td><strong className="cq-text-green-strong">{cat.remainingCapacity}</strong></td>
                               <td>
                                 <div className="cq-table-occ">
                                   <div className="cq-table-occ__bar">
@@ -391,7 +391,7 @@ export default function InventoryReportView({ token, onLogout, isAdmin = false }
               <div className="cq-report-box">
                 <div className="cq-report-box__header-flex">
                   <div>
-                    <h3 className="cq-report-box__title" style={{ margin: 0 }}>Regional Supply & Coverage Matrix</h3>
+                    <h3 className="cq-report-box__title cq-m-0">Regional Supply & Coverage Matrix</h3>
                     <span className="cq-report-section__hint">
                       Overview of tourism coverage across regions and identified supply deficits.
                     </span>
@@ -401,7 +401,7 @@ export default function InventoryReportView({ token, onLogout, isAdmin = false }
                 {(!report.byLocation || report.byLocation.length === 0) ? (
                   <div className="cq-report-empty">No locations matching current filters.</div>
                 ) : (
-                  <div className="cq-table-wrapper" style={{ marginTop: '12px' }}>
+                  <div className="cq-table-wrapper cq-mt-12">
                     <table className="cq-report-table">
                       <thead>
                         <tr>
@@ -417,7 +417,7 @@ export default function InventoryReportView({ token, onLogout, isAdmin = false }
                           const hasGaps = loc.missingCategories && loc.missingCategories.length > 0
                           return (
                             <tr key={idx}>
-                              <td style={{ fontWeight: '700', color: '#123b5d' }}>
+                              <td className="cq-td-primary-700">
                                 <><LocationOnIcon/> {loc.location}</>
                               </td>
                               <td>{loc.listingCount}</td>
@@ -496,7 +496,7 @@ export default function InventoryReportView({ token, onLogout, isAdmin = false }
                                 {isSoldOut ? 'Sold Out' : 'Low Stock'}
                               </span>
                             </td>
-                            <td style={{ fontWeight: '600', color: '#123b5d' }}>{item.title}</td>
+                            <td className="cq-td-primary-600">{item.title}</td>
                             <td>
                               <span className="cq-tag-cat">{item.category}</span>
                             </td>

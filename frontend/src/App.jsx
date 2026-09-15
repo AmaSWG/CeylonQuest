@@ -1,16 +1,26 @@
 import { useState } from 'react'
 import './App.css'
-import HomePage from './pages/HomePage'
-import Registration from './pages/Registration'
-import ProviderApplication from './pages/ProviderApplication'
-import ProviderApplicationStatus from './pages/ProviderApplicationStatus'
-import ProviderActivation from './pages/ProviderActivation'
-import Login from './pages/Login'
-import ForgotPassword from './pages/ForgotPassword'
-import ResetPassword from './pages/ResetPassword'
-import VisitorDashboard from './pages/VisitorDashboard'
-import ProviderDashboard from './pages/ProviderDashboard'
-import AdminDashboard from './pages/AdminDashboard'
+
+// Home Feature
+import HomePage from './features/home/pages/HomePage'
+
+// Auth Feature
+import Login from './features/auth/pages/Login'
+import Registration from './features/auth/pages/Registration'
+import ForgotPassword from './features/auth/pages/ForgotPassword'
+import ResetPassword from './features/auth/pages/ResetPassword'
+import ProviderActivation from './features/auth/pages/ProviderActivation'
+
+// Provider Feature
+import ProviderApplication from './features/provider/pages/ProviderApplication'
+import ProviderApplicationStatus from './features/provider/pages/ProviderApplicationStatus'
+import ProviderDashboard from './features/provider/pages/ProviderDashboard'
+
+// Visitor Feature
+import VisitorDashboard from './features/visitor/pages/VisitorDashboard'
+
+// Admin Feature
+import AdminDashboard from './features/admin/pages/AdminDashboard'
 
 function App() {
   const storedRole = localStorage.getItem('userRole')

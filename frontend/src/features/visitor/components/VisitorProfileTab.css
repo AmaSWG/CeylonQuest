@@ -1,0 +1,84 @@
+/* Profile Tab Styles */
+.vd-profile-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.vd-hidden-input {
+  display: none;
+}
+
+.vd-icon-spacing {
+  margin-right: 4px;
+}
+
+.vd-icon-spacing-right {
+  margin-right: 6px;
+}
+
+.vd-identity__role-row, 
+.vd-identity__name
+{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.vd-avatar-remove-btn {
+  background: none;
+  border: none;
+  color: #dc2626;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
+.vd-avatar-remove-btn:hover {
+  text-decoration: underline;
+}
+
+.vd-edit-form__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.vd-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.vd-btn-cancel {
+  padding: 8px 18px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vd-btn-save,
+.vd-btn-edit
+{
+  padding: 8px 20px;
+  background: #168AAD;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vd-btn-save:hover {
+  background: #168AAD;
+}
+
+

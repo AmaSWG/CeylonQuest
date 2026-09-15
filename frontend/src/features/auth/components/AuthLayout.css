@@ -1,0 +1,216 @@
+/* AuthLayout.css */
+
+.auth-page-container {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 10% 20%, rgba(18, 59, 93, 0.05) 0%, rgba(240, 244, 248, 1) 90%);
+  padding: 30px 16px;
+  box-sizing: border-box;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 960px;
+  min-height: 560px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 20px 45px rgba(18, 59, 93, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
+  display: flex;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  animation: authFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes authFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Left Branding Panel */
+.auth-panel-left {
+  flex: 0 0 40%;
+  background: linear-gradient(135deg, #123b5d 0%, #0d2942 60%, #081a2b 100%);
+  color: #ffffff;
+  padding: 48px 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-panel-left::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  left: -80px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(214, 168, 95, 0.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.auth-panel-left::after {
+  content: '';
+  position: absolute;
+  bottom: -60px;
+  right: -60px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(14, 234, 244, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.auth-brand-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
+
+.auth-back-home-btn {
+  position: absolute;
+  top: -24px;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-back-home-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: translateX(-2px);
+}
+
+.auth-brand-logo-wrap {
+  margin-bottom: 24px;
+}
+
+.auth-brand-logo {
+  max-width: 170px;
+  height: auto;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
+}
+
+.auth-brand-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 12px;
+  letter-spacing: -0.3px;
+}
+
+.auth-brand-subtitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #d6a85f;
+  margin: 0 0 14px;
+}
+
+.auth-brand-desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0 auto;
+  max-width: 320px;
+}
+
+/* Right Form Panel */
+.auth-panel-right {
+  flex: 1;
+  padding: 40px 48px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-y: auto;
+}
+
+.auth-top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  min-height: 28px;
+}
+
+.auth-nav-btn {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.auth-nav-btn:hover {
+  color: #123b5d;
+  background: #f1f5f9;
+}
+
+.auth-nav-home {
+  margin-left: auto;
+}
+
+.auth-form-slot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Responsive breakpoint */
+@media (max-width: 768px) {
+  .auth-card {
+    flex-direction: column;
+    max-width: 500px;
+    min-height: auto;
+  }
+
+  .auth-panel-left {
+    flex: none;
+    padding: 32px 24px;
+  }
+
+  .auth-panel-right {
+    padding: 32px 24px;
+  }
+
+  .auth-back-home-btn {
+    top: -12px;
+  }
+}
+
+
+
+.auth-icon-spacing {
+  margin-right: 6px;
+}
+.auth-link-bold {
+  color: #123b5d;
+  font-weight: 700;
+}

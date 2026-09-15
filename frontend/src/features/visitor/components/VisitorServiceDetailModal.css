@@ -1,0 +1,143 @@
+/* Detail Modal Styling */
+.vd-detail-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  max-width: 580px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  position: relative;
+}
+
+.vd-detail-modal__header {
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  position: relative;
+}
+
+.vd-detail-modal__close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: #f1f5f9;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.vd-detail-modal__close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.vd-detail-modal__title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 8px 0 4px;
+}
+
+.vd-detail-modal__provider {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.vd-detail-modal__body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vd-detail-modal__desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #334155;
+  margin: 0;
+}
+
+.vd-detail-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.vd-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #0d9488;
+}
+
+.vd-detail-item__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.5px;
+}
+
+.vd-detail-item__val {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.vd-detail-modal__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.vd-detail-price {
+  display: flex;
+  flex-direction: column;
+}
+
+.vd-detail-price__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.vd-detail-price__val {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.vd-detail-price__unit {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.vd-btn-book {
+  background: #0d9488;
+  color: #ffffff;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.vd-btn-book:hover {
+  background: #0f766e;
+}
