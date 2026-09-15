@@ -13,21 +13,22 @@ using Shared.Storage;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers()
-	    .AddJsonOptions(opts =>
+    .AddJsonOptions(opts =>
     {
         opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 
-//Database
+// Database
 var connectionString = builder.Configuration.GetConnectionString("ProviderCatalogDb");
 
+var serverVersion = Version.TryParse(builder.Configuration["DatabaseServerVersion"], out var parsedVersion)
+    ? new MySqlServerVersion(parsedVersion)
+    : new MySqlServerVersion(new Version(8, 0, 30));
+
 builder.Services.AddDbContext<CatalogDbContext>(options =>
-    options.UseMySql(
-        connectionString,
-        ServerVersion.AutoDetect(connectionString)
-    ));
-	
-//JWT Authentication
+    options.UseMySql(connectionString, serverVersion));
+
+// JWT Authentication
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -63,8 +64,7 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtIssuer,
         ValidAudience = jwtAudience,
 
-        IssuerSigningKey =
-            new SymmetricSecurityKey(signingKeyBytes),
+        IssuerSigningKey = new SymmetricSecurityKey(signingKeyBytes),
 
         RoleClaimType = ClaimTypes.Role,
         NameClaimType = ClaimTypes.NameIdentifier
@@ -73,14 +73,14 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-//Swagger
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo 
-    { 
-        Title = "CeylonQuest Provider Catalog Service API", 
-        Version = "v1" 
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "CeylonQuest Provider Catalog Service API",
+        Version = "v1"
     });
 
     c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
@@ -108,11 +108,15 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-//CORS
+// CORS
 const string FrontendPolicy = "FrontendPolicy";
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                     ?? new[] { "http://localhost:5173", "http://localhost:5000" };
+                     ?? new[] {
+                         "http://localhost:5173",
+                         "http://localhost:5000",
+                         "https://jolly-field-0aaea8a00.7.azurestaticapps.net"
+                     };
 
 builder.Services.AddCors(options =>
 {
@@ -121,7 +125,8 @@ builder.Services.AddCors(options =>
         policy
             .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -150,12 +155,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
 app.UseCors(FrontendPolicy);
 
-app.UseAuthentication();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
