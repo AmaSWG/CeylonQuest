@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import './Login.css'
-import { HomeIcon, EmailIcon, VisibilityIcon } from '../../../components/Icons'
+import { HomeIcon, EmailIcon, VisibilityIcon, CheckCircleIcon } from '../../../components/Icons'
 import { apiUrl } from '../../../api/client'
 
 function LoginSuccessToast({ message, onClose }) {
@@ -11,7 +11,7 @@ function LoginSuccessToast({ message, onClose }) {
 
   return (
     <div className="login-toast login-toast--success" role="alert">
-      <div className="login-toast__icon"></div>
+      <div className="login-toast__icon"><CheckCircleIcon size={20} /></div>
       <div className="login-toast__body">
         <p className="login-toast__title">Welcome back!</p>
         <p className="login-toast__msg">{message}</p>

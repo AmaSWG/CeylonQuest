@@ -35,15 +35,70 @@ function getPageNumbers(current, total, maxVisible = 5) {
   return pages
 }
 
-export default function VisitorExploreTab() {
+const normalizeImgUrl = (url) => {
+  if (!url) return ''
+  if (url.includes('/provider-service-images/')) {
+    const parts = url.split('/provider-service-images/')
+    return `/api/catalog/images/${parts[1]}`
+  }
+  return url
+}
+
+function ServiceCardImages({ item }) {
+  const rawImages = item?.images
+  let images = []
+  if (Array.isArray(rawImages)) {
+    images = rawImages.filter(Boolean)
+  } else if (typeof rawImages === 'string' && rawImages.trim()) {
+    try {
+      const parsed = JSON.parse(rawImages)
+      images = Array.isArray(parsed) ? parsed.filter(Boolean) : [rawImages]
+    } catch {
+      images = rawImages.split(',').map(s => s.trim()).filter(Boolean)
+    }
+  }
+
+  images = images.map(normalizeImgUrl).filter(Boolean)
+
+  if (!images || images.length === 0) {
+    return null
+  }
+
+  const isMoreThan3 = images.length > 3
+  const displayImages = isMoreThan3 ? images.slice(0, 3) : images
+  const remainingCount = images.length - 2
+
+  return (
+    <div className="vd-service-card__image-slot">
+      <div className={`vd-card-image-row vd-card-image-row--count-${displayImages.length}`}>
+        {displayImages.map((img, idx) => {
+          const isLastWithOverlay = isMoreThan3 && idx === 2
+          return (
+            <div key={idx} className="vd-card-img-wrap">
+              <img src={img} alt={`${item.title} photo ${idx + 1}`} className="vd-card-img" />
+              {isLastWithOverlay && (
+                <div className="vd-card-img-overlay">
+                  <span>+{remainingCount}</span>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+export default function VisitorExploreTab({ showToast }) {
   const [searchTerm, setSearchTerm]       = useState('')
   const [serviceType, setServiceType]     = useState('all')
   const [category, setCategory]           = useState('all')
-  const [region, setRegion]               = useState('all')
+  const [location, setLocation]           = useState('all')
   const [priceRange, setPriceRange]       = useState('all')
+  const [sortBy, setSortBy]               = useState('newest')
   const [viewMode, setViewMode]           = useState('grid')
   const [currentPage, setCurrentPage]     = useState(1)
-  const itemsPerPage = 8
+  const itemsPerPage = 9
 
   const [services, setServices]           = useState([])
   const [loading, setLoading]             = useState(true)
@@ -76,7 +131,7 @@ export default function VisitorExploreTab() {
   const filtered = services.filter((s) => {
     if (serviceType !== 'all' && s.type.toLowerCase() !== serviceType) return false
     if (category !== 'all' && s.category !== category) return false
-    if (region !== 'all' && s.region !== region) return false
+    if (location !== 'all' && !(s.location && s.location.toLowerCase().includes(location.toLowerCase()))) return false
 
     if (priceRange !== 'all') {
       const p = Number(s.price)
@@ -97,8 +152,14 @@ export default function VisitorExploreTab() {
     return true
   })
 
-  const totalPages  = Math.max(1, Math.ceil(filtered.length / itemsPerPage))
-  const paginated   = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === 'price_asc') return Number(a.price) - Number(b.price)
+    if (sortBy === 'price_desc') return Number(b.price) - Number(a.price)
+    return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+  })
+
+  const totalPages  = Math.max(1, Math.ceil(sorted.length / itemsPerPage))
+  const paginated   = sorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handleFilterChange = (setter) => (e) => {
     setter(e.target.value)
@@ -134,17 +195,15 @@ export default function VisitorExploreTab() {
           <option value="accommodation">Accommodations</option>
         </select>
 
-        <select value={region} onChange={handleFilterChange(setRegion)} className="vd-filter-select">
-          <option value="all">All Regions</option>
-          <option value="Western">Western</option>
-          <option value="Central">Central</option>
-          <option value="Southern">Southern</option>
-          <option value="Northern">Northern</option>
-          <option value="Eastern">Eastern</option>
-          <option value="North Western">North Western</option>
-          <option value="North Central">North Central</option>
-          <option value="Uva">Uva</option>
-          <option value="Sabaragamuwa">Sabaragamuwa</option>
+        <select value={location} onChange={handleFilterChange(setLocation)} className="vd-filter-select">
+          <option value="all">All Locations</option>
+          <option value="Colombo">Colombo</option>
+          <option value="Kandy">Kandy</option>
+          <option value="Galle">Galle</option>
+          <option value="Ella">Ella</option>
+          <option value="Mirissa">Mirissa</option>
+          <option value="Sigiriya">Sigiriya</option>
+          <option value="Trincomalee">Trincomalee</option>
         </select>
 
         <select value={priceRange} onChange={handleFilterChange(setPriceRange)} className="vd-filter-select">
@@ -152,6 +211,12 @@ export default function VisitorExploreTab() {
           <option value="budget">Budget (&lt; LKR 5,000)</option>
           <option value="mid">Mid-range (LKR 5,000 – 20,000)</option>
           <option value="luxury">Luxury (&gt; LKR 20,000)</option>
+        </select>
+
+        <select value={sortBy} onChange={handleFilterChange(setSortBy)} className="vd-filter-select">
+          <option value="newest">Sort: Newest First</option>
+          <option value="price_asc">Price: Low to High</option>
+          <option value="price_desc">Price: High to Low</option>
         </select>
       </div>
 
@@ -171,8 +236,9 @@ export default function VisitorExploreTab() {
             setSearchTerm('')
             setServiceType('all')
             setCategory('all')
-            setRegion('all')
+            setLocation('all')
             setPriceRange('all')
+            setSortBy('newest')
             setCurrentPage(1)
           }}
         />
@@ -180,39 +246,77 @@ export default function VisitorExploreTab() {
 
       {!loading && !loadError && paginated.length > 0 && (
         <>
+          <div className="vd-results-header">
+            <span className="vd-results-count">
+              Showing {paginated.length} of {filtered.length} listings
+            </span>
+          </div>
+
           <div className="vd-services-grid">
-            {paginated.map((item) => (
-              <div key={item.id} className="vd-service-card" onClick={() => setSelectedDetail(item)}>
-                <div className="vd-service-card__header">
-                  <span className={`vd-type-badge vd-type-badge--${item.type.toLowerCase()}`}>
-                    {item.type}
-                  </span>
-                  <span className="vd-service-card__region">{item.region}</span>
-                </div>
-
-                <div className="vd-service-card__body">
-                  <h3 className="vd-service-card__title">{item.title}</h3>
-                  <p className="vd-service-card__provider">By {item.providerBusinessName}</p>
-                  <p className="vd-service-card__desc">{item.description}</p>
-                </div>
-
-                <div className="vd-service-card__footer">
-                  <div className="vd-service-card__price">
-                    <span className="vd-service-card__amount">LKR {Number(item.price).toLocaleString()}</span>
-                    <span className="vd-service-card__unit">/{item.priceUnit}</span>
+            {paginated.map((item) => {
+              const unit = item.unit || (item.type === 'Accommodation' ? 'night' : 'person')
+              return (
+                <div key={item.id} className="vd-service-card" onClick={() => setSelectedDetail(item)}>
+                  <div className="vd-service-card__header">
+                    <span className={`vd-type-badge vd-type-badge--${item.type.toLowerCase()}`}>
+                      {item.type}
+                    </span>
+                    <span className="vd-service-card__provider-name">
+                      By {item.providerBusinessName}
+                    </span>
                   </div>
-                  <button
-                    className="vd-service-card__action-btn"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedBooking(item)
-                    }}
-                  >
-                    Book Now
-                  </button>
+
+                  <h3 className="vd-service-card__title">{item.title}</h3>
+
+                  <div className="vd-service-card__body">
+                    <div className="vd-service-card__body-left">
+                      <p className="vd-service-card__desc">{item.description}</p>
+                      <div className="vd-service-card__tags">
+                        {item.location && (
+                          <span className="vd-tag">
+                            <LocationOnIcon size={13} /> {item.location}
+                          </span>
+                        )}
+                        {item.keyDetail && (
+                          <span className="vd-tag">
+                            {item.keyDetail}
+                          </span>
+                        )}
+                      </div>
+                      <div className="vd-service-card__price">
+                        <span className="vd-service-card__amount">LKR {Number(item.price).toLocaleString()}</span>
+                        <span className="vd-service-card__unit"> / {unit}</span>
+                      </div>
+                    </div>
+
+                    <ServiceCardImages item={item} />
+                  </div>
+
+                  <div className="vd-service-card__footer">
+                    <div className="vd-service-card__actions">
+                      <button
+                        className="vd-service-card__action-btn vd-btn--secondary"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedDetail(item)
+                        }}
+                      >
+                        View Details
+                      </button>
+                      <button
+                        className="vd-service-card__action-btn vd-btn--primary"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedBooking(item)
+                        }}
+                      >
+                        Book Now
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {totalPages > 1 && (
@@ -257,6 +361,12 @@ export default function VisitorExploreTab() {
         <VisitorBookingModal
           item={selectedBooking}
           onClose={() => setSelectedBooking(null)}
+          onBookingSuccess={(msg) => {
+            setSelectedBooking(null)
+            if (showToast) {
+              showToast(msg, 'Booking Confirmed')
+            }
+          }}
         />
       )}
     </div>

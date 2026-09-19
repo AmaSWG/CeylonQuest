@@ -52,33 +52,16 @@ export default function DashboardLayout({
   return (
     <div className="cq-dashboard-wrapper">
       
-      {/* Mobile Top App Bar */}
-      <header className="cq-mobile-bar">
-        <button
-          type="button"
-          className="cq-mobile-menu-btn"
-          id="dashboard-mobile-menu-btn"
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open Navigation Menu"
-        >
-          <MenuIcon size={22} />
-        </button>
-
-        <div className="cq-mobile-brand">
-          <img src="/dashboard-logo.png" alt="CeylonQuest" className="cq-mobile-logo" />
-          <span className="cq-mobile-role">{roleBadge}</span>
-        </div>
-
-        {userProfile && (
-          <div className="cq-mobile-avatar">
-            {userProfile.profilePictureUrl ? (
-              <img src={formatAvatarUrl(userProfile.profilePictureUrl)} alt="" className="cq-avatar-img" />
-            ) : (
-              <span>{initials(userProfile.firstName, userProfile.lastName)}</span>
-            )}
-          </div>
-        )}
-      </header>
+      {/* Floating Mobile Toggle Button (Visible only when sidebar is hidden) */}
+      <button
+        type="button"
+        className="cq-mobile-toggle-btn"
+        id="dashboard-mobile-menu-btn"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Open Navigation Menu"
+      >
+        <MenuIcon size={20} />
+      </button>
 
       {/* Backdrop overlay for mobile drawer */}
       <div

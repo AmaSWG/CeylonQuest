@@ -33,6 +33,7 @@ public class AccommodationListingResponse
     public bool IsActive { get; set; }
 
     public DateTime CreatedAt { get; set; }
+    public string? Images { get; set; }
 }
 
 

@@ -12,17 +12,20 @@ import VisitorExploreTab from '../components/VisitorExploreTab'
 import VisitorProfileTab from '../components/VisitorProfileTab'
 import { apiUrl } from '../../../api/client'
 
-function SuccessToast({ message, onClose }) {
+function SuccessToast({ toast, onClose }) {
   useEffect(() => {
     const t = setTimeout(onClose, 4000)
     return () => clearTimeout(t)
   }, [onClose])
 
+  const title = typeof toast === 'object' ? (toast.title || 'Success') : 'Success'
+  const message = typeof toast === 'object' ? toast.message : toast
+
   return (
     <div className="vd-toast" role="alert" aria-live="polite">
       <div className="vd-toast__icon"><CheckCircleIcon /></div>
       <div className="vd-toast__body">
-        <p className="vd-toast__title">Profile Updated</p>
+        <p className="vd-toast__title">{title}</p>
         <p className="vd-toast__msg">{message}</p>
       </div>
       <button className="vd-toast__close" onClick={onClose} aria-label="Close"></button>
@@ -77,6 +80,10 @@ function VisitorDashboard({ onLogout }) {
     onLogout && onLogout()
   }, [onLogout])
 
+  const showToast = useCallback((msg, title) => {
+    setToast(title ? { title, message: msg } : msg)
+  }, [])
+
   const navItems = [
     { key: 'profile',  icon: <PermIdentityIcon size={18} />,  label: 'My Profile' },
     { key: 'explore',  icon: <PublicIcon size={18} />,        label: 'Explore and Search' },
@@ -93,10 +100,10 @@ function VisitorDashboard({ onLogout }) {
       userProfile={profile}
       onLogout={handleLogout}
     >
-      {toast && <SuccessToast message={toast} onClose={() => setToast(null)} />}
+      {toast && <SuccessToast toast={toast} onClose={() => setToast(null)} />}
 
       {activePage === 'explore' ? (
-        <VisitorExploreTab />
+        <VisitorExploreTab showToast={showToast} />
       ) : (
         <VisitorProfileTab
           profile={profile}
@@ -104,7 +111,7 @@ function VisitorDashboard({ onLogout }) {
           loadError={loadError}
           token={token}
           onProfileUpdated={(updated) => setProfile(updated)}
-          showToast={(msg) => setToast(msg)}
+          showToast={(msg) => showToast(msg, 'Profile Updated')}
         />
       )}
     </DashboardLayout>

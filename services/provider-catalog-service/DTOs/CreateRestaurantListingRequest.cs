@@ -40,4 +40,6 @@ public class CreateRestaurantListingRequest
     public int SeatingCapacity { get; set; } = 20;
 
     public bool IsActive { get; set; } = true;
+
+    public string? Images { get; set; }
 }

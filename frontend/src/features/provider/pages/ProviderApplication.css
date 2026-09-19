@@ -314,7 +314,10 @@
   text-align: center;
 }
 
-.provider-app-back__btn {
+.provider-app-back__btn,
+.provider-app-track__btn,
+.provider-app-otp__btn
+{
   background: none;
   border: none;
   color: #168aad;
@@ -327,8 +330,19 @@
   text-decoration: none;
 }
 
-.provider-app-back__btn:hover {
-  color: #123b5d;
+.provider-app-track__btn{
+color: #123b5d;
+}
+
+.provider-app-otp__btn {
+  color: #b8860b;
+}
+
+.provider-app-back__btn:hover, 
+.provider-app-track__btn:hover,
+.provider-app-otp__btn:hover
+{
+  color: #4f8a45;
   text-decoration: underline;
 }
 
@@ -539,11 +553,5 @@
   flex-wrap: wrap;
   margin-top: 20px;
 }
-.pa-text-primary-bold {
-  color: #123b5d;
-  font-weight: 700;
-}
-.pa-text-gold-bold {
-  color: #b8860b;
-  font-weight: 700;
-}
+
+

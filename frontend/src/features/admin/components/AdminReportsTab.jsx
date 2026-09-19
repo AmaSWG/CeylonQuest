@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   BarChartIcon,
   CalendarMonthIcon,
@@ -30,6 +30,14 @@ function formatDateTime(iso) {
   return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+function LoadingState({ label = 'Loading…' }) {
+  return (
+    <div className="ad-loading">
+      <div className="ad-spinner" />
+      <p>{label}</p>
+    </div>
+  )
+}
 
 function RegistrationReportsSection({ token, onLogout }) {
   const emptyFilters = { dateFrom: '', dateTo: '', role: '', applicationStatus: '' }
@@ -376,16 +384,17 @@ export default function ReportsTab({ token, onLogout }) {
           className={`cq-report-subtab-btn ${reportSubTab === 'inventory' ? 'active' : ''}`}
           onClick={() => setReportSubTab('inventory')}
         >
-          Listings & Inventory Availability Report
+          <BarChartIcon size={16} /> Catalog & Inventory Availability Report
         </button>
         <button
           type="button"
           className={`cq-report-subtab-btn ${reportSubTab === 'registrations' ? 'active' : ''}`}
           onClick={() => setReportSubTab('registrations')}
         >
-          User & Provider Registrations Report
+          <ManageSearchIcon size={16} /> Identity & Registrations Report
         </button>
       </div>
+
       {reportSubTab === 'inventory' ? (
         <InventoryReportView token={token} onLogout={onLogout} isAdmin={true} />
       ) : (
@@ -396,4 +405,3 @@ export default function ReportsTab({ token, onLogout }) {
 }
 
 // ── Root Admin Dashboard Component ────────────────────────────────────────────
-

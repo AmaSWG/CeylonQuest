@@ -1,6 +1,6 @@
 import './Registration.css'
 import { useState, useEffect } from 'react'
-import { HomeIcon, VisibilityIcon, VisibilityOffIcon } from '../../../components/Icons'
+import { HomeIcon, VisibilityIcon, VisibilityOffIcon, CheckCircleIcon } from '../../../components/Icons'
 import { apiUrl } from '../../../api/client'
 
 const PASSWORD_REQUIREMENTS = 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.'
@@ -14,7 +14,7 @@ function SuccessToast({ message, onClose }) {
 
   return (
     <div className="reg-toast reg-toast--success" role="alert" aria-live="polite">
-      <div className="reg-toast__icon"></div>
+      <div className="reg-toast__icon"><CheckCircleIcon size={20} /></div>
       <div className="reg-toast__body">
         <p className="reg-toast__title">Registration Successful!</p>
         <p className="reg-toast__msg">{message}</p>

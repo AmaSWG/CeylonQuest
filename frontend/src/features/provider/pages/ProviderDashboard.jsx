@@ -7,7 +7,9 @@ import {
   CalendarMonthIcon,
   NotificationsActiveIcon,
   PermIdentityIcon,
-  BarChartIcon
+  BarChartIcon,
+  CheckCircleIcon,
+  CancelIcon
 } from '../../../components/Icons'
 import InventoryReportView from '../../../components/InventoryReportView'
 import DashboardLayout from '../../../components/DashboardLayout'
@@ -21,19 +23,23 @@ import ProviderNotificationsTab from '../components/ProviderNotificationsTab'
 import ProviderAccountTab from '../components/ProviderAccountTab'
 
 function Toast({ message, title = 'Success', onClose }) {
+  const isError = typeof message === 'string' && (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') || title.toLowerCase().includes('error'))
+
   useEffect(() => {
     const t = setTimeout(onClose, 4000)
     return () => clearTimeout(t)
   }, [onClose])
 
   return (
-    <div className="pd-toast" role="alert" aria-live="polite">
-      <div className="pd-toast__icon"></div>
+    <div className={`pd-toast ${isError ? 'pd-toast--error' : 'pd-toast--success'}`} role="alert" aria-live="polite">
+      <div className="pd-toast__icon">
+        {isError ? <CancelIcon size={20} /> : <CheckCircleIcon size={20} />}
+      </div>
       <div className="pd-toast__body">
         <p className="pd-toast__title">{title}</p>
         <p className="pd-toast__msg">{message}</p>
       </div>
-      <button className="pd-toast__close" onClick={onClose} aria-label="Close"></button>
+      <button className="pd-toast__close" onClick={onClose} aria-label="Close notification"></button>
     </div>
   )
 }

@@ -32,5 +32,7 @@ public class AccommodationListing
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    public string? Images { get; set; }
+
     public Provider? Provider { get; set; }
 }

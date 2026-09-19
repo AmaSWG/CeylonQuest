@@ -410,7 +410,7 @@ export default function ListingsTab({
     }
 
     const today = new Date().toISOString().split('T')[0]
-    if (form.validFrom && form.validFrom < today) {
+    if (modal !== 'edit' && form.validFrom && form.validFrom < today) {
       return { id: 'exp-valid-from', msg: 'Valid From date cannot be in the past.' }
     }
     if (form.validFrom && form.validUntil && form.validUntil < form.validFrom) {
@@ -994,7 +994,7 @@ export default function ListingsTab({
                     </select>
                   </div>
 
-                  <div className="pd-max-w-90" className="pd-form-group">
+                  <div className="pd-form-group pd-max-w-90">
                     <label htmlFor="exp-max">Max Guests</label>
                     <input
                       id="exp-max"
@@ -1015,7 +1015,7 @@ export default function ListingsTab({
                       id="exp-valid-from"
                       name="validFrom"
                       type="date"
-                      min={new Date().toISOString().split('T')[0]}
+                      min={modal !== 'edit' ? new Date().toISOString().split('T')[0] : undefined}
                       value={form.validFrom}
                       onChange={handleFormChange}
                     />
@@ -1027,7 +1027,7 @@ export default function ListingsTab({
                       id="exp-valid-until"
                       name="validUntil"
                       type="date"
-                      min={form.validFrom || new Date().toISOString().split('T')[0]}
+                      min={form.validFrom || (modal !== 'edit' ? new Date().toISOString().split('T')[0] : undefined)}
                       value={form.validUntil}
                       onChange={handleFormChange}
                     />

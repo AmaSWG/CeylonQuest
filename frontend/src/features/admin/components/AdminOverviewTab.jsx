@@ -4,7 +4,8 @@ import {
   GroupIcon,
   WorkIcon,
   CalendarMonthIcon,
-  ManageSearchIcon
+  ManageSearchIcon,
+  NotificationsActiveIcon
 } from '../../../components/Icons'
 
 function initials(first, last) {
@@ -217,4 +218,4 @@ export default function OverviewTab({ stats, users = [], applications = [], book
 }
 
 // ── 2. Provider Applications Tab ───────────────
-
+

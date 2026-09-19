@@ -42,7 +42,8 @@ public class RestaurantListingsController : ControllerBase
         GroupSizeCategory = r.GroupSizeCategory,
         SeatingCapacity = r.SeatingCapacity,
         IsActive = r.IsActive,
-        CreatedAt = r.CreatedAt
+        CreatedAt = r.CreatedAt,
+        Images = r.Images
     };
 
     /// <summary>
@@ -75,7 +76,8 @@ public class RestaurantListingsController : ControllerBase
             GroupSizeCategory = request.GroupSizeCategory?.Trim() ?? "Table for Two",
             SeatingCapacity = request.SeatingCapacity > 0 ? request.SeatingCapacity : 1,
             IsActive = request.IsActive,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            Images = request.Images
         };
 
         _db.RestaurantListings.Add(listing);
@@ -164,6 +166,7 @@ public class RestaurantListingsController : ControllerBase
         listing.GroupSizeCategory = request.GroupSizeCategory?.Trim() ?? listing.GroupSizeCategory;
         listing.SeatingCapacity = request.SeatingCapacity > 0 ? request.SeatingCapacity : 1;
         listing.IsActive = request.IsActive;
+        listing.Images = request.Images;
 
         await _db.SaveChangesAsync();
 

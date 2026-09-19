@@ -8,7 +8,9 @@ import {
   CalendarMonthIcon,
   BarChartIcon,
   NotificationsActiveIcon,
-  PermIdentityIcon
+  PermIdentityIcon,
+  CheckCircleIcon,
+  CancelIcon
 } from '../../../components/Icons'
 import DashboardLayout from '../../../components/DashboardLayout'
 import { apiUrl, catalogUrl } from '../../../api/client'
@@ -23,7 +25,7 @@ import AdminNotificationsTab from '../components/AdminNotificationsTab'
 import AdminAccountTab from '../components/AdminAccountTab'
 
 function Toast({ message, title, onClose }) {
-  const isError = message.toLowerCase().includes('error') || message.toLowerCase().includes('failed');
+  const isError = typeof message === 'string' && (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') || (title && title.toLowerCase().includes('error')));
   const displayTitle = title || (isError ? 'Error' : 'Success');
 
   useEffect(() => {
@@ -33,11 +35,13 @@ function Toast({ message, title, onClose }) {
 
   return (
     <div 
-      className={`ad-toast ${isError ? 'ad-toast--error' : ''}`} 
+      className={`ad-toast ${isError ? 'ad-toast--error' : 'ad-toast--success'}`} 
       role="alert" 
       aria-live="polite"
     >
-      <div className="ad-toast__icon"></div>
+      <div className="ad-toast__icon">
+        {isError ? <CancelIcon size={20} /> : <CheckCircleIcon size={20} />}
+      </div>
       <div className="ad-toast__body">
         <p className="ad-toast__title">{displayTitle}</p>
         <p className="ad-toast__msg">{message}</p>
@@ -102,7 +106,7 @@ function AdminDashboard({ onLogout }) {
   const fetchUsers = useCallback(async () => {
     if (!token) return
     try {
-      const resp = await fetch(apiUrl('/api/users'), {
+      const resp = await fetch(apiUrl('/api/admin/users'), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
@@ -114,7 +118,7 @@ function AdminDashboard({ onLogout }) {
   const fetchApplications = useCallback(async () => {
     if (!token) return
     try {
-      const resp = await fetch(catalogUrl('/api/catalog/admin/applications'), {
+      const resp = await fetch(catalogUrl('/api/catalog/admin/providers'), {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.ok) {
@@ -126,10 +130,8 @@ function AdminDashboard({ onLogout }) {
   const fetchBookings = useCallback(async () => {
     if (!token) return
     try {
-      const resp = await fetch(catalogUrl('/api/catalog/admin/bookings'), {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (resp.ok) {
+      const saved = localStorage.getItem('ceylonquest_admin_bookings')
+      if (saved) {
         setBookings(await resp.json())
       }
     } catch {}

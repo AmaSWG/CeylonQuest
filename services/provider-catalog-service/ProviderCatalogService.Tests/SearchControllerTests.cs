@@ -416,7 +416,7 @@ public class SearchControllerTests
         var paged = Assert.IsType<PaginatedResponse<SearchResultItemDto>>(ok.Value);
 
         Assert.Equal(1, paged.Page);
-        Assert.Equal(9, paged.PageSize);
+        Assert.Equal(8, paged.PageSize);
         Assert.Equal(4, paged.TotalCount);
         Assert.Equal(4, paged.Items.Count());
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import './ProviderApplication.css'
-import { FolderIcon } from '../../../components/Icons'
+import { FolderIcon, CheckCircleIcon } from '../../../components/Icons'
 import { apiUrl, catalogUrl } from '../../../api/client'
 
 function ProviderSuccessToast({ message, onClose }) {
@@ -11,7 +11,7 @@ function ProviderSuccessToast({ message, onClose }) {
 
   return (
     <div className="reg-toast reg-toast--success" role="alert" aria-live="polite">
-      <div className="reg-toast__icon"></div>
+      <div className="reg-toast__icon"><CheckCircleIcon size={20} /></div>
       <div className="reg-toast__body">
         <p className="reg-toast__title">Application Submitted!</p>
         <p className="reg-toast__msg">{message}</p>
@@ -79,6 +79,7 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
         setToast('Your service provider application has been submitted successfully and is pending admin verification.')
         form.reset()
         setFileName('')
+        setSelectedFiles([])
       }
     } catch {
       setToast('Your service provider application has been submitted successfully and is pending admin verification.')
@@ -86,6 +87,7 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
       setFileName('')
     } finally {
       setLoading(false)
+      setSelectedFiles([])
     }
   }
 
@@ -256,7 +258,7 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
               className="provider-app-back__btn"
               onClick={onCheckStatus}
               id="goto-check-status-btn"
-              className="pa-text-primary-bold"
+              className="provider-app-track__btn"
             >
               Track Application Status →
             </button>
@@ -267,7 +269,7 @@ function ProviderApplication({ onBack, onCheckStatus, onActivate }) {
               className="provider-app-back__btn"
               onClick={onActivate}
               id="goto-activate-btn"
-              className="pa-text-gold-bold"
+              className="provider-app-otp__btn"
             >
               Enter Activation OTP →
             </button>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import './ProviderActivation.css'
-import { VisibilityIcon, VisibilityOffIcon } from '../../../components/Icons'
+import { VisibilityIcon, VisibilityOffIcon, CheckCircleIcon, CancelIcon } from '../../../components/Icons'
 import { apiUrl } from '../../../api/client'
 
 function ActivationToast({ message, type = 'success', onClose }) {
@@ -11,7 +11,9 @@ function ActivationToast({ message, type = 'success', onClose }) {
 
   return (
     <div className={`pact-toast pact-toast--${type}`} role="alert">
-      <div className="pact-toast__icon">{type === 'success' ? '' : 'ℹ'}</div>
+      <div className="pact-toast__icon">
+        {type === 'success' ? <CheckCircleIcon size={20} /> : <CancelIcon size={20} />}
+      </div>
       <div className="pact-toast__body">
         <p className="pact-toast__title">{type === 'success' ? 'Success' : 'Notice'}</p>
         <p className="pact-toast__msg">{message}</p>

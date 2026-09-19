@@ -29,4 +29,5 @@ public class ActivityListingResponse
     public DateTime? ValidFrom { get; set; }
 
     public DateTime? ValidUntil { get; set; }
+    public string? Images { get; set; }
 }

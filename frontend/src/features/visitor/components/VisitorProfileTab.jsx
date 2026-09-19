@@ -246,39 +246,34 @@ export default function VisitorProfileTab({
                 </button>
               </div>
 
-              <div className="vd-fields-grid">
-                <div className="vd-field">
-                  <span className="vd-field__label">First Name</span>
-                  <span className="vd-field__value">{profile.firstName || '—'}</span>
+              <div className="vd-profile-info-list">
+                <div className="vd-info-row">
+                  <span className="vd-info-label">First Name:</span>
+                  <span className="vd-info-value">{profile.firstName || '—'}</span>
                 </div>
-                <div className="vd-field">
-                  <span className="vd-field__label">Last Name</span>
-                  <span className="vd-field__value">{profile.lastName || '—'}</span>
+                <div className="vd-info-row">
+                  <span className="vd-info-label">Last Name:</span>
+                  <span className="vd-info-value">{profile.lastName || '—'}</span>
                 </div>
-                <div className="vd-field">
-                  <span className="vd-field__label">Email Address</span>
-                  <span className="vd-field__value">
-                    <EmailIcon size={14} className="vd-icon-spacing-right" /> {profile.email}
-                  </span>
+                <div className="vd-info-row">
+                  <span className="vd-info-label">Email Address:</span>
+                  <span className="vd-info-value">{profile.email}</span>
                 </div>
-                <div className="vd-field">
-                  <span className="vd-field__label">Phone Number</span>
-                  <span className="vd-field__value">
-                    <LocalPhoneIcon size={14} className="vd-icon-spacing-right" /> {profile.phoneNumber || '—'}
-                  </span>
+                <div className="vd-info-row">
+                  <span className="vd-info-label">Phone Number:</span>
+                  <span className="vd-info-value">{profile.phoneNumber || '—'}</span>
                 </div>
-                <div className="vd-field">
-                  <span className="vd-field__label">Nationality</span>
-                  <span className="vd-field__value">
-                    <PublicIcon size={14} className="vd-icon-spacing-right" /> {profile.nationality || '—'}
-                  </span>
+                <div className="vd-info-row">
+                  <span className="vd-info-label">Nationality:</span>
+                  <span className="vd-info-value">{profile.nationality || '—'}</span>
                 </div>
-                <div className="vd-field">
-                  <span className="vd-field__label">Account Created</span>
-                  <span className="vd-field__value">
-                    <CalendarMonthIcon size={14} className="vd-icon-spacing-right" /> Member since {formatDate(profile.createdAt)}
-                  </span>
-                </div>
+              </div>
+
+              <div className="vd-account-created-block">
+                <span className="vd-account-created-label">ACCOUNT CREATED</span>
+                <span className="vd-account-created-val">
+                  <CalendarMonthIcon size={14} className="vd-icon-spacing-right" /> Member since {formatDate(profile.createdAt)}
+                </span>
               </div>
             </>
           )}

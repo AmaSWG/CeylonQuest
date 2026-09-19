@@ -4,7 +4,13 @@ import {
   CheckCircleIcon,
   CancelIcon,
   ManageSearchIcon,
-  CalendarMonthIcon
+  CalendarMonthIcon,
+  PermIdentityIcon,
+  LocalPhoneIcon,
+  WorkIcon,
+  MyLocationIcon,
+  EmailIcon,
+  StorefrontIcon
 } from '../../../components/Icons'
 import ConfirmModal from '../../../components/ConfirmModal'
 import { apiUrl, catalogUrl } from '../../../api/client'
@@ -567,4 +573,4 @@ export default function ProviderApplicationsTab({ token, onLogout, applications 
 }
 
 // ── 3. User Management Tab ────────────────────────────────────────────────────
-
+

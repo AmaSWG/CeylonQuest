@@ -105,116 +105,115 @@ export default function OverviewTab({ providerInfo, services = [], bookings = []
         </button>
       </div>
 
-      {/* Two Column Section */}
-      <div className="pd-overview-cols">
-        {/* Left Column: Business & Services Summary */}
-        <div className="pd-card">
+      {/* Top Full-Width Card: Business & Services Summary */}
+      <div className="pd-card pd-overview-top-card">
+        <div className="pd-card__body">
+          <div className="pd-section-header">
+            <h2>Business Profile Summary</h2>
+            <button className="pd-row-btn pd-row-btn--edit" onClick={() => onNavigate('business')}>Edit</button>
+          </div>
+          <div className="pd-fields pd-fields--4cols">
+            <div className="pd-field">
+              <span className="pd-field__label">Business Name</span>
+              <span className="pd-field__value pd-title-primary">
+                {providerInfo?.businessName || '—'}
+              </span>
+            </div>
+            <div className="pd-field">
+              <span className="pd-field__label">Service Category</span>
+              <span className="pd-field__value">
+                {providerInfo?.serviceType || 'Tourism Provider'}
+              </span>
+            </div>
+            <div className="pd-field">
+              <span className="pd-field__label">Business Phone</span>
+              <span className="pd-field__value">
+                <LocalPhoneIcon size={15} className="pd-icon-spacing" /> {providerInfo?.phoneNumber || '—'}
+              </span>
+            </div>
+            <div className="pd-field">
+              <span className="pd-field__label">Primary Operation Region</span>
+              <span className="pd-field__value">
+                <MyLocationIcon size={15} className="pd-icon-spacing" /> {providerInfo?.location || 'Sri Lanka'}
+              </span>
+            </div>
+          </div>
+
+          <div className="pd-section-header pd-mt-28">
+            <h2>Active Listings ({activeServices.length})</h2>
+            <button className="pd-row-btn pd-row-btn--edit" onClick={() => onNavigate('services')}>View All</button>
+          </div>
+          {activeServices.length === 0 ? (
+            <p className="pd-muted-13">No active services listed yet. Click &quot;Add New Listing&quot; to begin.</p>
+          ) : (
+            <ul className="pd-clean-list">
+              {activeServices.slice(0, 4).map(s => (
+                <li key={s.id} className="pd-list-item-between">
+                  <span className="pd-title-primary">{s.title || s.name || s.roomType}</span>
+                  <span className="pd-price-teal">
+                    {formatCurrency(s.price || s.pricePerPerson || s.pricePerNight)}
+                    <small className="pd-unit-muted">/{s.unit || (s.pricePerPerson ? 'person' : 'night')}</small>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom Row: Recent Bookings & Notifications in 1 row */}
+      <div className="pd-overview-bottom-grid">
+        {/* Recent Bookings Card */}
+        <div className="pd-card pd-mb-0">
           <div className="pd-card__body">
             <div className="pd-section-header">
-              <h2>Business Profile Summary</h2>
-              <button className="pd-row-btn pd-row-btn--edit" onClick={() => onNavigate('business')}>Edit</button>
+              <h2>Recent Bookings</h2>
+              <button className="pd-row-btn pd-row-btn--edit" onClick={() => onNavigate('bookings')}>All Bookings</button>
             </div>
-            <div className="pd-fields">
-              <div className="pd-field">
-                <span className="pd-field__label">Business Name</span>
-                <span className="pd-field__value pd-title-primary">
-                  {providerInfo?.businessName || '—'}
-                </span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Service Category</span>
-                <span className="pd-field__value">
-                  {providerInfo?.serviceType || 'Tourism Provider'}
-                </span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Business Phone</span>
-                <span className="pd-field__value">
-                  <LocalPhoneIcon size={15} className="pd-icon-spacing" /> {providerInfo?.phoneNumber || '—'}
-                </span>
-              </div>
-              <div className="pd-field">
-                <span className="pd-field__label">Primary Operation Region</span>
-                <span className="pd-field__value">
-                  <MyLocationIcon size={15} className="pd-icon-spacing" /> {providerInfo?.location || 'Sri Lanka'}
-                </span>
-              </div>
-            </div>
-
-            <div className="pd-section-header pd-mt-28">
-              <h2>Active Listings ({activeServices.length})</h2>
-              <button className="pd-row-btn pd-row-btn--edit" onClick={() => onNavigate('services')}>View All</button>
-            </div>
-            {activeServices.length === 0 ? (
-              <p className="pd-muted-13">No active services listed yet. Click &quot;Add New Listing&quot; to begin.</p>
+            {recentBookings.length === 0 ? (
+              <p className="pd-muted-13">No bookings received yet.</p>
             ) : (
-              <ul className="pd-clean-list">
-                {activeServices.slice(0, 3).map(s => (
-                  <li key={s.id} className="pd-list-item-between">
-                    <span className="pd-title-primary">{s.title || s.name || s.roomType}</span>
-                    <span className="pd-price-teal">
-                      {formatCurrency(s.price || s.pricePerPerson || s.pricePerNight)}
-                      <small className="pd-unit-muted">/{s.unit || (s.pricePerPerson ? 'person' : 'night')}</small>
-                    </span>
-                  </li>
+              <div className="pd-column-gap-10">
+                {recentBookings.map(b => (
+                  <div key={b.id} className="pd-recent-booking-card">
+                    <div>
+                      <div className="pd-bold-13">{b.visitorName || b.customerName}</div>
+                      <div className="pd-muted-12">{b.activityName || b.serviceTitle} • {formatDate(b.date || b.bookingDate)}</div>
+                    </div>
+                    <div className="pd-text-right">
+                      <span className={`pd-status-pill pd-status-pill--${b.status?.toLowerCase()}`}>{b.status}</span>
+                      <div className="pd-amount-text">{formatCurrency(b.totalAmount || b.amount)}</div>
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Right Column: Recent Bookings & Notifications */}
-        <div className="pd-column-gap-24">
-          <div className="pd-card pd-mb-0">
-            <div className="pd-card__body">
-              <div className="pd-section-header">
-                <h2>Recent Bookings</h2>
-                <button className="pd-row-btn pd-row-btn--edit" onClick={() => onNavigate('bookings')}>All Bookings</button>
-              </div>
-              {recentBookings.length === 0 ? (
-                <p className="pd-muted-13">No bookings received yet.</p>
-              ) : (
-                <div className="pd-column-gap-10">
-                  {recentBookings.map(b => (
-                    <div key={b.id} className="pd-recent-booking-card">
-                      <div>
-                        <div className="pd-bold-13">{b.visitorName || b.customerName}</div>
-                        <div className="pd-muted-12">{b.activityName || b.serviceTitle} • {formatDate(b.date || b.bookingDate)}</div>
-                      </div>
-                      <div className="pd-text-right">
-                        <span className={`pd-status-pill pd-status-pill--${b.status?.toLowerCase()}`}>{b.status}</span>
-                        <div className="pd-amount-text">{formatCurrency(b.totalAmount || b.amount)}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+        {/* Recent Notifications Card */}
+        <div className="pd-card pd-mb-0">
+          <div className="pd-card__body">
+            <div className="pd-section-header">
+              <h2>Recent Notifications</h2>
+              <button className="pd-row-btn pd-row-btn--edit" onClick={() => onNavigate('notifications')}>View All</button>
             </div>
-          </div>
-
-          <div className="pd-card pd-mb-0">
-            <div className="pd-card__body">
-              <div className="pd-section-header">
-                <h2>Recent Notifications</h2>
-                <button className="pd-row-btn pd-row-btn--edit" onClick={() => onNavigate('notifications')}>View All</button>
-              </div>
-              {recentNotifs.length === 0 ? (
-                <p className="pd-muted-13">No new notifications.</p>
-              ) : (
-                <div className="pd-column-gap-10">
-                  {recentNotifs.map(n => (
-                    <div key={n.id} className="pd-notif-preview-item">
-                      <span className="pd-notif-icon-wrap"><ManageSearchIcon size={18} /></span>
-                      <div className="pd-flex-1">
-                        <div className="pd-notif-title">{n.title}</div>
-                        <div className="pd-notif-desc">{n.message || n.desc}</div>
-                      </div>
-                      <span className="pd-notif-time">{n.time || formatDate(n.createdAt)}</span>
+            {recentNotifs.length === 0 ? (
+              <p className="pd-muted-13">No new notifications.</p>
+            ) : (
+              <div className="pd-column-gap-10">
+                {recentNotifs.map(n => (
+                  <div key={n.id} className="pd-notif-preview-item">
+                    <span className="pd-notif-icon-wrap"><ManageSearchIcon size={18} /></span>
+                    <div className="pd-flex-1">
+                      <div className="pd-notif-title">{n.title}</div>
+                      <div className="pd-notif-desc">{n.message || n.desc}</div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <span className="pd-notif-time">{n.time || formatDate(n.createdAt)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
