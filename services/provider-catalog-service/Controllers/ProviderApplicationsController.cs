@@ -38,7 +38,9 @@ public class ProviderApplicationsController : ControllerBase
         var files = new List<IFormFile>();
         if (request.LegalDocuments != null && request.LegalDocuments.Count > 0)
             files.AddRange(request.LegalDocuments.Where(f => f.Length > 0));
-        if (request.LegalDocument != null && request.LegalDocument.Length > 0 && !files.Contains(request.LegalDocument))
+
+        // Only add single LegalDocument if no duplicate file exists in LegalDocuments
+        if (request.LegalDocument != null && request.LegalDocument.Length > 0 && !files.Any(f => f.FileName == request.LegalDocument.FileName && f.Length == request.LegalDocument.Length))
             files.Add(request.LegalDocument);
         // Validation: 1 is mandatory, max 5 allowed
         if (files.Count == 0)

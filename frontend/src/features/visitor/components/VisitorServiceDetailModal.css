@@ -1,0 +1,299 @@
+/* Detail Modal Styling */
+.vd-detail-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  max-width: 580px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  position: relative;
+}
+
+.vd-detail-modal__header {
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  position: relative;
+}
+
+.vd-detail-modal__close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: #f1f5f9;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.vd-detail-modal__close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.vd-detail-modal__title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 8px 0 4px;
+}
+
+.vd-detail-modal__provider {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.vd-detail-modal__body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vd-detail-modal__desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #334155;
+  margin: 0;
+}
+
+.vd-detail-modal__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f8fafc;
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.vd-detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.vd-detail-row__label {
+  font-weight: 700;
+  color: #123B5D;
+  min-width: 155px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vd-detail-row__label svg {
+  color: #123B5D;
+  flex-shrink: 0;
+}
+
+.vd-detail-row__val {
+  color: #334155;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.vd-detail-modal__images {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.vd-detail-image-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  height: 140px;
+}
+
+.vd-detail-img-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+}
+
+.vd-detail-modal__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.25s ease;
+}
+
+.vd-detail-img-wrap:hover .vd-detail-modal__img {
+  transform: scale(1.04);
+}
+
+.vd-detail-img-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.52);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  user-select: none;
+}
+
+/* Lightbox Modal */
+.vd-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: vd-fade-in 0.2s ease;
+}
+
+@keyframes vd-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.vd-lightbox-content {
+  position: relative;
+  max-width: 900px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.vd-lightbox-img {
+  max-width: 100%;
+  max-height: 75vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.vd-lightbox-close {
+  position: absolute;
+  top: -38px;
+  right: 0;
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: transform 0.15s ease;
+}
+
+.vd-lightbox-close:hover {
+  transform: scale(1.2);
+}
+
+.vd-lightbox-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.vd-lightbox-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-size: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  line-height: 1;
+}
+
+.vd-lightbox-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.vd-lightbox-counter {
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.vd-detail-modal__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.vd-detail-price {
+  display: flex;
+  flex-direction: column;
+}
+
+.vd-detail-price__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.vd-detail-price__row {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.vd-detail-price__val {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.vd-detail-price__unit {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.vd-btn-book {
+  background: #168AAD;
+  color: #ffffff;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.vd-btn-book:hover {
+  background: #123B5D;
+  transform: translateY(-1px);
+}

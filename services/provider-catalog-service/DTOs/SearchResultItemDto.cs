@@ -24,5 +24,32 @@ public class SearchResultItemDto
 
     public string ProviderBusinessName { get; set; } = string.Empty;
 
+    public string Unit { get; set; } = string.Empty;
+
+    public string Category { get; set; } = string.Empty;
+
+    // Experience / Activity specific fields
+    public string? Duration { get; set; }
+    public int? MaxParticipants { get; set; }
+    public string? AvailableDays { get; set; }
+    public string? TimeSlots { get; set; }
+
+    // Restaurant specific fields
+    public string? CuisineType { get; set; }
+    public string? DiningStyle { get; set; }
+    public string? OpeningHours { get; set; }
+    public int? SeatingCapacity { get; set; }
+    public string? SetMenuDetails { get; set; }
+    public string? DietaryOptions { get; set; }
+
+    // Accommodation specific fields
+    public string? PropertyType { get; set; }
+    public int? MaxGuests { get; set; }
+    public string? BedDetails { get; set; }
+    public int? MinStayNights { get; set; }
+    public string? Amenities { get; set; }
+    public string? BathroomDetails { get; set; }
+
     public DateTime CreatedAt { get; set; }
+    public List<string> Images { get; set; } = new();
 }

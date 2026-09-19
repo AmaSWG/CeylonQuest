@@ -35,4 +35,5 @@ public class CreateAccommodationListingRequest
     public string Description { get; set; } = string.Empty;
 
     public bool IsActive { get; set; } = true;
+    public string? Images { get; set; }
 }

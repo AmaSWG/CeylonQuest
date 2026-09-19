@@ -43,7 +43,8 @@ public class AccommodationListingsController : ControllerBase
         BathroomDetails = a.BathroomDetails,
         Description = a.Description,
         IsActive = a.IsActive,
-        CreatedAt = a.CreatedAt
+        CreatedAt = a.CreatedAt,
+        Images = a.Images
     };
 
     /// <summary>
@@ -74,7 +75,8 @@ public class AccommodationListingsController : ControllerBase
             BathroomDetails = request.BathroomDetails?.Trim() ?? "",
             Description = request.Description.Trim(),
             IsActive = request.IsActive,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            Images = request.Images
         };
 
         _db.AccommodationListings.Add(listing);
@@ -161,6 +163,7 @@ public class AccommodationListingsController : ControllerBase
         listing.BathroomDetails = request.BathroomDetails?.Trim() ?? "";
         listing.Description = request.Description.Trim();
         listing.IsActive = request.IsActive;
+        listing.Images = request.Images;
 
         await _db.SaveChangesAsync();
 

@@ -47,6 +47,9 @@ namespace ProviderCatalogService.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("Images")
+                        .HasColumnType("longtext");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
 
@@ -101,6 +104,9 @@ namespace ProviderCatalogService.Migrations
 
                     b.Property<string>("Duration")
                         .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Images")
                         .HasColumnType("longtext");
 
                     b.Property<bool>("IsActive")
@@ -324,6 +330,9 @@ namespace ProviderCatalogService.Migrations
 
                     b.Property<string>("GroupSizeCategory")
                         .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Images")
                         .HasColumnType("longtext");
 
                     b.Property<bool>("IsActive")

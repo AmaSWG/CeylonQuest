@@ -38,7 +38,8 @@ public class ActivityListingsController : ControllerBase
         AvailableDays = a.AvailableDays,
         TimeSlots = a.TimeSlots,
         ValidFrom = a.ValidFrom,
-        ValidUntil = a.ValidUntil
+        ValidUntil = a.ValidUntil,
+        Images = a.Images
     };
 
     
@@ -73,7 +74,8 @@ public class ActivityListingsController : ControllerBase
             AvailableDays = request.AvailableDays?.Trim(),
             TimeSlots = request.TimeSlots?.Trim(),
             ValidFrom = request.ValidFrom,
-            ValidUntil = request.ValidUntil
+            ValidUntil = request.ValidUntil,
+            Images = request.Images
         };
 
         _db.ActivityListings.Add(listing);
@@ -113,7 +115,8 @@ public class ActivityListingsController : ControllerBase
                 AvailableDays = l.AvailableDays,
                 TimeSlots = l.TimeSlots,
                 ValidFrom = l.ValidFrom,
-                ValidUntil = l.ValidUntil
+                ValidUntil = l.ValidUntil,
+                Images = l.Images
             })
             .ToListAsync();
 
@@ -186,6 +189,7 @@ public class ActivityListingsController : ControllerBase
         listing.TimeSlots = request.TimeSlots ?? "[]";
         listing.ValidFrom = request.ValidFrom;
         listing.ValidUntil = request.ValidUntil;
+        listing.Images = request.Images;
 
         await _db.SaveChangesAsync();
 

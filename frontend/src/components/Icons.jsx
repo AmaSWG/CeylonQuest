@@ -21,6 +21,7 @@ function createIcon(svgPath, viewBox = '0 0 24 24') {
 }
 
 // 1. Admin & Dashboard Icons
+export const MenuIcon = createIcon('M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z')
 export const DashboardIcon = createIcon('M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z')
 export const GroupIcon = createIcon('M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z')
 export const DocumentScannerIcon = createIcon('M7 3H4c-1.1 0-2 .9-2 2v3h2V5h3V3zm13 0h-3v2h3v3h2V5c0-1.1-.9-2-2-2zM4 19v-3H2v3c0 1.1.9 2 2 2h3v-2H4zm16 0h-3v2h3c1.1 0 2-.9 2-2v-3h-2v3zM19 8H5c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h14c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1zm-1 6H6v-4h12v4z')
