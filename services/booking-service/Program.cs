@@ -1,34 +1,53 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Serialization;
 using Shared.Kafka;
 using Shared.Storage;
+using BookingService.Data;
+using BookingService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Controllers + Enum JSON conversion
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
     {
-        opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        opts.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter()
+        );
     });
 
-// Database
-var connectionString = builder.Configuration.GetConnectionString("BookingDb");
 
-var serverVersion = Version.TryParse(builder.Configuration["DatabaseServerVersion"], out var parsedVersion)
-    ? new MySqlServerVersion(parsedVersion)
-    : new MySqlServerVersion(new Version(8, 0, 30));
+// Database
+
+var connectionString =
+    builder.Configuration.GetConnectionString("BookingDb");
+
+var serverVersion =
+    Version.TryParse(
+        builder.Configuration["DatabaseServerVersion"],
+        out var parsedVersion)
+        ? new MySqlServerVersion(parsedVersion)
+        : new MySqlServerVersion(new Version(8, 0, 30));
+
+builder.Services.AddDbContext<BookingDbContext>(options =>
+    options.UseMySql(connectionString, serverVersion));
 
 
 // JWT Authentication
+
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme =
+        JwtBearerDefaults.AuthenticationScheme;
+
+    options.DefaultChallengeScheme =
+        JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
@@ -36,12 +55,19 @@ builder.Services.AddAuthentication(options =>
     options.SaveToken = true;
 
     var jwtKey = builder.Configuration["Jwt:Key"];
-    var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "CeylonQuest";
-    var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "CeylonQuestAudience";
+
+    var jwtIssuer =
+        builder.Configuration["Jwt:Issuer"]
+        ?? "CeylonQuest";
+
+    var jwtAudience =
+        builder.Configuration["Jwt:Audience"]
+        ?? "CeylonQuestAudience";
 
     if (string.IsNullOrWhiteSpace(jwtKey))
     {
-        jwtKey = "dev_secret_do_not_use_in_production_please_change_which_is_long_enough";
+        jwtKey =
+            "dev_secret_do_not_use_in_production_please_change_which_is_long_enough";
     }
 
     using var sha = SHA256.Create();
@@ -50,35 +76,98 @@ builder.Services.AddAuthentication(options =>
         Encoding.UTF8.GetBytes(jwtKey)
     );
 
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
+    options.TokenValidationParameters =
+        new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
 
-        ValidIssuer = jwtIssuer,
-        ValidAudience = jwtAudience,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
 
-        IssuerSigningKey = new SymmetricSecurityKey(signingKeyBytes),
+            IssuerSigningKey =
+                new SymmetricSecurityKey(signingKeyBytes),
 
-        RoleClaimType = ClaimTypes.Role,
-        NameClaimType = ClaimTypes.NameIdentifier
-    };
+            RoleClaimType = ClaimTypes.Role,
+            NameClaimType = ClaimTypes.NameIdentifier
+        };
 });
 
 builder.Services.AddAuthorization();
 
+// Swagger
+
+builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc(
+        "v1",
+        new OpenApiInfo
+        {
+            Title = "CeylonQuest Booking Service API",
+            Version = "v1"
+        });
+
+    // Add JWT Bearer authentication to Swagger
+    options.AddSecurityDefinition(
+        "Bearer",
+        new OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description =
+                "Enter your JWT access token."
+        });
+
+    options.AddSecurityRequirement(
+        new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                Array.Empty<string>()
+            }
+        });
+});
+
+
+// Provider Catalog Service
+
+builder.Services.AddHttpClient<CatalogService>(client =>
+{
+    client.BaseAddress = new Uri(
+        builder.Configuration["Services:ProviderCatalog"]
+        ?? "http://localhost:5141"
+    );
+});
+
 
 // CORS
+
 const string FrontendPolicy = "FrontendPolicy";
 
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                     ?? new[] {
-                         "http://localhost:5173",
-                         "http://localhost:5000",
-                         "https://jolly-field-0aaea8a00.7.azurestaticapps.net"
-                     };
+var allowedOrigins =
+    builder.Configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>()
+    ?? new[]
+    {
+        "http://localhost:5173",
+        "http://localhost:5000",
+        "https://jolly-field-0aaea8a00.7.azurestaticapps.net"
+    };
 
 builder.Services.AddCors(options =>
 {
@@ -92,17 +181,34 @@ builder.Services.AddCors(options =>
     });
 });
 
+
+// Kafka
+
 builder.Services.AddKafka(builder.Configuration);
 
-builder.Services.AddScoped<IBlobStorageService, BlobStorageService>();
+
+// Blob Storage
+
+builder.Services.AddScoped<
+    IBlobStorageService,
+    BlobStorageService>();
 
 var app = builder.Build();
 
-// HTTP request pipeline
+
+// HTTP Request Pipeline
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint(
+            "/swagger/v1/swagger.json",
+            "CeylonQuest Booking Service API v1"
+        );
+    });
 }
 
 app.UseCors(FrontendPolicy);
