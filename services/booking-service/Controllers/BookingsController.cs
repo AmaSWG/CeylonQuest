@@ -1,10 +1,12 @@
 using BookingService.Data;
 using BookingService.DTOs;
+using BookingService.Events;
 using BookingService.Models;
 using BookingService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Shared.Kafka;
 using System.Security.Claims;
 
 namespace BookingService.Controllers;
@@ -16,13 +18,16 @@ public class BookingsController : ControllerBase
 {
     private readonly BookingDbContext _context;
     private readonly CatalogService _catalogService;
+    private readonly IKafkaProducer _kafkaProducer;
 
     public BookingsController(
         BookingDbContext context,
-        CatalogService catalogService)
+        CatalogService catalogService,
+        IKafkaProducer kafkaProducer)
     {
         _context = context;
         _catalogService = catalogService;
+        _kafkaProducer = kafkaProducer;
     }
 
     // POST: /api/bookings
@@ -193,7 +198,6 @@ public class BookingsController : ControllerBase
 
             ListingId = request.ListingId,
 
-            // Real title from Provider Catalog
             ListingTitle = listing.Title,
 
             ListingType = "Experience",
@@ -204,10 +208,8 @@ public class BookingsController : ControllerBase
 
             ParticipantCount = request.ParticipantCount,
 
-            // Real price from Provider Catalog
             UnitPrice = unitPrice,
 
-            // Backend calculated total
             TotalAmount = totalAmount,
 
             Status = BookingStatus.PendingPayment,
@@ -224,7 +226,33 @@ public class BookingsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        // 18. Return created booking
+        // 18. Create booking.created Kafka event
+        var bookingCreatedEvent = new BookingCreatedEvent
+        {
+            BookingId = booking.Id,
+
+            VisitorId = booking.VisitorId,
+
+            ListingId = booking.ListingId,
+
+            BookingDate =
+                booking.BookingDate.ToString("yyyy-MM-dd"),
+
+            TimeSlot = booking.TimeSlot,
+
+            ParticipantCount = booking.ParticipantCount,
+
+            TotalAmount = booking.TotalAmount
+        };
+
+        // 19. Publish booking.created event to Kafka
+        await _kafkaProducer.PublishAsync(
+            "booking.created",
+            booking.Id.ToString(),
+            bookingCreatedEvent
+        );
+
+        // 20. Return created booking
         return CreatedAtAction(
             nameof(GetBookingById),
             new { id = booking.Id },
