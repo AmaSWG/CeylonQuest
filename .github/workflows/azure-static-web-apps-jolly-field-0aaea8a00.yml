@@ -49,6 +49,7 @@ jobs:
         env:
           VITE_API_BASE_URL: https://ceylonquest-identity-fphphwe7cfbtadhu.southeastasia-01.azurewebsites.net
           VITE_CATALOG_API_BASE_URL: https://ceylonquest-provider-catalog-fecca6csaubwa2em.southeastasia-01.azurewebsites.net
+          VITE_BOOKING_API_BASE_URL: https://ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
