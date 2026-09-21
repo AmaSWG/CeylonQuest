@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ProviderCatalogService.Events;
@@ -20,62 +19,78 @@ public class BookingCreatedConsumer : KafkaConsumerBase
         PropertyNameCaseInsensitive = true
     };
 
-    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<BookingCreatedConsumer> _logger;
 
     public BookingCreatedConsumer(
         IOptions<KafkaSettings> options,
-        ILogger<BookingCreatedConsumer> logger,
-        IServiceScopeFactory scopeFactory)
+        ILogger<BookingCreatedConsumer> logger)
         : base(options, logger)
     {
         _logger = logger;
-        _scopeFactory = scopeFactory;
     }
 
     protected override string GroupId => "provider-catalog-service";
 
-    protected override IReadOnlyList<string> Topics => new[] { BookingCreatedTopic };
+    protected override IReadOnlyList<string> Topics =>
+        new[] { BookingCreatedTopic };
 
     /// <summary>
-    /// Handles a booking created event by deserializing the payload and
-    /// deducting the requested guest count from the listing's slot capacity
+    /// Handles booking.created events.
+    ///
+    /// Capacity is NOT deducted here because capacity is now reserved
+    /// synchronously through the Provider Catalog reserve endpoint
+    /// before the booking is created.
+    ///
+    /// This consumer keeps listening to booking.created events for
+    /// logging and future event-driven processing without causing
+    /// a second capacity deduction.
     /// </summary>
-    protected override async Task HandleMessageAsync(
+    protected override Task HandleMessageAsync(
         string topic,
         string? key,
         string value,
         CancellationToken cancellationToken)
     {
         BookingCreatedEvent? evt;
+
         try
         {
-            evt = JsonSerializer.Deserialize<BookingCreatedEvent>(value, JsonOptions);
+            evt = JsonSerializer.Deserialize<BookingCreatedEvent>(
+                value,
+                JsonOptions);
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Failed to deserialize {Topic} message: {Value}", topic, value);
-            return;
+            _logger.LogError(
+                ex,
+                "Failed to deserialize {Topic} message: {Value}",
+                topic,
+                value);
+
+            return Task.CompletedTask;
         }
 
-        // Ignore events missing the required identifiers or booking details
-        if (evt == null || evt.ListingId == Guid.Empty || string.IsNullOrWhiteSpace(evt.BookingDate))
+        if (evt == null ||
+            evt.ListingId == Guid.Empty ||
+            string.IsNullOrWhiteSpace(evt.BookingDate))
         {
-            _logger.LogWarning("Received invalid {Topic} event, ignoring: {Value}", topic, value);
-            return;
+            _logger.LogWarning(
+                "Received invalid {Topic} event, ignoring: {Value}",
+                topic,
+                value);
+
+            return Task.CompletedTask;
         }
 
         _logger.LogInformation(
-            "Processing {Topic} for Listing {ListingId}, Date {Date}, Slot {Slot}, Guests {Guests}",
-            topic, evt.ListingId, evt.BookingDate, evt.TimeSlot, evt.ParticipantCount);
+            "Received {Topic} for Booking {BookingId}, Listing {ListingId}, Date {Date}, Slot {Slot}, Participants {Participants}. Capacity was already reserved before booking creation; no additional deduction is required.",
+            topic,
+            evt.BookingId,
+            evt.ListingId,
+            evt.BookingDate,
+            evt.TimeSlot,
+            evt.ParticipantCount);
 
-        using var scope = _scopeFactory.CreateScope();
-        var availabilityService = scope.ServiceProvider.GetRequiredService<AvailabilityService>();
-
-        if (DateOnly.TryParse(evt.BookingDate, out var date))
-        {
-            await availabilityService.DeductCapacityAsync(evt.ListingId, date, evt.TimeSlot, evt.ParticipantCount);
-            _logger.LogInformation("Successfully deducted capacity for Listing {ListingId}", evt.ListingId);
-        }
+        return Task.CompletedTask;
     }
 }

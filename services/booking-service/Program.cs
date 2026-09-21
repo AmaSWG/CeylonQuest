@@ -13,7 +13,11 @@ using BookingService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
+// =========================================================
 // Controllers + Enum JSON conversion
+// =========================================================
+
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
     {
@@ -23,7 +27,9 @@ builder.Services.AddControllers()
     });
 
 
+// =========================================================
 // Database
+// =========================================================
 
 var connectionString =
     builder.Configuration.GetConnectionString("BookingDb");
@@ -39,7 +45,9 @@ builder.Services.AddDbContext<BookingDbContext>(options =>
     options.UseMySql(connectionString, serverVersion));
 
 
+// =========================================================
 // JWT Authentication
+// =========================================================
 
 builder.Services.AddAuthentication(options =>
 {
@@ -54,7 +62,8 @@ builder.Services.AddAuthentication(options =>
     options.RequireHttpsMetadata = false;
     options.SaveToken = true;
 
-    var jwtKey = builder.Configuration["Jwt:Key"];
+    var jwtKey =
+        builder.Configuration["Jwt:Key"];
 
     var jwtIssuer =
         builder.Configuration["Jwt:Issuer"]
@@ -72,9 +81,10 @@ builder.Services.AddAuthentication(options =>
 
     using var sha = SHA256.Create();
 
-    var signingKeyBytes = sha.ComputeHash(
-        Encoding.UTF8.GetBytes(jwtKey)
-    );
+    var signingKeyBytes =
+        sha.ComputeHash(
+            Encoding.UTF8.GetBytes(jwtKey)
+        );
 
     options.TokenValidationParameters =
         new TokenValidationParameters
@@ -88,16 +98,23 @@ builder.Services.AddAuthentication(options =>
             ValidAudience = jwtAudience,
 
             IssuerSigningKey =
-                new SymmetricSecurityKey(signingKeyBytes),
+                new SymmetricSecurityKey(
+                    signingKeyBytes),
 
-            RoleClaimType = ClaimTypes.Role,
-            NameClaimType = ClaimTypes.NameIdentifier
+            RoleClaimType =
+                ClaimTypes.Role,
+
+            NameClaimType =
+                ClaimTypes.NameIdentifier
         };
 });
 
 builder.Services.AddAuthorization();
 
+
+// =========================================================
 // Swagger
+// =========================================================
 
 builder.Services.AddEndpointsApiExplorer();
 
@@ -107,20 +124,29 @@ builder.Services.AddSwaggerGen(options =>
         "v1",
         new OpenApiInfo
         {
-            Title = "CeylonQuest Booking Service API",
+            Title =
+                "CeylonQuest Booking Service API",
+
             Version = "v1"
         });
 
-    // Add JWT Bearer authentication to Swagger
+    // JWT Bearer authentication in Swagger
     options.AddSecurityDefinition(
         "Bearer",
         new OpenApiSecurityScheme
         {
             Name = "Authorization",
-            Type = SecuritySchemeType.Http,
+
+            Type =
+                SecuritySchemeType.Http,
+
             Scheme = "bearer",
+
             BearerFormat = "JWT",
-            In = ParameterLocation.Header,
+
+            In =
+                ParameterLocation.Header,
+
             Description =
                 "Enter your JWT access token."
         });
@@ -131,32 +157,46 @@ builder.Services.AddSwaggerGen(options =>
             {
                 new OpenApiSecurityScheme
                 {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer"
-                    }
+                    Reference =
+                        new OpenApiReference
+                        {
+                            Type =
+                                ReferenceType.SecurityScheme,
+
+                            Id = "Bearer"
+                        }
                 },
+
                 Array.Empty<string>()
             }
         });
 });
 
 
+// =========================================================
 // Provider Catalog Service
+// ICatalogService -> CatalogService
+// =========================================================
 
-builder.Services.AddHttpClient<CatalogService>(client =>
+builder.Services.AddHttpClient<
+    ICatalogService,
+    CatalogService>(client =>
 {
-    client.BaseAddress = new Uri(
-        builder.Configuration["Services:ProviderCatalog"]
-        ?? "http://localhost:5141"
-    );
+    client.BaseAddress =
+        new Uri(
+            builder.Configuration[
+                "Services:ProviderCatalog"]
+            ?? "http://localhost:5141"
+        );
 });
 
 
+// =========================================================
 // CORS
+// =========================================================
 
-const string FrontendPolicy = "FrontendPolicy";
+const string FrontendPolicy =
+    "FrontendPolicy";
 
 var allowedOrigins =
     builder.Configuration
@@ -171,32 +211,46 @@ var allowedOrigins =
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(FrontendPolicy, policy =>
-    {
-        policy
-            .WithOrigins(allowedOrigins)
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
-    });
+    options.AddPolicy(
+        FrontendPolicy,
+        policy =>
+        {
+            policy
+                .WithOrigins(allowedOrigins)
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        });
 });
 
 
+// =========================================================
 // Kafka
+// =========================================================
 
-builder.Services.AddKafka(builder.Configuration);
+builder.Services.AddKafka(
+    builder.Configuration);
 
 
+// =========================================================
 // Blob Storage
+// =========================================================
 
 builder.Services.AddScoped<
     IBlobStorageService,
     BlobStorageService>();
 
+
+// =========================================================
+// Build application
+// =========================================================
+
 var app = builder.Build();
 
 
+// =========================================================
 // HTTP Request Pipeline
+// =========================================================
 
 if (app.Environment.IsDevelopment())
 {
@@ -219,6 +273,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseAuthentication();
+
 app.UseAuthorization();
 
 app.MapControllers();

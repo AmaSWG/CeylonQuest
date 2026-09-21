@@ -31,4 +31,11 @@
     <ProjectReference Include="..\..\Shared\Storage\Shared.Storage.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="BookingService.Tests\**\*.cs" />
+    <Content Remove="BookingService.Tests\**\*" />
+    <EmbeddedResource Remove="BookingService.Tests\**\*" />
+    <None Remove="BookingService.Tests\**\*" />
+  </ItemGroup>
+
 </Project>

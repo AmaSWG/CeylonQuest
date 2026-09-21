@@ -17,12 +17,12 @@ namespace BookingService.Controllers;
 public class BookingsController : ControllerBase
 {
     private readonly BookingDbContext _context;
-    private readonly CatalogService _catalogService;
+    private readonly ICatalogService _catalogService;
     private readonly IKafkaProducer _kafkaProducer;
 
     public BookingsController(
         BookingDbContext context,
-        CatalogService catalogService,
+        ICatalogService catalogService,
         IKafkaProducer kafkaProducer)
     {
         _context = context;
@@ -85,7 +85,7 @@ public class BookingsController : ControllerBase
             });
         }
 
-        // 6. Get real experience details from Provider Catalog
+        // 6. Get experience details from Provider Catalog
         var listing =
             await _catalogService.GetListingAsync(
                 request.ListingId);
@@ -170,7 +170,7 @@ public class BookingsController : ControllerBase
             });
         }
 
-        // 13. Check remaining capacity
+        // 13. Preliminary capacity validation
         if (selectedSlot.IsFullyBooked ||
             request.ParticipantCount >
             selectedSlot.RemainingCapacity)
@@ -182,77 +182,81 @@ public class BookingsController : ControllerBase
             });
         }
 
-        // 14. Get real price from Provider Catalog
+        // 14. Reserve the capacity in Provider Catalog.
+        // This check happens immediately before booking creation.
+        // If another visitor already reserved the remaining capacity,
+        // this request will fail here instead of creating an overbooking.
+        var capacityReserved =
+            await _catalogService.ReserveCapacityAsync(
+                request.ListingId,
+                request.BookingDate,
+                request.TimeSlot,
+                request.ParticipantCount);
+
+        if (!capacityReserved)
+        {
+            return Conflict(new
+            {
+                message =
+                    "The selected places are no longer available. Please check availability and try again."
+            });
+        }
+
+        // 15. Get price from Provider Catalog
         var unitPrice = listing.Price;
 
-        // 15. Calculate total amount on backend
+        // 16. Calculate total amount
         var totalAmount =
             unitPrice * request.ParticipantCount;
 
-        // 16. Create booking
+        // 17. Create booking
         var booking = new Booking
         {
             Id = Guid.NewGuid(),
-
             VisitorId = visitorId,
-
             ListingId = request.ListingId,
-
             ListingTitle = listing.Title,
-
             ListingType = "Experience",
-
             BookingDate = request.BookingDate,
-
             TimeSlot = request.TimeSlot,
-
             ParticipantCount = request.ParticipantCount,
-
             UnitPrice = unitPrice,
-
             TotalAmount = totalAmount,
-
             Status = BookingStatus.PendingPayment,
-
             PaymentStatus = PaymentStatus.Unpaid,
-
             CreatedAt = DateTime.UtcNow,
-
             UpdatedAt = DateTime.UtcNow
         };
 
-        // 17. Save booking to booking_db
+        // 18. Save booking
         _context.Bookings.Add(booking);
 
         await _context.SaveChangesAsync();
 
-        // 18. Create booking.created Kafka event
-        var bookingCreatedEvent = new BookingCreatedEvent
-        {
-            BookingId = booking.Id,
+        // 19. Create booking.created Kafka event
+        var bookingCreatedEvent =
+            new BookingCreatedEvent
+            {
+                BookingId = booking.Id,
+                VisitorId = booking.VisitorId,
+                ListingId = booking.ListingId,
+                BookingDate =
+                    booking.BookingDate.ToString("yyyy-MM-dd"),
+                TimeSlot = booking.TimeSlot,
+                ParticipantCount =
+                    booking.ParticipantCount,
+                TotalAmount =
+                    booking.TotalAmount
+            };
 
-            VisitorId = booking.VisitorId,
-
-            ListingId = booking.ListingId,
-
-            BookingDate =
-                booking.BookingDate.ToString("yyyy-MM-dd"),
-
-            TimeSlot = booking.TimeSlot,
-
-            ParticipantCount = booking.ParticipantCount,
-
-            TotalAmount = booking.TotalAmount
-        };
-
-        // 19. Publish booking.created event to Kafka
+        // 20. Publish booking.created event
         await _kafkaProducer.PublishAsync(
             "booking.created",
             booking.Id.ToString(),
             bookingCreatedEvent
         );
 
-        // 20. Return created booking
+        // 21. Return created booking
         return CreatedAtAction(
             nameof(GetBookingById),
             new { id = booking.Id },
