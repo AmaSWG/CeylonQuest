@@ -33,8 +33,8 @@ jobs:
         run: dotnet build services/booking-service/booking-service.csproj --no-restore --configuration Release
 
       # No test project yet — add this step once booking-service.Tests is created:
-      # - name: Run Unit Tests
-      #   run: dotnet test services/booking-service/booking-service.Tests/BookingService.Tests.csproj --no-build --configuration Release --verbosity normal
+      name: Run Unit Tests
+      run: dotnet test services/booking-service/booking-service.Tests/BookingService.Tests.csproj --no-build --configuration Release --verbosity normal
 
       # Feature branches stop here: CI only
 
