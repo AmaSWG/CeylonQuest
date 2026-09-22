@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import './VisitorBookingModal.css'
 
 import {
@@ -34,22 +34,31 @@ export default function VisitorBookingModal({
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
 
+  const isRestaurant = item?.type === 'Restaurant'
+  const isAccommodation = item?.type === 'Accommodation'
+  const isExperience = item?.type === 'Experience'
+
+  /*
+   * Decide how the listing price is measured.
+   */
   const unit =
     item?.unit ||
-    (item?.type === 'Accommodation' ? 'night' : 'person')
+    (isAccommodation ? 'night' : 'person')
 
-  // Maximum capacity based on listing type
+  /*
+   * Maximum capacity depends on listing type.
+   */
   const maxCap = item
-    ? item.type === 'Accommodation'
+    ? isAccommodation
       ? item.maxGuests || 4
-      : item.type === 'Restaurant'
+      : isRestaurant
         ? item.seatingCapacity || 10
         : item.maxParticipants || 10
     : 10
 
   /*
-   * Load real availability whenever the
-   * listing or selected date changes.
+   * Load availability whenever the listing
+   * or selected date changes.
    */
   useEffect(() => {
     if (!item || !selectedDate) return
@@ -67,25 +76,28 @@ export default function VisitorBookingModal({
           )
         )
 
-        if (response.ok) {
-          const data = await response.json()
-
-          setAvailability(data)
-
-          // Automatically select the first slot
-          // that still has remaining capacity.
-          const firstAvailableSlot = data.slots?.find(
-            (slot) => slot.remainingCapacity > 0
-          )
-
-          setSelectedTimeSlot(
-            firstAvailableSlot?.timeSlot || ''
-          )
-        } else {
+        if (!response.ok) {
           setAvailError(
             'Unable to check availability for this date.'
           )
+          return
         }
+
+        const data = await response.json()
+
+        setAvailability(data)
+
+        /*
+         * Automatically choose the first time slot
+         * that still has capacity.
+         */
+        const firstAvailableSlot = data.slots?.find(
+          (slot) => slot.remainingCapacity > 0
+        )
+
+        setSelectedTimeSlot(
+          firstAvailableSlot?.timeSlot || ''
+        )
       } catch {
         setAvailError(
           'Network error while checking availability.'
@@ -100,9 +112,16 @@ export default function VisitorBookingModal({
 
   if (!item) return null
 
+  /*
+   * Check whether the listing operates
+   * on the selected date.
+   */
   const isNotOperating =
     availability?.isOperatingDay === false
 
+  /*
+   * Check whether every time slot is full.
+   */
   const isSoldOut =
     availability &&
     (
@@ -116,7 +135,7 @@ export default function VisitorBookingModal({
     )
 
   /*
-   * Get the currently selected slot.
+   * Find the currently selected time slot.
    */
   const selectedSlot = availability?.slots?.find(
     (slot) => slot.timeSlot === selectedTimeSlot
@@ -129,15 +148,18 @@ export default function VisitorBookingModal({
     unit === 'person' || unit === 'guest'
 
   /*
-   * Frontend estimate only.
-   * Backend calculates the real total.
+   * Frontend price estimate.
+   * Backend remains responsible for the real total.
+   *
+   * Restaurant reservation does not display a booking
+   * total because Story 8.1 does not define payment.
    */
   const estimatedTotal =
-    Number(item.price) *
+    Number(item.price || 0) *
     (isPerPerson ? guestCount : 1)
 
   /*
-   * Participant input validation.
+   * Guest / participant / party-size validation.
    */
   const handleGuestCountChange = (e) => {
     const value = parseInt(e.target.value, 10)
@@ -146,7 +168,7 @@ export default function VisitorBookingModal({
       ? Math.min(maxCap, selectedSlotRemaining)
       : maxCap
 
-    if (isNaN(value) || value < 1) {
+    if (Number.isNaN(value) || value < 1) {
       setGuestCount(1)
       return
     }
@@ -157,14 +179,30 @@ export default function VisitorBookingModal({
     }
 
     setGuestCount(value)
+    setSubmitError(null)
   }
 
   /*
-   * Story 7.1
-   * Create real booking through Booking Service.
+   * Story 7.1:
+   * Create Experience / Accommodation booking.
+   *
+   * Story 8.1 restaurant reservation will use a
+   * separate reservation API implemented in CEYQ-133.
    */
   const handleConfirmBooking = async () => {
     setSubmitError(null)
+
+    /*
+     * CEYQ-132:
+     * Restaurant reservation UI is prepared,
+     * but its backend API will be implemented next.
+     */
+    if (isRestaurant) {
+      setSubmitError(
+        'Restaurant reservation API will be connected in CEYQ-133.'
+      )
+      return
+    }
 
     if (!selectedDate) {
       setSubmitError('Please select a booking date.')
@@ -187,7 +225,7 @@ export default function VisitorBookingModal({
 
     /*
      * Frontend capacity validation.
-     * Backend validates this again.
+     * Backend validates capacity again.
      */
     if (
       selectedSlot &&
@@ -209,7 +247,7 @@ export default function VisitorBookingModal({
     }
 
     /*
-     * Only send booking information.
+     * Only booking information is sent.
      *
      * VisitorId, UnitPrice, TotalAmount,
      * Status and PaymentStatus are controlled
@@ -249,7 +287,7 @@ export default function VisitorBookingModal({
             `Total: LKR ${Number(
               booking.totalAmount
             ).toLocaleString()}. ` +
-            `Status: Pending Payment.`
+            'Status: Pending Payment.'
           )
         } else {
           onClose()
@@ -313,8 +351,16 @@ export default function VisitorBookingModal({
           </span>
 
           <h2 className="vd-detail-modal__title">
-            Book: {item.title}
+            {isRestaurant
+              ? 'Reserve a Table'
+              : `Book: ${item.title}`}
           </h2>
+
+          {isRestaurant && (
+            <p className="vd-detail-modal__provider">
+              {item.title}
+            </p>
+          )}
 
           <p className="vd-detail-modal__provider">
             By {item.providerBusinessName}
@@ -324,23 +370,25 @@ export default function VisitorBookingModal({
 
         <div className="vd-booking-modal__body">
 
-          {/* Base Rate */}
-          <div className="vd-booking-rate-card">
+          {/* Price - not required for restaurant reservation */}
+          {!isRestaurant && (
+            <div className="vd-booking-rate-card">
 
-            <span className="vd-booking-rate-label">
-              <CalendarMonthIcon size={16} />
-              {' '}Base Rate
-            </span>
-
-            <span className="vd-booking-rate-price">
-              LKR {Number(item.price).toLocaleString()}
-
-              <span className="vd-booking-rate-unit">
-                {' '}/ {unit}
+              <span className="vd-booking-rate-label">
+                <CalendarMonthIcon size={16} />
+                {' '}Base Rate
               </span>
-            </span>
 
-          </div>
+              <span className="vd-booking-rate-price">
+                LKR {Number(item.price).toLocaleString()}
+
+                <span className="vd-booking-rate-unit">
+                  {' '}/ {unit}
+                </span>
+              </span>
+
+            </div>
+          )}
 
           {/* Listing Details */}
           <div className="vd-booking-summary-list">
@@ -359,9 +407,10 @@ export default function VisitorBookingModal({
             </div>
 
             {/* Accommodation */}
-            {item.type === 'Accommodation' && (
+            {isAccommodation && (
               <>
                 <div className="vd-detail-row">
+
                   <span className="vd-detail-row__label">
                     <HouseIcon size={16} />
                     {' '}Property Type:
@@ -372,9 +421,11 @@ export default function VisitorBookingModal({
                       item.category ||
                       'Stay'}
                   </span>
+
                 </div>
 
                 <div className="vd-detail-row">
+
                   <span className="vd-detail-row__label">
                     <GroupIcon size={16} />
                     {' '}Max Capacity:
@@ -383,14 +434,16 @@ export default function VisitorBookingModal({
                   <span className="vd-detail-row__val">
                     Up to {maxCap} guests
                   </span>
+
                 </div>
               </>
             )}
 
             {/* Experience */}
-            {item.type === 'Experience' && (
+            {isExperience && (
               <>
                 <div className="vd-detail-row">
+
                   <span className="vd-detail-row__label">
                     <AccessTimeFilledIcon size={16} />
                     {' '}Duration:
@@ -399,9 +452,11 @@ export default function VisitorBookingModal({
                   <span className="vd-detail-row__val">
                     {item.duration || 'Flexible'}
                   </span>
+
                 </div>
 
                 <div className="vd-detail-row">
+
                   <span className="vd-detail-row__label">
                     <GroupIcon size={16} />
                     {' '}Group Size:
@@ -410,14 +465,16 @@ export default function VisitorBookingModal({
                   <span className="vd-detail-row__val">
                     Up to {maxCap} people
                   </span>
+
                 </div>
               </>
             )}
 
             {/* Restaurant */}
-            {item.type === 'Restaurant' && (
+            {isRestaurant && (
               <>
                 <div className="vd-detail-row">
+
                   <span className="vd-detail-row__label">
                     <RestaurantIcon size={16} />
                     {' '}Cuisine:
@@ -428,9 +485,11 @@ export default function VisitorBookingModal({
                       item.category ||
                       'Specialty Cuisine'}
                   </span>
+
                 </div>
 
                 <div className="vd-detail-row">
+
                   <span className="vd-detail-row__label">
                     <GroupIcon size={16} />
                     {' '}Max Seating:
@@ -439,20 +498,23 @@ export default function VisitorBookingModal({
                   <span className="vd-detail-row__val">
                     {maxCap} seats
                   </span>
+
                 </div>
               </>
             )}
 
           </div>
 
-          {/* Booking Form */}
+          {/* Reservation / Booking Form */}
           <div className="vd-booking-form-grid">
 
             {/* Date */}
             <div className="vd-form-group">
 
               <label className="vd-form-label">
-                Select Date
+                {isRestaurant
+                  ? 'Reservation Date'
+                  : 'Select Date'}
               </label>
 
               <input
@@ -464,18 +526,21 @@ export default function VisitorBookingModal({
                     .toISOString()
                     .split('T')[0]
                 }
-                onChange={(e) =>
+                onChange={(e) => {
                   setSelectedDate(e.target.value)
-                }
+                  setSubmitError(null)
+                }}
               />
 
             </div>
 
-            {/* Time Slot */}
+            {/* Time */}
             <div className="vd-form-group">
 
               <label className="vd-form-label">
-                Select Time
+                {isRestaurant
+                  ? 'Reservation Time'
+                  : 'Select Time'}
               </label>
 
               <select
@@ -493,6 +558,7 @@ export default function VisitorBookingModal({
                   isSoldOut
                 }
               >
+
                 <option value="">
                   Select a time slot
                 </option>
@@ -501,12 +567,16 @@ export default function VisitorBookingModal({
                   <option
                     key={slot.timeSlot}
                     value={slot.timeSlot}
-                    disabled={slot.remainingCapacity <= 0}
+                    disabled={
+                      slot.remainingCapacity <= 0
+                    }
                   >
                     {slot.timeSlot}
                     {' — '}
                     {slot.remainingCapacity > 0
-                      ? `${slot.remainingCapacity} places left`
+                      ? isRestaurant
+                        ? `${slot.remainingCapacity} seats available`
+                        : `${slot.remainingCapacity} places left`
                       : 'Fully Booked'}
                   </option>
                 ))}
@@ -515,11 +585,14 @@ export default function VisitorBookingModal({
 
             </div>
 
-            {/* Participants */}
+            {/* Party Size / Participants */}
             <div className="vd-form-group">
 
               <label className="vd-form-label">
-                Guests / Participants
+
+                {isRestaurant
+                  ? 'Party Size'
+                  : 'Guests / Participants'}
 
                 <span className="vd-form-label-hint">
                   {' '}
@@ -532,6 +605,7 @@ export default function VisitorBookingModal({
                     : maxCap}
                   )
                 </span>
+
               </label>
 
               <input
@@ -577,8 +651,10 @@ export default function VisitorBookingModal({
                   <DangerIcon size={16} />
 
                   {' '}
-                  Listing does not operate on this date (
-                  {selectedDate}).
+                  {isRestaurant
+                    ? 'Restaurant is not accepting reservations'
+                    : 'Listing does not operate'}{' '}
+                  on this date ({selectedDate}).
 
                 </div>
               )}
@@ -592,8 +668,11 @@ export default function VisitorBookingModal({
                   <DangerIcon size={16} />
 
                   {' '}
-                  Fully booked on {selectedDate}.
-                  Please select another date.
+                  {isRestaurant
+                    ? `No tables are available on ${selectedDate}.`
+                    : `Fully booked on ${selectedDate}.`}
+
+                  {' '}Please select another date.
 
                 </div>
               )}
@@ -612,7 +691,9 @@ export default function VisitorBookingModal({
 
                   {selectedTimeSlot &&
                     selectedSlotRemaining > 0
-                    ? ` — ${selectedSlotRemaining} place(s) remaining in selected time slot`
+                    ? isRestaurant
+                      ? ` — ${selectedSlotRemaining} seat(s) available at the selected time`
+                      : ` — ${selectedSlotRemaining} place(s) remaining in selected time slot`
                     : ''}
 
                 </div>
@@ -620,7 +701,7 @@ export default function VisitorBookingModal({
 
           </div>
 
-          {/* Booking Error */}
+          {/* Error */}
           {submitError && (
             <div
               className="vd-avail-error"
@@ -638,17 +719,34 @@ export default function VisitorBookingModal({
           {/* Footer */}
           <div className="vd-detail-modal__footer">
 
-            <div className="vd-detail-price">
+            {!isRestaurant && (
+              <div className="vd-detail-price">
 
-              <span className="vd-detail-price__label">
-                Estimated Total
-              </span>
+                <span className="vd-detail-price__label">
+                  Estimated Total
+                </span>
 
-              <span className="vd-detail-price__val">
-                LKR {estimatedTotal.toLocaleString()}
-              </span>
+                <span className="vd-detail-price__val">
+                  LKR {estimatedTotal.toLocaleString()}
+                </span>
 
-            </div>
+              </div>
+            )}
+
+            {isRestaurant && (
+              <div className="vd-detail-price">
+
+                <span className="vd-detail-price__label">
+                  Reservation
+                </span>
+
+                <span className="vd-detail-price__val">
+                  {guestCount}{' '}
+                  {guestCount === 1 ? 'Guest' : 'Guests'}
+                </span>
+
+              </div>
+            )}
 
             <button
               className="vd-btn-book"
@@ -666,8 +764,12 @@ export default function VisitorBookingModal({
               onClick={handleConfirmBooking}
             >
               {submitting
-                ? 'Creating Booking…'
-                : 'Confirm Booking'}
+                ? isRestaurant
+                  ? 'Reserving Table…'
+                  : 'Creating Booking…'
+                : isRestaurant
+                  ? 'Reserve Table'
+                  : 'Confirm Booking'}
             </button>
 
           </div>
