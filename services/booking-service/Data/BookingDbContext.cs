@@ -10,12 +10,19 @@ public class BookingDbContext : DbContext
     {
     }
 
+    // Story 7.1 - Experience bookings
     public DbSet<Booking> Bookings { get; set; }
+
+    // Story 8.1 - Restaurant reservations
+    public DbSet<RestaurantReservation> RestaurantReservations { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
+        /*
+         * Story 7.1 - Booking configuration
+         */
         modelBuilder.Entity<Booking>(entity =>
         {
             entity.HasKey(b => b.Id);
@@ -37,6 +44,34 @@ public class BookingDbContext : DbContext
             entity.HasIndex(b => b.ListingId);
 
             entity.HasIndex(b => b.Status);
+        });
+
+        /*
+         * Story 8.1 - Restaurant reservation configuration
+         */
+        modelBuilder.Entity<RestaurantReservation>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+
+            entity.Property(r => r.Status)
+                .HasConversion<string>();
+
+            entity.HasIndex(r => r.VisitorId);
+
+            entity.HasIndex(r => r.RestaurantId);
+
+            entity.HasIndex(r => r.Status);
+
+            /*
+             * Helps availability checks for a particular
+             * restaurant, date and time slot.
+             */
+            entity.HasIndex(r => new
+            {
+                r.RestaurantId,
+                r.ReservationDate,
+                r.TimeSlot
+            });
         });
     }
 }
