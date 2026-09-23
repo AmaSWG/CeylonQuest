@@ -25,8 +25,6 @@ export default function VisitorBookingModal({
   )
 
   const [selectedTimeSlot, setSelectedTimeSlot] = useState('')
-
-  // Can temporarily be '' while the user is editing the number input.
   const [guestCount, setGuestCount] = useState(1)
 
   const [availability, setAvailability] = useState(null)
@@ -48,7 +46,7 @@ export default function VisitorBookingModal({
     (isAccommodation ? 'night' : 'person')
 
   /*
-   * Maximum capacity depends on listing type.
+   * Maximum capacity configured for the listing.
    */
   const maxCap = item
     ? isAccommodation
@@ -70,6 +68,7 @@ export default function VisitorBookingModal({
       setAvailError(null)
       setAvailability(null)
       setSelectedTimeSlot('')
+      setSubmitError(null)
 
       try {
         const response = await fetch(
@@ -90,8 +89,7 @@ export default function VisitorBookingModal({
         setAvailability(data)
 
         /*
-         * Automatically choose the first time slot
-         * that still has capacity.
+         * Automatically choose the first available slot.
          */
         const firstAvailableSlot = data.slots?.find(
           (slot) =>
@@ -124,7 +122,7 @@ export default function VisitorBookingModal({
     availability?.isOperatingDay === false
 
   /*
-   * Check whether every time slot is full.
+   * Check whether every slot is sold out.
    */
   const isSoldOut =
     availability &&
@@ -141,7 +139,7 @@ export default function VisitorBookingModal({
     )
 
   /*
-   * Find currently selected time slot.
+   * Find currently selected slot.
    */
   const selectedSlot = availability?.slots?.find(
     (slot) => slot.timeSlot === selectedTimeSlot
@@ -151,7 +149,13 @@ export default function VisitorBookingModal({
     selectedSlot?.remainingCapacity ?? 0
 
   /*
-   * Current maximum allowed for selected slot.
+   * Maximum that can currently be booked.
+   *
+   * Example:
+   * listing maximum = 5
+   * remaining capacity = 4
+   *
+   * currentMax = 4
    */
   const currentMax = selectedTimeSlot
     ? Math.min(maxCap, selectedSlotRemaining)
@@ -159,9 +163,6 @@ export default function VisitorBookingModal({
 
   /*
    * Convert guestCount safely.
-   *
-   * guestCount may temporarily be an empty string
-   * while the user is typing.
    */
   const numericGuestCount =
     guestCount === ''
@@ -169,29 +170,30 @@ export default function VisitorBookingModal({
       : Number(guestCount)
 
   /*
-   * Price calculation.
-   *
-   * The visitor listing data already exposes its
-   * display price through item.price.
-   *
-   * Restaurant:
-   * Price per person × party size.
-   *
-   * Experience:
-   * Existing per-person calculation remains.
-   *
-   * Accommodation:
-   * Existing listing-price calculation remains.
+   * Price.
    */
   const itemPrice = Number(item?.price || 0)
 
-  const isPerPerson =
-    unit === 'person' || unit === 'guest'
-
+  /*
+   * Story 7.1
+   *
+   * Experience:
+   * price per person × participant count.
+   *
+   * Accommodation:
+   * keep existing listing/base price.
+   */
   const estimatedTotal =
-    itemPrice *
-    (isPerPerson ? numericGuestCount : 1)
+    isExperience
+      ? itemPrice * numericGuestCount
+      : itemPrice
 
+  /*
+   * Story 8.1
+   *
+   * Restaurant:
+   * price per person × party size.
+   */
   const restaurantPricePerPerson =
     isRestaurant
       ? itemPrice
@@ -203,16 +205,7 @@ export default function VisitorBookingModal({
       : 0
 
   /*
-   * Guest / participant / party-size input.
-   *
-   * IMPORTANT:
-   * Allow an empty string while editing.
-   *
-   * This means the user can:
-   *
-   * 1 -> delete -> "" -> type 4
-   *
-   * without React immediately putting 1 back.
+   * Handle participant / guest count.
    */
   const handleGuestCountChange = (e) => {
     const rawValue = e.target.value
@@ -220,7 +213,8 @@ export default function VisitorBookingModal({
     setSubmitError(null)
 
     /*
-     * Allow temporary empty value.
+     * Allow the field to temporarily be empty
+     * while the visitor is typing.
      */
     if (rawValue === '') {
       setGuestCount('')
@@ -230,38 +224,60 @@ export default function VisitorBookingModal({
     const value = Number(rawValue)
 
     /*
-     * Only whole numbers are valid.
+     * Only whole numbers.
      */
     if (!Number.isInteger(value)) {
       return
     }
 
     /*
-     * Do not allow negative values.
-     *
-     * Zero can temporarily appear in the input,
-     * but submission remains disabled and validation
-     * prevents reservation creation.
+     * Do not accept negative numbers.
      */
     if (value < 0) {
       return
     }
 
     /*
-     * Do not allow a number above current
-     * available capacity.
+     * Keep the entered value so we can show
+     * an error instead of silently changing it.
      */
-    if (currentMax > 0 && value > currentMax) {
-      setGuestCount(currentMax)
+    setGuestCount(value)
+
+    /*
+     * Validate against the listing's configured
+     * maximum capacity first.
+     */
+    if (value > maxCap) {
+      setSubmitError(
+        isRestaurant
+          ? `Maximum seating capacity is ${maxCap}.`
+          : `Maximum capacity is ${maxCap}.`
+      )
       return
     }
 
-    setGuestCount(value)
+    /*
+     * Validate against the selected slot's
+     * remaining real-time capacity.
+     *
+     * Example:
+     * 4 places remain and visitor enters 5.
+     */
+    if (
+      selectedTimeSlot &&
+      selectedSlot &&
+      value > selectedSlotRemaining
+    ) {
+      setSubmitError(
+        isRestaurant
+          ? `Only ${selectedSlotRemaining} seat(s) are available for this time.`
+          : `Only ${selectedSlotRemaining} place(s) are available for this time slot.`
+      )
+    }
   }
 
   /*
-   * If the user leaves the party-size field empty
-   * or with zero, restore it to 1.
+   * Validate again when leaving the input.
    */
   const handleGuestCountBlur = () => {
     if (
@@ -270,6 +286,31 @@ export default function VisitorBookingModal({
       Number(guestCount) < 1
     ) {
       setGuestCount(1)
+      setSubmitError(null)
+      return
+    }
+
+    const value = Number(guestCount)
+
+    if (value > maxCap) {
+      setSubmitError(
+        isRestaurant
+          ? `Maximum seating capacity is ${maxCap}.`
+          : `Maximum capacity is ${maxCap}.`
+      )
+      return
+    }
+
+    if (
+      selectedTimeSlot &&
+      selectedSlot &&
+      value > selectedSlotRemaining
+    ) {
+      setSubmitError(
+        isRestaurant
+          ? `Only ${selectedSlotRemaining} seat(s) are available for this time.`
+          : `Only ${selectedSlotRemaining} place(s) are available for this time slot.`
+      )
     }
   }
 
@@ -305,14 +346,11 @@ export default function VisitorBookingModal({
       return
     }
 
-    /*
-     * Normalize guest count.
-     */
     const normalizedGuestCount =
       Number(guestCount)
 
     /*
-     * Validate party size / participant count.
+     * Validate participant / party count.
      */
     if (
       guestCount === '' ||
@@ -328,7 +366,7 @@ export default function VisitorBookingModal({
     }
 
     /*
-     * Validate against listing maximum.
+     * Validate listing maximum.
      */
     if (normalizedGuestCount > maxCap) {
       setSubmitError(
@@ -340,10 +378,9 @@ export default function VisitorBookingModal({
     }
 
     /*
-     * Frontend capacity validation.
+     * Validate selected slot remaining capacity.
      *
-     * Backend validates this again to prevent
-     * overbooking.
+     * Backend validates this again.
      */
     if (
       selectedSlot &&
@@ -353,7 +390,7 @@ export default function VisitorBookingModal({
       setSubmitError(
         isRestaurant
           ? `Only ${selectedSlot.remainingCapacity} seat(s) are available for this time.`
-          : `Only ${selectedSlot.remainingCapacity} place(s) remain for this time slot.`
+          : `Only ${selectedSlot.remainingCapacity} place(s) are available for this time slot.`
       )
       return
     }
@@ -372,14 +409,7 @@ export default function VisitorBookingModal({
     }
 
     /*
-     * Restaurant reservation payload.
-     *
-     * IMPORTANT:
-     * Do NOT send PricePerPerson or TotalPrice.
-     *
-     * The backend retrieves the trusted restaurant
-     * price from Provider Catalog and calculates
-     * the real total.
+     * Restaurant payload.
      */
     const restaurantPayload = {
       restaurantId: item.id,
@@ -389,7 +419,10 @@ export default function VisitorBookingModal({
     }
 
     /*
-     * Experience / Accommodation payload.
+     * Story 7.1 booking payload.
+     *
+     * Do not send the frontend calculated price.
+     * Backend calculates the trusted total.
      */
     const bookingPayload = {
       listingId: item.id,
@@ -398,9 +431,6 @@ export default function VisitorBookingModal({
       participantCount: normalizedGuestCount
     }
 
-    /*
-     * Different endpoint depending on listing type.
-     */
     const endpoint = isRestaurant
       ? '/api/Reservations'
       : '/api/Bookings'
@@ -434,8 +464,7 @@ export default function VisitorBookingModal({
           await response.json()
 
         /*
-         * Story 8.1:
-         * Restaurant reservation confirmation.
+         * Story 8.1 Restaurant confirmation.
          */
         if (isRestaurant) {
           if (onBookingSuccess) {
@@ -461,10 +490,8 @@ export default function VisitorBookingModal({
               `Party size: ${result.partySize ||
               normalizedGuestCount
               }. ` +
-              `Price per person: LKR ${confirmedPrice.toLocaleString()
-              }. ` +
-              `Total: LKR ${confirmedTotal.toLocaleString()
-              }. ` +
+              `Price per person: LKR ${confirmedPrice.toLocaleString()}. ` +
+              `Total: LKR ${confirmedTotal.toLocaleString()}. ` +
               `Status: ${result.status || 'Confirmed'
               }.`
             )
@@ -476,8 +503,10 @@ export default function VisitorBookingModal({
         }
 
         /*
-         * Story 7.1:
-         * Experience / Accommodation confirmation.
+         * Story 7.1 Experience / Accommodation
+         * confirmation.
+         *
+         * Use backend totalAmount as source of truth.
          */
         if (onBookingSuccess) {
           onBookingSuccess(
@@ -548,9 +577,7 @@ export default function VisitorBookingModal({
         className="vd-booking-modal"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* =====================================================
-            HEADER
-        ===================================================== */}
+        {/* HEADER */}
         <div className="vd-detail-modal__header">
 
           <button
@@ -587,10 +614,7 @@ export default function VisitorBookingModal({
 
         <div className="vd-booking-modal__body">
 
-          {/* =====================================================
-              PRICE CARD
-          ===================================================== */}
-
+          {/* PRICE CARD */}
           <div className="vd-booking-rate-card">
 
             <span className="vd-booking-rate-label">
@@ -611,15 +635,10 @@ export default function VisitorBookingModal({
 
           </div>
 
-          {/* =====================================================
-              LISTING DETAILS
-          ===================================================== */}
-
+          {/* LISTING DETAILS */}
           <div className="vd-booking-summary-list">
 
-            {/* Location */}
             <div className="vd-detail-row">
-
               <span className="vd-detail-row__label">
                 <LocationOnIcon size={16} />
                 {' '}Location:
@@ -628,17 +647,12 @@ export default function VisitorBookingModal({
               <span className="vd-detail-row__val">
                 {item.location || 'Sri Lanka'}
               </span>
-
             </div>
 
-            {/* =================================================
-                ACCOMMODATION
-            ================================================= */}
-
+            {/* ACCOMMODATION */}
             {isAccommodation && (
               <>
                 <div className="vd-detail-row">
-
                   <span className="vd-detail-row__label">
                     <HouseIcon size={16} />
                     {' '}Property Type:
@@ -649,11 +663,9 @@ export default function VisitorBookingModal({
                       item.category ||
                       'Stay'}
                   </span>
-
                 </div>
 
                 <div className="vd-detail-row">
-
                   <span className="vd-detail-row__label">
                     <GroupIcon size={16} />
                     {' '}Max Capacity:
@@ -662,19 +674,14 @@ export default function VisitorBookingModal({
                   <span className="vd-detail-row__val">
                     Up to {maxCap} guests
                   </span>
-
                 </div>
               </>
             )}
 
-            {/* =================================================
-                EXPERIENCE
-            ================================================= */}
-
+            {/* EXPERIENCE */}
             {isExperience && (
               <>
                 <div className="vd-detail-row">
-
                   <span className="vd-detail-row__label">
                     <AccessTimeFilledIcon size={16} />
                     {' '}Duration:
@@ -683,11 +690,9 @@ export default function VisitorBookingModal({
                   <span className="vd-detail-row__val">
                     {item.duration || 'Flexible'}
                   </span>
-
                 </div>
 
                 <div className="vd-detail-row">
-
                   <span className="vd-detail-row__label">
                     <GroupIcon size={16} />
                     {' '}Group Size:
@@ -696,19 +701,14 @@ export default function VisitorBookingModal({
                   <span className="vd-detail-row__val">
                     Up to {maxCap} people
                   </span>
-
                 </div>
               </>
             )}
 
-            {/* =================================================
-                RESTAURANT
-            ================================================= */}
-
+            {/* RESTAURANT */}
             {isRestaurant && (
               <>
                 <div className="vd-detail-row">
-
                   <span className="vd-detail-row__label">
                     <RestaurantIcon size={16} />
                     {' '}Cuisine:
@@ -719,11 +719,9 @@ export default function VisitorBookingModal({
                       item.category ||
                       'Specialty Cuisine'}
                   </span>
-
                 </div>
 
                 <div className="vd-detail-row">
-
                   <span className="vd-detail-row__label">
                     <GroupIcon size={16} />
                     {' '}Max Seating:
@@ -732,11 +730,9 @@ export default function VisitorBookingModal({
                   <span className="vd-detail-row__val">
                     {maxCap} seats
                   </span>
-
                 </div>
 
                 <div className="vd-detail-row">
-
                   <span className="vd-detail-row__label">
                     Price per Person:
                   </span>
@@ -744,20 +740,16 @@ export default function VisitorBookingModal({
                   <span className="vd-detail-row__val">
                     LKR {restaurantPricePerPerson.toLocaleString()}
                   </span>
-
                 </div>
               </>
             )}
 
           </div>
 
-          {/* =====================================================
-              RESERVATION / BOOKING FORM
-          ===================================================== */}
-
+          {/* BOOKING FORM */}
           <div className="vd-booking-form-grid">
 
-            {/* Date */}
+            {/* DATE */}
             <div className="vd-form-group">
 
               <label className="vd-form-label">
@@ -784,7 +776,7 @@ export default function VisitorBookingModal({
 
             </div>
 
-            {/* Time */}
+            {/* TIME */}
             <div className="vd-form-group">
 
               <label className="vd-form-label">
@@ -824,15 +816,10 @@ export default function VisitorBookingModal({
                   >
                     {isRestaurant
                       ? slot.timeSlot
-                      : (
-                        <>
-                          {slot.timeSlot}
-                          {' — '}
-                          {slot.remainingCapacity > 0
-                            ? `${slot.remainingCapacity} places left`
-                            : 'Fully Booked'}
-                        </>
-                      )}
+                      : `${slot.timeSlot} — ${slot.remainingCapacity > 0
+                        ? `${slot.remainingCapacity} places left`
+                        : 'Fully Booked'
+                      }`}
                   </option>
                 ))}
 
@@ -840,7 +827,7 @@ export default function VisitorBookingModal({
 
             </div>
 
-            {/* Party Size / Participants */}
+            {/* PARTICIPANTS */}
             <div className="vd-form-group">
 
               <label className="vd-form-label">
@@ -860,7 +847,7 @@ export default function VisitorBookingModal({
                 type="number"
                 className="vd-form-input"
                 min="1"
-                max={currentMax}
+                max={maxCap}
                 step="1"
                 value={guestCount}
                 onChange={handleGuestCountChange}
@@ -871,10 +858,7 @@ export default function VisitorBookingModal({
 
           </div>
 
-          {/* =====================================================
-              AVAILABILITY STATUS
-          ===================================================== */}
-
+          {/* AVAILABILITY */}
           <div className="vd-avail-status-card">
 
             {loadingAvail && (
@@ -947,10 +931,7 @@ export default function VisitorBookingModal({
 
           </div>
 
-          {/* =====================================================
-              VALIDATION / API ERROR
-          ===================================================== */}
-
+          {/* VALIDATION ERROR */}
           {submitError && (
             <div
               className="vd-avail-error"
@@ -961,17 +942,16 @@ export default function VisitorBookingModal({
                 border: '1px solid #fecaca'
               }}
             >
+              <DangerIcon size={16} />
+              {' '}
               {submitError}
             </div>
           )}
 
-          {/* =====================================================
-              FOOTER
-          ===================================================== */}
-
+          {/* FOOTER */}
           <div className="vd-detail-modal__footer">
 
-            {/* Experience / Accommodation Total */}
+            {/* EXPERIENCE / ACCOMMODATION TOTAL */}
             {!isRestaurant && (
               <div className="vd-detail-price">
 
@@ -983,10 +963,28 @@ export default function VisitorBookingModal({
                   LKR {estimatedTotal.toLocaleString()}
                 </span>
 
+                {isExperience && (
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: '12px',
+                      marginTop: '4px'
+                    }}
+                  >
+                    LKR {itemPrice.toLocaleString()}
+                    {' × '}
+                    {numericGuestCount}
+                    {' '}
+                    {numericGuestCount === 1
+                      ? 'participant'
+                      : 'participants'}
+                  </span>
+                )}
+
               </div>
             )}
 
-            {/* Restaurant Total */}
+            {/* RESTAURANT TOTAL */}
             {isRestaurant && (
               <div className="vd-detail-price">
 
@@ -1031,6 +1029,7 @@ export default function VisitorBookingModal({
                 guestCount === '' ||
                 !Number.isInteger(numericGuestCount) ||
                 numericGuestCount < 1 ||
+                numericGuestCount > maxCap ||
                 numericGuestCount > currentMax ||
                 submitting
               }
