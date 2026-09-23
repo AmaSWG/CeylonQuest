@@ -643,13 +643,17 @@ export default function VisitorBookingModal({
                       slot.remainingCapacity <= 0
                     }
                   >
-                    {slot.timeSlot}
-                    {' — '}
-                    {slot.remainingCapacity > 0
-                      ? isRestaurant
-                        ? `${slot.remainingCapacity} seats available`
-                        : `${slot.remainingCapacity} places left`
-                      : 'Fully Booked'}
+                    {isRestaurant
+                      ? slot.timeSlot
+                      : (
+                        <>
+                          {slot.timeSlot}
+                          {' — '}
+                          {slot.remainingCapacity > 0
+                            ? `${slot.remainingCapacity} places left`
+                            : 'Fully Booked'}
+                        </>
+                      )}
                   </option>
                 ))}
 

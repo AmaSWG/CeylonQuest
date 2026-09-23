@@ -6,7 +6,8 @@ import {
   ManageSearchIcon,
   CheckCircleIcon,
   CancelIcon,
-  CalendarMonthIcon
+  CalendarMonthIcon,
+  KitesurfingIcon
 } from '../../../components/Icons'
 import ConfirmModal from '../../../components/ConfirmModal'
 import { catalogUrl } from '../../../api/client'
@@ -116,7 +117,7 @@ export default function ListingsTab({
   const [formLoading, setFormLoading] = useState(false)
   const [serviceToDelete, setServiceToDelete] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
-  
+
 
   const emptyForm = {
     // shared / activity
@@ -139,11 +140,11 @@ export default function ListingsTab({
     pricePerPerson: '',
     priceRange: 'Moderate',
     openingHours: '',
-    openingHoursOpen: '09:00',   
-    openingHoursClose: '22:00',   
+    openingHoursOpen: '09:00',
+    openingHoursClose: '22:00',
     setMenuDetails: '',
     dietaryOptions: 'Standard',
-    seatingCapacity: 20,
+    seatingCapacity: '',
     groupSizeCategory: 'Table for One',
     // accommodation
     roomType: '',
@@ -213,10 +214,48 @@ export default function ListingsTab({
     setSlotsList(prev => recalculateAllSlots(prev, newDur))
   }
 
+  // ── Restaurant reservation slot helpers ──
+  const handleRestaurantSlotCountChange = (count) => {
+    const num = parseInt(count, 10) || 1
+    setSlotsList(prev => {
+      const next = [...prev]
+      while (next.length < num) {
+        const last = next[next.length - 1] || {
+          startTime: form.openingHoursOpen || '09:00',
+          endTime: '10:00'
+        }
+        const startTime = last.endTime || form.openingHoursOpen || '09:00'
+        next.push({
+          startTime,
+          endTime: addDurationToTime(startTime, '1 Hour')
+        })
+      }
+      return next.slice(0, num)
+    })
+  }
+
+  const updateRestaurantSlotStart = (index, value) => {
+    setSlotsList(prev =>
+      prev.map((slot, i) => i === index ? { ...slot, startTime: value } : slot)
+    )
+    if (formError) setFormError(null)
+  }
+
+  const updateRestaurantSlotEnd = (index, value) => {
+    setSlotsList(prev =>
+      prev.map((slot, i) => i === index ? { ...slot, endTime: value } : slot)
+    )
+    if (formError) setFormError(null)
+  }
+
   const openAdd = () => {
     setEditTarget(null)
     setForm(emptyForm)
-    setSlotsList([{ startTime: '08:00', endTime: addDurationToTime('08:00', '') }])
+    if (isRestaurant) {
+      setSlotsList([{ startTime: '09:00', endTime: '10:00' }])
+    } else {
+      setSlotsList([{ startTime: '08:00', endTime: addDurationToTime('08:00', '') }])
+    }
     setFormError(null)
     setModal('add')
   }
@@ -240,6 +279,28 @@ export default function ListingsTab({
       })
     } else if (isRestaurant) {
       const parsedHours = parseOpeningHours(item.openingHours || '')
+      const parsedRestaurantSlots = (item.timeSlots || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(s => {
+          const parts = s.split(' - ')
+          if (parts.length !== 2) return null
+          return {
+            startTime: toInputTime(parts[0]),
+            endTime: toInputTime(parts[1])
+          }
+        })
+        .filter(Boolean)
+
+      if (parsedRestaurantSlots.length === 0) {
+        parsedRestaurantSlots.push({
+          startTime: parsedHours.open || '09:00',
+          endTime: addDurationToTime(parsedHours.open || '09:00', '1 Hour')
+        })
+      }
+
+      setSlotsList(parsedRestaurantSlots)
       setForm({
         ...emptyForm,
         name: item.name || '',
@@ -252,10 +313,11 @@ export default function ListingsTab({
         openingHours: item.openingHours || '',
         openingHoursOpen: parsedHours.open,
         openingHoursClose: parsedHours.close,
+        timeSlots: item.timeSlots || '',
         setMenuDetails: item.setMenuDetails || '',
         dietaryOptions: item.dietaryOptions || 'Standard',
         groupSizeCategory: item.groupSizeCategory || 'Table for Two',
-        seatingCapacity: item.seatingCapacity || 20,
+        seatingCapacity: item.seatingCapacity ?? '',
         isActive: item.isActive !== false
       })
     } else {
@@ -327,6 +389,11 @@ export default function ListingsTab({
       }
     }
     if (isRestaurant) {
+      const validRestaurantSlots = slotsList.filter(s => s.startTime && s.endTime)
+      const serializedRestaurantSlots = validRestaurantSlots
+        .map(s => `${toDisplayTime(s.startTime)} - ${toDisplayTime(s.endTime)}`)
+        .join(', ')
+
       return {
         name: form.name.trim(),
         description: form.description.trim(),
@@ -336,10 +403,11 @@ export default function ListingsTab({
         pricePerPerson: parseFloat(form.pricePerPerson) || 0,
         priceRange: form.priceRange || 'Moderate',
         openingHours: formatOpeningHours(form.openingHoursOpen, form.openingHoursClose) || '09:00 AM - 10:00 PM',
+        timeSlots: serializedRestaurantSlots,
         setMenuDetails: form.setMenuDetails || '',
         dietaryOptions: form.dietaryOptions || 'Standard',
         groupSizeCategory: form.groupSizeCategory || 'Table for Two',
-        seatingCapacity: parseInt(form.seatingCapacity, 10) || 20,
+        seatingCapacity: parseInt(form.seatingCapacity, 10),
         isActive: form.isActive
       }
     }
@@ -372,7 +440,7 @@ export default function ListingsTab({
       if (isNaN(p) || p <= 0) return { id: 'hotel-price', msg: 'Price per night must be a positive amount.' }
       return null
     }
-  
+
     if (isRestaurant) {
       if (!form.name?.trim()) return { id: 'rest-name', msg: 'Restaurant / item name is required.' }
       if (!form.cuisineType?.trim()) return { id: 'rest-cuisine', msg: 'Cuisine type is required.' }
@@ -383,7 +451,12 @@ export default function ListingsTab({
       }
       const p = parseFloat(form.pricePerPerson)
       if (isNaN(p) || p <= 0) return { id: 'rest-price', msg: 'Price per person must be a positive amount.' }
-      
+
+      const seatingCapacity = parseInt(form.seatingCapacity, 10)
+      if (isNaN(seatingCapacity) || seatingCapacity <= 0) {
+        return { id: 'rest-seats', msg: 'Maximum seating capacity is required and must be greater than 0.' }
+      }
+
       // ── Opening Hours Validation ──
       if (!form.openingHoursOpen || !form.openingHoursClose) {
         return { id: 'rest-hours-open', msg: 'Opening and closing hours are required.' }
@@ -391,9 +464,31 @@ export default function ListingsTab({
       if (form.openingHoursClose <= form.openingHoursOpen) {
         return { id: 'rest-hours-close', msg: 'Closing time must be after opening time.' }
       }
+
+      const restaurantSlots = slotsList.filter(s => s.startTime && s.endTime)
+      if (restaurantSlots.length === 0) {
+        return { id: 'rest-time-slots', msg: 'At least one reservation time slot is required.' }
+      }
+
+      for (const slot of restaurantSlots) {
+        if (slot.endTime <= slot.startTime) {
+          return { id: 'rest-time-slots', msg: 'Each reservation slot must end after it starts.' }
+        }
+        if (slot.startTime < form.openingHoursOpen || slot.endTime > form.openingHoursClose) {
+          return { id: 'rest-time-slots', msg: 'Reservation time slots must be within the restaurant opening hours.' }
+        }
+      }
+
+      const sortedSlots = [...restaurantSlots].sort((a, b) => a.startTime.localeCompare(b.startTime))
+      for (let i = 1; i < sortedSlots.length; i++) {
+        if (sortedSlots[i].startTime < sortedSlots[i - 1].endTime) {
+          return { id: 'rest-time-slots', msg: 'Restaurant reservation time slots cannot overlap.' }
+        }
+      }
+
       return null
     }
-        
+
     // ── Experience / Activity Validation ──
     if (!form.title.trim()) return { id: 'exp-title', msg: 'Experience title is required.' }
     if (!form.location.trim()) return { id: 'exp-location', msg: 'Operating location is required.' }
@@ -423,9 +518,9 @@ export default function ListingsTab({
   const handleSubmit = async (e) => {
     e.preventDefault()
     const err = validate()
-    if (err) { 
+    if (err) {
       setFormError(err.msg)
-      
+
       setTimeout(() => {
         const el = document.getElementById(err.id)
         if (el) {
@@ -433,7 +528,7 @@ export default function ListingsTab({
           el.focus()
         }
       }, 50)
-      return 
+      return
     }
 
     setFormError(null)
@@ -486,8 +581,8 @@ export default function ListingsTab({
       payload = {
         name: item.name, description: item.description, cuisineType: item.cuisineType,
         diningStyle: item.diningStyle, location: item.location, pricePerPerson: item.pricePerPerson,
-        priceRange: item.priceRange, openingHours: item.openingHours,
-        setMenuDetails: item.setMenuDetails, dietaryOptions: item.dietaryOptions,groupSizeCategory: item.groupSizeCategory || 'Table for Two',
+        priceRange: item.priceRange, openingHours: item.openingHours, timeSlots: item.timeSlots || '',
+        setMenuDetails: item.setMenuDetails, dietaryOptions: item.dietaryOptions, groupSizeCategory: item.groupSizeCategory || 'Table for Two',
         seatingCapacity: item.seatingCapacity, isActive: newStatus
       }
     } else {
@@ -548,20 +643,20 @@ export default function ListingsTab({
   })
 
   const pageTitle = isHotel ? 'Rooms and Accommodations'
-                  : isRestaurant ? 'Menu and Dining'
-                  : 'Experience Listings'
+    : isRestaurant ? 'Menu and Dining'
+      : 'Experience Listings'
   const createLabel = isHotel ? 'Create New Accommodation'
-                    : isRestaurant ? 'Create New Dining Listing'
-                    : 'Create New Experience'
+    : isRestaurant ? 'Create New Dining Listing'
+      : 'Create New Experience'
   const editLabel = isHotel ? 'Edit Accommodation Listing'
-                  : isRestaurant ? 'Edit Dining Listing'
-                  : 'Edit Experience Listing'
+    : isRestaurant ? 'Edit Dining Listing'
+      : 'Edit Experience Listing'
   const emptyLabel = isHotel ? 'No accommodation listings found'
-                   : isRestaurant ? 'No dining listing found'
-                   : 'No experience listings found'
+    : isRestaurant ? 'No dining listing found'
+      : 'No experience listings found'
   const emptyMsg = isHotel ? 'Create Your First Accommodation Listing'
-                 : isRestaurant ? 'Create Your First Dining Listing'
-                 : 'Create Your First Tourism Experience Listing'
+    : isRestaurant ? 'Create Your First Dining Listing'
+      : 'Create Your First Tourism Experience Listing'
 
   return (
     <div className="pd-activities-tab">
@@ -715,52 +810,118 @@ export default function ListingsTab({
                     </select>
                   </div>
 
-                  {/* Only render the second column when Large Group is selected */}
-                  {form.groupSizeCategory === 'Large Group (More than 10)' && (
-                    <div className="pd-form-group">
-                      <label htmlFor="rest-seats">Exact Seating Capacity *</label>
-                      <input
-                        id="rest-seats"
-                        name="seatingCapacity"
-                        type="number"
-                        min="11"
-                        max="1000"
-                        value={form.seatingCapacity}
-                        onChange={handleFormChange}
-                        placeholder="e.g. 42"
-                        required
-                        style={{ width: '100%', boxSizing: 'border-box' }}
-                      />
+                  <div className="pd-form-group">
+                    <label htmlFor="rest-seats">Maximum Seating Capacity *</label>
+                    <input
+                      id="rest-seats"
+                      name="seatingCapacity"
+                      type="number"
+                      min="1"
+                      max="1000"
+                      value={form.seatingCapacity}
+                      onChange={handleFormChange}
+                      placeholder="e.g. 40"
+                      required
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
+                    <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px' }}>
+                      Maximum number of guests the restaurant can accommodate for a reservation time slot.
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 <div className="pd-grid-2">
-                    <div className="pd-form-group">
-                      <label htmlFor="rest-hours-open">Opening Time *</label>
-                      <input
-                        id="rest-hours-open"
-                        name="openingHoursOpen"
-                        type="time"
-                        value={form.openingHoursOpen}
-                        onChange={handleFormChange}
-                        required
-                        style={{ width: '100%', boxSizing: 'border-box' }}
-                      />
-                    </div>
-                    <div className="pd-form-group">
-                      <label htmlFor="rest-hours-close">Closing Time *</label>
-                      <input
-                        id="rest-hours-close"
-                        name="openingHoursClose"
-                        type="time"
-                        value={form.openingHoursClose}
-                        onChange={handleFormChange}
-                        required
-                        style={{ width: '100%', boxSizing: 'border-box' }}
-                      />
-                    </div>
+                  <div className="pd-form-group">
+                    <label htmlFor="rest-hours-open">Opening Time *</label>
+                    <input
+                      id="rest-hours-open"
+                      name="openingHoursOpen"
+                      type="time"
+                      value={form.openingHoursOpen}
+                      onChange={handleFormChange}
+                      required
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
                   </div>
+                  <div className="pd-form-group">
+                    <label htmlFor="rest-hours-close">Closing Time *</label>
+                    <input
+                      id="rest-hours-close"
+                      name="openingHoursClose"
+                      type="time"
+                      value={form.openingHoursClose}
+                      onChange={handleFormChange}
+                      required
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Restaurant Reservation Time Slots */}
+                <div id="rest-time-slots" className="pd-slot-config-box">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <div>
+                      <label style={{ fontWeight: 600, fontSize: '13.5px', color: '#123b5d' }}>
+                        Reservation Time Slots Configuration *
+                      </label>
+                      <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '3px' }}>
+                        Configure the times visitors can reserve a table.
+                      </div>
+                    </div>
+                    <select
+                      value={slotsList.length}
+                      onChange={(e) => handleRestaurantSlotCountChange(e.target.value)}
+                      style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}
+                    >
+                      {Array.from({ length: 24 }, (_, i) => i + 1).map(n => (
+                        <option key={n} value={n}>
+                          {n} {n === 1 ? 'Slot' : 'Slots'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="pd-slot-grid">
+                    {slotsList.map((slot, idx) => (
+                      <div key={idx} className="pd-slot-card">
+                        <div style={{ marginBottom: '8px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#168aad' }}>
+                            Reservation Slot {idx + 1}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <div style={{ flex: 1 }}>
+                            <label className="pd-slot-label">Start</label>
+                            <input
+                              type="time"
+                              value={slot.startTime}
+                              min={form.openingHoursOpen}
+                              max={form.openingHoursClose}
+                              onChange={(e) => updateRestaurantSlotStart(idx, e.target.value)}
+                              className="pd-slot-input"
+                              required
+                            />
+                          </div>
+                          <span style={{ color: '#888', fontSize: '12px', paddingBottom: '6px', marginLeft: '12px', marginTop: '30px' }}>
+                            to
+                          </span>
+                          <div style={{ flex: 1 }}>
+                            <label className="pd-slot-label">End</label>
+                            <input
+                              type="time"
+                              value={slot.endTime}
+                              min={slot.startTime}
+                              max={form.openingHoursClose}
+                              onChange={(e) => updateRestaurantSlotEnd(idx, e.target.value)}
+                              className="pd-slot-input"
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
                 <div className="pd-form-group">
                   <label htmlFor="rest-menu">Menu Details</label>
@@ -855,7 +1016,7 @@ export default function ListingsTab({
                       step="100"
                       value={form.pricePerNight}
                       onChange={handleFormChange}
-                      placeholder = "e.g. 8500"
+                      placeholder="e.g. 8500"
                       required
                     />
                   </div>
@@ -1167,17 +1328,17 @@ export default function ListingsTab({
 
       {/* Listings Table */}
       <div className="pd-card">
-        <div className="pd-card__body" className="pd-p-0">
+        <div className="pd-card__body pd-p-0">
           {filtered.length === 0 ? (
             <div className="pd-empty">
               <div className="pd-empty__icon"><KitesurfingIcon size={32} /></div>
               <p className="pd-empty__title">{emptyLabel}</p>
-              <button className="pd-quick-btn pd-quick-btn--primary" onClick={openAdd} className="pd-mt-12">
+              <button className="pd-quick-btn pd-quick-btn--primary pd-mt-12" onClick={openAdd}>
                 <AddIcon size={16} /> {emptyMsg}
               </button>
             </div>
           ) : (
-            <div className="pd-table-wrap" className="pd-border-none">
+            <div className="pd-table-wrap pd-border-none">
               <table className="pd-table">
                 <thead>
                   {isRestaurant ? (
@@ -1319,4 +1480,4 @@ export default function ListingsTab({
 }
 
 // ── Root Provider Dashboard Component ─────────────────────────────────────────
-
+

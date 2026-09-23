@@ -14,8 +14,15 @@ export default defineConfig({
         secure: false,
       },
 
-      // Booking Service
+      // Booking Service - Experience / Accommodation bookings
       '/api/Bookings': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
+      // Booking Service - Restaurant reservations
+      '/api/Reservations': {
         target: 'http://localhost:5229',
         changeOrigin: true,
         secure: false,
@@ -28,6 +35,7 @@ export default defineConfig({
         secure: false,
       },
 
+      // Uploaded files
       '/uploads': {
         target: 'http://localhost:5278',
         changeOrigin: true,

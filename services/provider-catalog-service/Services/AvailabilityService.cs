@@ -182,10 +182,12 @@ public class AvailabilityService
 
                 if (rest != null)
                 {
-                    defaultCapacity =
-                        rest.SeatingCapacity > 0
-                            ? rest.SeatingCapacity
-                            : 20;
+                    if (rest.SeatingCapacity <= 0)
+                    {
+                        return false;
+                    }
+
+                    defaultCapacity = rest.SeatingCapacity;
                 }
                 else
                 {
@@ -327,11 +329,12 @@ public class AvailabilityService
 
             if (restaurant != null)
             {
-                defaultCapacity =
-                    restaurant.SeatingCapacity > 0
-                        ? restaurant.SeatingCapacity
-                        : 20;
+                if (restaurant.SeatingCapacity <= 0)
+                {
+                    return false;
+                }
 
+                defaultCapacity = restaurant.SeatingCapacity;
                 listingType = "Restaurant";
             }
             else
@@ -554,10 +557,23 @@ public class AvailabilityService
             };
         }
 
-        var defaultCap =
-            rest.SeatingCapacity > 0
-                ? rest.SeatingCapacity
-                : 20;
+        if (rest.SeatingCapacity <= 0)
+        {
+            return new ListingDateAvailabilityResponse
+            {
+                ListingId = rest.Id,
+                Date = date.ToString("yyyy-MM-dd"),
+                IsOperatingDay = false,
+                IsFullyBooked = true,
+                ValidFrom = null,
+                ValidUntil = null,
+                AvailableDays = "Daily",
+                TimeSlots = rest.TimeSlots,
+                Slots = new List<SlotAvailabilityDto>()
+            };
+        }
+
+        var defaultCap = rest.SeatingCapacity;
 
         /*
          * Get capacity records already created
