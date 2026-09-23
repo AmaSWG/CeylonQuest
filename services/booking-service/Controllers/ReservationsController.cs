@@ -30,7 +30,7 @@ public class ReservationsController : ControllerBase
     public async Task<IActionResult> CreateReservation(
         [FromBody] CreateRestaurantReservationRequest request)
     {
-        // 1. Get logged-in visitor ID from JWT
+        // 1. Get logged-in visitor ID
         var visitorIdValue =
             User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -43,7 +43,7 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 2. Validate restaurant ID
+        // 2. Validate restaurant
         if (request.RestaurantId == Guid.Empty)
         {
             return BadRequest(new
@@ -52,7 +52,7 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 3. Validate reservation date
+        // 3. Validate date
         if (request.ReservationDate <
             DateOnly.FromDateTime(DateTime.UtcNow))
         {
@@ -62,7 +62,7 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 4. Validate time slot
+        // 4. Validate time
         if (string.IsNullOrWhiteSpace(request.TimeSlot))
         {
             return BadRequest(new
@@ -80,7 +80,7 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 6. Get restaurant details from Provider Catalog
+        // 6. Get trusted restaurant details from Provider Catalog
         var restaurant =
             await _catalogService.GetRestaurantAsync(
                 request.RestaurantId);
@@ -93,7 +93,7 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 7. Check whether restaurant is active
+        // 7. Restaurant must be active
         if (!restaurant.IsActive)
         {
             return BadRequest(new
@@ -103,7 +103,17 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 8. Validate party size against restaurant seating capacity
+        // 8. Validate provider price
+        if (restaurant.PricePerPerson <= 0)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "This restaurant does not have a valid price per person."
+            });
+        }
+
+        // 9. Validate maximum seating
         if (request.PartySize > restaurant.SeatingCapacity)
         {
             return BadRequest(new
@@ -113,7 +123,7 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 9. Retrieve restaurant availability
+        // 10. Get availability
         var availability =
             await _catalogService.GetAvailabilityAsync(
                 request.RestaurantId,
@@ -128,7 +138,7 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 10. Check whether restaurant operates on selected date
+        // 11. Check operating date
         if (!availability.IsOperatingDay)
         {
             return BadRequest(new
@@ -138,7 +148,7 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 11. Check whether restaurant is fully booked
+        // 12. Check fully booked
         if (availability.IsFullyBooked)
         {
             return BadRequest(new
@@ -148,7 +158,7 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 12. Find selected reservation time
+        // 13. Find selected slot
         var selectedSlot =
             availability.Slots.FirstOrDefault(slot =>
                 string.Equals(
@@ -165,7 +175,7 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 13. Check remaining capacity
+        // 14. Check slot capacity
         if (selectedSlot.IsFullyBooked ||
             request.PartySize > selectedSlot.RemainingCapacity)
         {
@@ -176,8 +186,14 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 14. Reserve capacity immediately before saving
-        // This helps prevent overbooking.
+        // 15. Calculate price on backend.
+        // Never trust a total supplied by the frontend.
+        var pricePerPerson = restaurant.PricePerPerson;
+
+        var totalPrice =
+            pricePerPerson * request.PartySize;
+
+        // 16. Reserve capacity
         var capacityReserved =
             await _catalogService.ReserveCapacityAsync(
                 request.RestaurantId,
@@ -194,40 +210,54 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 15. Create restaurant reservation
+        // 17. Create reservation
         var reservation = new RestaurantReservation
         {
             Id = Guid.NewGuid(),
             VisitorId = visitorId,
+
             RestaurantId = request.RestaurantId,
             RestaurantName = restaurant.Name,
+
             ReservationDate = request.ReservationDate,
             TimeSlot = request.TimeSlot,
+
             PartySize = request.PartySize,
+
+            PricePerPerson = pricePerPerson,
+            TotalPrice = totalPrice,
+
             Status = ReservationStatus.Confirmed,
+
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        // 16. Save reservation to database
+        // 18. Save
         _context.RestaurantReservations.Add(reservation);
-
         await _context.SaveChangesAsync();
 
-        // 17. Create reservation response
+        // 19. Response
         var response = new RestaurantReservationResponse
         {
             Id = reservation.Id,
+
             RestaurantId = reservation.RestaurantId,
             RestaurantName = reservation.RestaurantName,
+
             ReservationDate = reservation.ReservationDate,
             TimeSlot = reservation.TimeSlot,
+
             PartySize = reservation.PartySize,
+
+            PricePerPerson = reservation.PricePerPerson,
+            TotalPrice = reservation.TotalPrice,
+
             Status = reservation.Status,
+
             CreatedAt = reservation.CreatedAt
         };
 
-        // 18. Return reservation confirmation
         return Ok(response);
     }
 
@@ -235,7 +265,6 @@ public class ReservationsController : ControllerBase
     [HttpGet("my")]
     public async Task<IActionResult> GetMyReservations()
     {
-        // 1. Get logged-in visitor ID from JWT
         var visitorIdValue =
             User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -248,7 +277,6 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 2. Get reservations belonging to this visitor
         var reservations =
             await _context.RestaurantReservations
                 .AsNoTracking()
@@ -257,12 +285,20 @@ public class ReservationsController : ControllerBase
                 .Select(r => new RestaurantReservationResponse
                 {
                     Id = r.Id,
+
                     RestaurantId = r.RestaurantId,
                     RestaurantName = r.RestaurantName,
+
                     ReservationDate = r.ReservationDate,
                     TimeSlot = r.TimeSlot,
+
                     PartySize = r.PartySize,
+
+                    PricePerPerson = r.PricePerPerson,
+                    TotalPrice = r.TotalPrice,
+
                     Status = r.Status,
+
                     CreatedAt = r.CreatedAt
                 })
                 .ToListAsync();

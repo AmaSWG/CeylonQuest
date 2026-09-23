@@ -28,6 +28,12 @@ public class RestaurantReservation
     public int PartySize { get; set; }
 
     [Required]
+    public decimal PricePerPerson { get; set; }
+
+    [Required]
+    public decimal TotalPrice { get; set; }
+
+    [Required]
     public ReservationStatus Status { get; set; } =
         ReservationStatus.Confirmed;
 

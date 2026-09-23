@@ -5,7 +5,8 @@ namespace BookingService.Data;
 
 public class BookingDbContext : DbContext
 {
-    public BookingDbContext(DbContextOptions<BookingDbContext> options)
+    public BookingDbContext(
+        DbContextOptions<BookingDbContext> options)
         : base(options)
     {
     }
@@ -20,9 +21,9 @@ public class BookingDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        /*
-         * Story 7.1 - Booking configuration
-         */
+        // =========================================================
+        // Story 7.1 - Experience Booking
+        // =========================================================
         modelBuilder.Entity<Booking>(entity =>
         {
             entity.HasKey(b => b.Id);
@@ -46,26 +47,33 @@ public class BookingDbContext : DbContext
             entity.HasIndex(b => b.Status);
         });
 
-        /*
-         * Story 8.1 - Restaurant reservation configuration
-         */
+        // =========================================================
+        // Story 8.1 - Restaurant Reservation
+        // =========================================================
         modelBuilder.Entity<RestaurantReservation>(entity =>
         {
             entity.HasKey(r => r.Id);
 
+            // Store ReservationStatus enum as text
             entity.Property(r => r.Status)
                 .HasConversion<string>();
 
+            // Restaurant price for one person
+            entity.Property(r => r.PricePerPerson)
+                .HasPrecision(18, 2);
+
+            // PricePerPerson × PartySize
+            entity.Property(r => r.TotalPrice)
+                .HasPrecision(18, 2);
+
+            // Useful indexes
             entity.HasIndex(r => r.VisitorId);
 
             entity.HasIndex(r => r.RestaurantId);
 
             entity.HasIndex(r => r.Status);
 
-            /*
-             * Helps availability checks for a particular
-             * restaurant, date and time slot.
-             */
+            // Restaurant + Date + Time Slot
             entity.HasIndex(r => new
             {
                 r.RestaurantId,

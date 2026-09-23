@@ -16,6 +16,10 @@ public class RestaurantReservationResponse
 
     public int PartySize { get; set; }
 
+    public decimal PricePerPerson { get; set; }
+
+    public decimal TotalPrice { get; set; }
+
     public ReservationStatus Status { get; set; }
 
     public DateTime CreatedAt { get; set; }
