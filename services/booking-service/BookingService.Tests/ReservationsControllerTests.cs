@@ -97,16 +97,17 @@ public class ReservationsControllerTests
         };
     }
 
-    private CatalogRestaurantResponse CreateValidRestaurant()
+   private CatalogRestaurantResponse CreateValidRestaurant()
+{
+    return new CatalogRestaurantResponse
     {
-        return new CatalogRestaurantResponse
-        {
-            Id = _restaurantId,
-            Name = "Test Restaurant",
-            SeatingCapacity = 30,
-            IsActive = true
-        };
-    }
+        Id = _restaurantId,
+        Name = "Test Restaurant",
+        PricePerPerson = 2000m,
+        SeatingCapacity = 30,
+        IsActive = true
+    };
+}
 
     private CatalogAvailabilityResponse CreateValidAvailability()
     {
@@ -649,48 +650,52 @@ public class ReservationsControllerTests
         Assert.NotNull(okResult.Value);
     }
 
-    // =========================================================
-    // TEST 18
-    // Successful reservation stored in database
-    // =========================================================
+// =========================================================
+// TEST 18
+// Successful reservation stored in database
+// =========================================================
 
-    [Fact]
-    public async Task CreateReservation_ValidRequest_SavesReservationToDatabase()
-    {
-        await using var context = CreateDbContext();
+[Fact]
+public async Task CreateReservation_ValidRequest_SavesReservationToDatabase()
+{
+    await using var context = CreateDbContext();
 
-        var controller =
-            CreateController(context, _visitorId);
+    var controller =
+        CreateController(context, _visitorId);
 
-        var request = CreateValidRequest();
+    var request = CreateValidRequest();
 
-        SetupSuccessfulCatalog();
+    SetupSuccessfulCatalog();
 
-        await controller.CreateReservation(request);
+    await controller.CreateReservation(request);
 
-        var reservation =
-            await context.RestaurantReservations
-                .SingleAsync();
+    var reservation =
+        await context.RestaurantReservations
+            .SingleAsync();
 
-        Assert.Equal(_visitorId, reservation.VisitorId);
-        Assert.Equal(_restaurantId, reservation.RestaurantId);
+    Assert.Equal(_visitorId, reservation.VisitorId);
+    Assert.Equal(_restaurantId, reservation.RestaurantId);
 
-        Assert.Equal(
-            "Test Restaurant",
-            reservation.RestaurantName);
+    Assert.Equal(
+        "Test Restaurant",
+        reservation.RestaurantName);
 
-        Assert.Equal(
-            request.ReservationDate,
-            reservation.ReservationDate);
+    Assert.Equal(
+        request.ReservationDate,
+        reservation.ReservationDate);
 
-        Assert.Equal(
-            request.TimeSlot,
-            reservation.TimeSlot);
+    Assert.Equal(
+        request.TimeSlot,
+        reservation.TimeSlot);
 
-        Assert.Equal(
-            request.PartySize,
-            reservation.PartySize);
-    }
+    Assert.Equal(
+        request.PartySize,
+        reservation.PartySize);
+
+    // Pricing
+    Assert.Equal(2000m, reservation.PricePerPerson);
+    Assert.Equal(8000m, reservation.TotalPrice);
+}
 
     // =========================================================
     // TEST 19
@@ -720,56 +725,61 @@ public class ReservationsControllerTests
             reservation.Status);
     }
 
-    // =========================================================
-    // TEST 20
-    // Correct response data
-    // =========================================================
+// =========================================================
+// TEST 20
+// Correct response data including pricing
+// =========================================================
 
-    [Fact]
-    public async Task CreateReservation_ValidRequest_ReturnsCorrectResponse()
-    {
-        await using var context = CreateDbContext();
+[Fact]
+public async Task CreateReservation_ValidRequest_ReturnsCorrectResponse()
+{
+    await using var context = CreateDbContext();
 
-        var controller =
-            CreateController(context, _visitorId);
+    var controller =
+        CreateController(context, _visitorId);
 
-        var request = CreateValidRequest();
+    var request = CreateValidRequest();
 
-        SetupSuccessfulCatalog();
+    SetupSuccessfulCatalog();
 
-        var result =
-            await controller.CreateReservation(request);
+    var result =
+        await controller.CreateReservation(request);
 
-        var okResult =
-            Assert.IsType<OkObjectResult>(result);
+    var okResult =
+        Assert.IsType<OkObjectResult>(result);
 
-        var response =
-            Assert.IsType<RestaurantReservationResponse>(
-                okResult.Value);
+    var response =
+        Assert.IsType<RestaurantReservationResponse>(
+            okResult.Value);
 
-        Assert.Equal(_restaurantId, response.RestaurantId);
+    Assert.Equal(_restaurantId, response.RestaurantId);
 
-        Assert.Equal(
-            "Test Restaurant",
-            response.RestaurantName);
+    Assert.Equal(
+        "Test Restaurant",
+        response.RestaurantName);
 
-        Assert.Equal(
-            request.ReservationDate,
-            response.ReservationDate);
+    Assert.Equal(
+        request.ReservationDate,
+        response.ReservationDate);
 
-        Assert.Equal(
-            request.TimeSlot,
-            response.TimeSlot);
+    Assert.Equal(
+        request.TimeSlot,
+        response.TimeSlot);
 
-        Assert.Equal(
-            request.PartySize,
-            response.PartySize);
+    Assert.Equal(
+        request.PartySize,
+        response.PartySize);
 
-        Assert.Equal(
-            ReservationStatus.Confirmed,
-            response.Status);
-    }
+    Assert.Equal(
+        ReservationStatus.Confirmed,
+        response.Status);
 
+    // Pricing
+    Assert.Equal(2000m, response.PricePerPerson);
+    Assert.Equal(8000m, response.TotalPrice);
+}
+
+    
     // =========================================================
     // TEST 21
     // Capacity service called correctly
