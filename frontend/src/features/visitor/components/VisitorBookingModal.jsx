@@ -92,7 +92,9 @@ export default function VisitorBookingModal({
          * that still has capacity.
          */
         const firstAvailableSlot = data.slots?.find(
-          (slot) => slot.remainingCapacity > 0
+          (slot) =>
+            !slot.isFullyBooked &&
+            slot.remainingCapacity > 0
         )
 
         setSelectedTimeSlot(
@@ -129,7 +131,9 @@ export default function VisitorBookingModal({
       (
         availability.slots?.length > 0 &&
         availability.slots.every(
-          (slot) => slot.remainingCapacity <= 0
+          (slot) =>
+            slot.isFullyBooked ||
+            slot.remainingCapacity <= 0
         )
       )
     )
@@ -186,29 +190,27 @@ export default function VisitorBookingModal({
    * Story 7.1:
    * Create Experience / Accommodation booking.
    *
-   * Story 8.1 restaurant reservation will use a
-   * separate reservation API implemented in CEYQ-133.
+   * Story 8.1:
+   * Create Restaurant reservation.
    */
   const handleConfirmBooking = async () => {
     setSubmitError(null)
 
     /*
-     * CEYQ-132:
-     * Restaurant reservation UI is prepared,
-     * but its backend API will be implemented next.
+     * Validate date.
      */
-    if (isRestaurant) {
+    if (!selectedDate) {
       setSubmitError(
-        'Restaurant reservation API will be connected in CEYQ-133.'
+        isRestaurant
+          ? 'Please select a reservation date.'
+          : 'Please select a booking date.'
       )
       return
     }
 
-    if (!selectedDate) {
-      setSubmitError('Please select a booking date.')
-      return
-    }
-
+    /*
+     * Validate time.
+     */
     if (!selectedTimeSlot) {
       setSubmitError(
         'Please select an available time slot.'
@@ -216,27 +218,37 @@ export default function VisitorBookingModal({
       return
     }
 
+    /*
+     * Validate party size / participant count.
+     */
     if (guestCount < 1) {
       setSubmitError(
-        'Participant count must be at least 1.'
+        isRestaurant
+          ? 'Party size must be at least 1.'
+          : 'Participant count must be at least 1.'
       )
       return
     }
 
     /*
      * Frontend capacity validation.
-     * Backend validates capacity again.
+     * Backend validates this again to prevent overbooking.
      */
     if (
       selectedSlot &&
       guestCount > selectedSlot.remainingCapacity
     ) {
       setSubmitError(
-        `Only ${selectedSlot.remainingCapacity} place(s) remain for this time slot.`
+        isRestaurant
+          ? `Only ${selectedSlot.remainingCapacity} seat(s) are available for this time.`
+          : `Only ${selectedSlot.remainingCapacity} place(s) remain for this time slot.`
       )
       return
     }
 
+    /*
+     * Check login token.
+     */
     const token = localStorage.getItem('authToken')
 
     if (!token) {
@@ -247,24 +259,42 @@ export default function VisitorBookingModal({
     }
 
     /*
-     * Only booking information is sent.
-     *
-     * VisitorId, UnitPrice, TotalAmount,
-     * Status and PaymentStatus are controlled
-     * by the backend.
+     * Restaurant reservation payload - Story 8.1
      */
-    const payload = {
+    const restaurantPayload = {
+      restaurantId: item.id,
+      reservationDate: selectedDate,
+      timeSlot: selectedTimeSlot,
+      partySize: guestCount
+    }
+
+    /*
+     * Experience / Accommodation payload - Story 7.1
+     */
+    const bookingPayload = {
       listingId: item.id,
       bookingDate: selectedDate,
       timeSlot: selectedTimeSlot,
       participantCount: guestCount
     }
 
+    /*
+     * Use different API endpoints depending
+     * on listing type.
+     */
+    const endpoint = isRestaurant
+      ? '/api/Reservations'
+      : '/api/Bookings'
+
+    const payload = isRestaurant
+      ? restaurantPayload
+      : bookingPayload
+
     setSubmitting(true)
 
     try {
       const response = await fetch(
-        bookingUrl('/api/Bookings'),
+        bookingUrl(endpoint),
         {
           method: 'POST',
 
@@ -277,15 +307,40 @@ export default function VisitorBookingModal({
         }
       )
 
+      /*
+       * Successful response.
+       */
       if (response.ok) {
-        const booking = await response.json()
+        const result = await response.json()
 
+        /*
+         * Story 8.1 restaurant confirmation.
+         */
+        if (isRestaurant) {
+          if (onBookingSuccess) {
+            onBookingSuccess(
+              `Table reserved successfully at ${result.restaurantName || item.title} ` +
+              `for ${result.reservationDate || selectedDate} ` +
+              `at ${result.timeSlot || selectedTimeSlot}. ` +
+              `Party size: ${result.partySize || guestCount}. ` +
+              `Status: ${result.status || 'Confirmed'}.`
+            )
+          } else {
+            onClose()
+          }
+
+          return
+        }
+
+        /*
+         * Story 7.1 booking confirmation.
+         */
         if (onBookingSuccess) {
           onBookingSuccess(
             `Booking created for ${item.title} on ${selectedDate} ` +
             `at ${selectedTimeSlot}. ` +
             `Total: LKR ${Number(
-              booking.totalAmount
+              result.totalAmount
             ).toLocaleString()}. ` +
             'Status: Pending Payment.'
           )
@@ -296,6 +351,9 @@ export default function VisitorBookingModal({
         return
       }
 
+      /*
+       * Read backend validation/error message.
+       */
       const errorData = await response
         .json()
         .catch(() => null)
@@ -306,18 +364,31 @@ export default function VisitorBookingModal({
         )
       } else if (response.status === 403) {
         setSubmitError(
-          'You are not authorized to create this booking.'
+          isRestaurant
+            ? 'You are not authorized to create this reservation.'
+            : 'You are not authorized to create this booking.'
+        )
+      } else if (response.status === 409) {
+        setSubmitError(
+          errorData?.message ||
+          'The selected capacity is no longer available. Please check availability and try again.'
         )
       } else {
         setSubmitError(
           errorData?.message ||
           errorData?.error ||
-          'Failed to create booking. Please try again.'
+          (
+            isRestaurant
+              ? 'Failed to create reservation. Please try again.'
+              : 'Failed to create booking. Please try again.'
+          )
         )
       }
     } catch {
       setSubmitError(
-        'Network error while creating the booking. Please check your connection.'
+        isRestaurant
+          ? 'Network error while creating the reservation. Please check your connection.'
+          : 'Network error while creating the booking. Please check your connection.'
       )
     } finally {
       setSubmitting(false)
@@ -568,6 +639,7 @@ export default function VisitorBookingModal({
                     key={slot.timeSlot}
                     value={slot.timeSlot}
                     disabled={
+                      slot.isFullyBooked ||
                       slot.remainingCapacity <= 0
                     }
                   >

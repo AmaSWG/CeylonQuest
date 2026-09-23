@@ -4,40 +4,47 @@ namespace ProviderCatalogService.DTOs;
 
 public class UpdateRestaurantListingRequest
 {
-    [Required, StringLength(150, MinimumLength = 2)]
+    [Required]
     public string Name { get; set; } = string.Empty;
 
-    [Required, StringLength(2000, MinimumLength = 10)]
+    [Required]
     public string Description { get; set; } = string.Empty;
 
-    [Required, StringLength(100)]
+    [Required]
     public string CuisineType { get; set; } = string.Empty;
 
-    [Required, StringLength(100)]
-    public string DiningStyle { get; set; } = "Casual Dining";
+    [Required]
+    public string DiningStyle { get; set; } = string.Empty;
 
-    [Required, StringLength(200)]
+    [Required]
     public string Location { get; set; } = string.Empty;
 
-    [Required, Range(0.01, 1000000.00)]
+    [Range(
+        0.01,
+        double.MaxValue,
+        ErrorMessage = "Price per person must be greater than 0."
+    )]
     public decimal PricePerPerson { get; set; }
 
-    public string PriceRange { get; set; } = "$$ (Moderate)";
+    public string PriceRange { get; set; } = string.Empty;
 
-    [Required, StringLength(100)]
+    [Required]
     public string OpeningHours { get; set; } = string.Empty;
 
-    [StringLength(3000)]
+    public string TimeSlots { get; set; } = string.Empty;
+
     public string SetMenuDetails { get; set; } = string.Empty;
 
-    [StringLength(200)]
-    public string DietaryOptions { get; set; } = "Standard";
+    public string DietaryOptions { get; set; } = string.Empty;
 
-    [StringLength(50)]
-    public string GroupSizeCategory { get; set; } = "Table for Two";
+    public string GroupSizeCategory { get; set; } = string.Empty;
 
-    [Range(1, 1000)]
-    public int SeatingCapacity { get; set; } = 20;
+    [Range(
+        1,
+        int.MaxValue,
+        ErrorMessage = "Seating capacity must be at least 1."
+    )]
+    public int SeatingCapacity { get; set; } = 1;
 
     public bool IsActive { get; set; } = true;
 

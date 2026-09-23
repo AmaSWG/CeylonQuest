@@ -19,8 +19,8 @@ public class AvailabilityService
     }
 
     /// <summary>
-    /// Retrieves the availability for a listing on a specific date,
-    /// resolving the listing as an activity, restaurant, or accommodation.
+    /// Retrieves availability for an activity, restaurant,
+    /// or accommodation on a selected date.
     /// </summary>
     public async Task<ListingDateAvailabilityResponse?> GetAvailabilityForDateAsync(
         Guid listingId,
@@ -72,8 +72,8 @@ public class AvailabilityService
     }
 
     /// <summary>
-    /// Sets or updates the total capacity for a specific availability
-    /// time slot, preventing reductions below the already booked count.
+    /// Sets or updates the total capacity for a specific
+    /// availability time slot.
     /// </summary>
     public async Task<bool> SetSlotCapacityAsync(
         Guid listingId,
@@ -107,8 +107,10 @@ public class AvailabilityService
             }
 
             existing.TotalCapacity = capacity;
+
             existing.RemainingCapacity =
                 capacity - bookedCount;
+
             existing.UpdatedAt = DateTime.UtcNow;
         }
         else
@@ -131,9 +133,7 @@ public class AvailabilityService
     }
 
     /// <summary>
-    /// Deducts the requested guest count from a slot's remaining capacity,
-    /// creating the slot with a sensible default capacity if it does not exist.
-    ///
+    /// Deducts capacity from an availability slot.
     /// This method is retained for existing functionality.
     /// New booking creation should use ReserveCapacityAsync.
     /// </summary>
@@ -219,14 +219,11 @@ public class AvailabilityService
     }
 
     /// <summary>
-    /// Attempts to reserve capacity before a booking is created.
+    /// Attempts to reserve capacity before a booking
+    /// or restaurant reservation is created.
     ///
-    /// For an existing availability row, capacity is reduced using
-    /// one atomic database UPDATE with a RemainingCapacity condition.
-    /// This prevents simultaneous requests from overbooking a slot.
-    ///
-    /// If no availability row exists yet, the default capacity is
-    /// determined from the listing and a row is created.
+    /// Existing slots use an atomic conditional update
+    /// to help prevent overbooking.
     /// </summary>
     public async Task<bool> ReserveCapacityAsync(
         Guid listingId,
@@ -251,19 +248,18 @@ public class AvailabilityService
 
         timeSlot = timeSlot.Trim();
 
-        // First attempt an atomic conditional update.
-        //
-        // SQL conceptually becomes:
-        //
-        // UPDATE AvailabilitySlots
-        // SET RemainingCapacity = RemainingCapacity - guestCount
-        // WHERE ListingId = ...
-        //   AND Date = ...
-        //   AND TimeSlot = ...
-        //   AND RemainingCapacity >= guestCount;
-        //
-        // Only one concurrent request can consume the final
-        // remaining capacity successfully.
+        /*
+         * First try an atomic conditional update.
+         *
+         * UPDATE AvailabilitySlots
+         * SET RemainingCapacity =
+         *     RemainingCapacity - guestCount
+         * WHERE ListingId = ...
+         *   AND Date = ...
+         *   AND TimeSlot = ...
+         *   AND RemainingCapacity >= guestCount
+         */
+
         var affectedRows = await _db.AvailabilitySlots
             .Where(s =>
                 s.ListingId == listingId &&
@@ -283,8 +279,10 @@ public class AvailabilityService
             return true;
         }
 
-        // If a row exists but the conditional update changed
-        // zero rows, there is not enough remaining capacity.
+        /*
+         * If the slot already exists but the update
+         * changed zero rows, there was not enough capacity.
+         */
         var slotExists = await _db.AvailabilitySlots
             .AsNoTracking()
             .AnyAsync(s =>
@@ -297,8 +295,10 @@ public class AvailabilityService
             return false;
         }
 
-        // No explicit AvailabilitySlot exists.
-        // Determine the default capacity from the listing.
+        /*
+         * No persisted slot exists yet.
+         * Determine the default capacity from listing type.
+         */
         int defaultCapacity;
         string listingType;
 
@@ -353,19 +353,18 @@ public class AvailabilityService
             }
         }
 
-        // The default capacity itself is not sufficient.
         if (defaultCapacity < guestCount)
         {
             return false;
         }
 
-        // Create the first persisted slot.
-        //
-        // CatalogDbContext already has a unique index on:
-        // ListingId + Date + TimeSlot
-        //
-        // Therefore two concurrent requests cannot create
-        // duplicate availability rows for the same slot.
+        /*
+         * Create the first persisted slot.
+         *
+         * The database unique index on:
+         * ListingId + Date + TimeSlot
+         * prevents duplicate slots.
+         */
         var newSlot = new AvailabilitySlot
         {
             Id = Guid.NewGuid(),
@@ -389,11 +388,10 @@ public class AvailabilityService
         }
         catch (DbUpdateException)
         {
-            // A concurrent request may have inserted the same
-            // ListingId + Date + TimeSlot after our existence check.
-            //
-            // Detach our failed entity and retry using the atomic
-            // conditional update against the row that now exists.
+            /*
+             * Another request may have created the same
+             * slot at the same time.
+             */
             _db.Entry(newSlot).State =
                 EntityState.Detached;
 
@@ -416,8 +414,8 @@ public class AvailabilityService
     }
 
     /// <summary>
-    /// Builds the availability response for an activity listing,
-    /// applying the operating schedule and merging any per-slot overrides.
+    /// Builds availability for an activity listing.
+    /// Existing Experience functionality is unchanged.
     /// </summary>
     private async Task<ListingDateAvailabilityResponse>
         BuildActivityAvailabilityAsync(
@@ -504,14 +502,17 @@ public class AvailabilityService
                     : activity.AvailableDays,
 
             TimeSlots = activity.TimeSlots,
+
             Slots = slotDtos
         };
     }
 
     /// <summary>
-    /// Builds the availability response for a restaurant listing
-    /// using its opening hours as the slot and its seating capacity
-    /// as the default.
+    /// Builds restaurant availability using reservation
+    /// time slots configured by the restaurant provider.
+    ///
+    /// OpeningHours describes when the restaurant is open.
+    /// TimeSlots describes when visitors may make reservations.
     /// </summary>
     private async Task<ListingDateAvailabilityResponse>
         BuildRestaurantAvailabilityAsync(
@@ -520,19 +521,48 @@ public class AvailabilityService
     {
         var isOperating = true;
 
-        var slots = new List<string>
+        /*
+         * Use the provider-configured restaurant
+         * reservation slots.
+         *
+         * Example:
+         * 09:00 AM - 10:00 AM,
+         * 10:00 AM - 11:00 AM,
+         * 11:00 AM - 12:00 PM
+         */
+        var slots =
+            ParseRestaurantTimeSlots(
+                rest.TimeSlots);
+
+        /*
+         * If no reservation slots have been configured,
+         * do not expose an invalid booking option.
+         */
+        if (slots.Count == 0)
         {
-            string.IsNullOrWhiteSpace(
-                rest.OpeningHours)
-                ? "11:30 AM - 10:00 PM"
-                : rest.OpeningHours
-        };
+            return new ListingDateAvailabilityResponse
+            {
+                ListingId = rest.Id,
+                Date = date.ToString("yyyy-MM-dd"),
+                IsOperatingDay = false,
+                IsFullyBooked = true,
+                ValidFrom = null,
+                ValidUntil = null,
+                AvailableDays = "Daily",
+                TimeSlots = rest.TimeSlots,
+                Slots = new List<SlotAvailabilityDto>()
+            };
+        }
 
         var defaultCap =
             rest.SeatingCapacity > 0
                 ? rest.SeatingCapacity
                 : 20;
 
+        /*
+         * Get capacity records already created
+         * for this restaurant/date.
+         */
         var existingOverrides =
             await _db.AvailabilitySlots
                 .AsNoTracking()
@@ -544,6 +574,10 @@ public class AvailabilityService
         var slotDtos =
             new List<SlotAvailabilityDto>();
 
+        /*
+         * Each configured reservation slot receives
+         * its own availability/capacity.
+         */
         foreach (var slot in slots)
         {
             var matched =
@@ -581,15 +615,19 @@ public class AvailabilityService
 
             ValidFrom = null,
             ValidUntil = null,
+
             AvailableDays = "Daily",
-            TimeSlots = rest.OpeningHours,
+
+            // Provider-configured reservation slots
+            TimeSlots = rest.TimeSlots,
+
             Slots = slotDtos
         };
     }
 
     /// <summary>
-    /// Builds the availability response for an accommodation listing,
-    /// treating each night as a single-unit booking slot.
+    /// Builds accommodation availability.
+    /// Existing accommodation functionality is unchanged.
     /// </summary>
     private async Task<ListingDateAvailabilityResponse>
         BuildAccommodationAvailabilityAsync(
@@ -651,8 +689,8 @@ public class AvailabilityService
     }
 
     /// <summary>
-    /// Determines whether a given date falls within the listing's
-    /// validity window and matches its configured available days.
+    /// Determines whether a date falls within the
+    /// configured activity operating schedule.
     /// </summary>
     private static bool IsDateInOperatingSchedule(
         DateOnly date,
@@ -715,8 +753,35 @@ public class AvailabilityService
     }
 
     /// <summary>
-    /// Parses a comma-separated time slot string into individual
-    /// slot entries, falling back to sensible default slots when empty.
+    /// Parses restaurant reservation time slots.
+    ///
+    /// Unlike experiences, restaurants do not receive
+    /// default reservation slots when none are configured.
+    /// </summary>
+    private static List<string> ParseRestaurantTimeSlots(
+        string? timeSlots)
+    {
+        if (string.IsNullOrWhiteSpace(timeSlots) ||
+            timeSlots == "[]")
+        {
+            return new List<string>();
+        }
+
+        return timeSlots
+            .Split(
+                ',',
+                StringSplitOptions.RemoveEmptyEntries |
+                StringSplitOptions.TrimEntries)
+            .Where(slot =>
+                !string.IsNullOrWhiteSpace(slot))
+            .Distinct(
+                StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Parses Experience time slots.
+    /// Existing Experience behaviour is unchanged.
     /// </summary>
     private static List<string> ParseTimeSlots(
         string? timeSlots)
@@ -740,8 +805,7 @@ public class AvailabilityService
     }
 
     /// <summary>
-    /// Restores the requested guest count to a slot's remaining
-    /// capacity, capped at the slot's total capacity.
+    /// Restores capacity to a slot.
     /// </summary>
     public async Task<bool> RestoreCapacityAsync(
         Guid listingId,
@@ -768,8 +832,10 @@ public class AvailabilityService
 
         if (existing == null)
         {
-            // No explicit row means availability is already
-            // represented by the listing's default capacity.
+            /*
+             * No persisted slot means availability
+             * is already represented by default capacity.
+             */
             return true;
         }
 
@@ -788,8 +854,7 @@ public class AvailabilityService
     }
 
     /// <summary>
-    /// Adjusts availability when a booking is updated by restoring
-    /// the old slot and deducting from the new slot.
+    /// Updates capacity when an existing booking changes.
     /// </summary>
     public async Task<bool> UpdateCapacityAsync(
         Guid listingId,

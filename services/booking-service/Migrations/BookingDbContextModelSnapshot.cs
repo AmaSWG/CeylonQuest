@@ -89,7 +89,7 @@ namespace booking_service.Migrations
 
                     b.HasIndex("VisitorId");
 
-                    b.ToTable("Bookings");
+                    b.ToTable("Bookings", (string)null);
                 });
 
             modelBuilder.Entity("BookingService.Models.RestaurantReservation", b =>
@@ -140,7 +140,7 @@ namespace booking_service.Migrations
 
                     b.HasIndex("RestaurantId", "ReservationDate", "TimeSlot");
 
-                    b.ToTable("RestaurantReservations");
+                    b.ToTable("RestaurantReservations", (string)null);
                 });
 #pragma warning restore 612, 618
         }

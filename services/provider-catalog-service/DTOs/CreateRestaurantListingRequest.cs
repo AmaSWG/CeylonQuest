@@ -27,6 +27,8 @@ public class CreateRestaurantListingRequest
     [Required, StringLength(100)]
     public string OpeningHours { get; set; } = string.Empty;
 
+    public string TimeSlots { get; set; } = string.Empty;
+
     [StringLength(3000)]
     public string SetMenuDetails { get; set; } = string.Empty;
 

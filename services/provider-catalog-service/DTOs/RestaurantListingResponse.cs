@@ -26,6 +26,9 @@ public class RestaurantListingResponse
 
     public string OpeningHours { get; set; } = string.Empty;
 
+    // Reservation time slots configured by the provider
+    public string TimeSlots { get; set; } = string.Empty;
+
     public string SetMenuDetails { get; set; } = string.Empty;
 
     public string DietaryOptions { get; set; } = string.Empty;
