@@ -13,7 +13,8 @@ public class CatalogService : ICatalogService
         _httpClient = httpClient;
     }
 
-    // Get availability for an experience on a selected date
+    // Story 7.1 / Story 8.1
+    // Get availability for a listing on a selected date
     public async Task<CatalogAvailabilityResponse?> GetAvailabilityAsync(
         Guid listingId,
         DateOnly date)
@@ -32,6 +33,7 @@ public class CatalogService : ICatalogService
             .ReadFromJsonAsync<CatalogAvailabilityResponse>();
     }
 
+    // Story 7.1
     // Get experience/listing information
     public async Task<CatalogListingResponse?> GetListingAsync(
         Guid listingId)
@@ -50,7 +52,34 @@ public class CatalogService : ICatalogService
             .ReadFromJsonAsync<CatalogListingResponse>();
     }
 
-    // Reserve capacity in Provider Catalog before creating the booking
+    // Story 8.1
+    // Get restaurant information from the public restaurant endpoint
+    public async Task<CatalogRestaurantResponse?> GetRestaurantAsync(
+        Guid restaurantId)
+    {
+        var response = await _httpClient.GetAsync(
+            "/api/catalog/restaurant-listings/public");
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var restaurants =
+            await response.Content
+                .ReadFromJsonAsync<List<CatalogRestaurantResponse>>();
+
+        if (restaurants == null)
+        {
+            return null;
+        }
+
+        return restaurants.FirstOrDefault(
+            restaurant => restaurant.Id == restaurantId);
+    }
+
+    // Story 7.1 / Story 8.1
+    // Reserve capacity before creating booking/reservation
     public async Task<bool> ReserveCapacityAsync(
         Guid listingId,
         DateOnly date,
@@ -74,7 +103,7 @@ public class CatalogService : ICatalogService
             return true;
         }
 
-        // 409 means the requested capacity could not be reserved.
+        // 409 means requested capacity could not be reserved
         if (response.StatusCode == HttpStatusCode.Conflict)
         {
             return false;
