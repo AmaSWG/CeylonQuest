@@ -262,47 +262,45 @@ public class ReservationsController : ControllerBase
     }
 
     // GET: /api/reservations/my
-    [HttpGet("my")]
-    public async Task<IActionResult> GetMyReservations()
+[HttpGet("my")]
+public async Task<IActionResult> GetMyReservations()
+{
+    // Get logged-in visitor ID from JWT
+    var visitorIdValue =
+        User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    if (string.IsNullOrWhiteSpace(visitorIdValue) ||
+        !Guid.TryParse(visitorIdValue, out var visitorId))
     {
-        var visitorIdValue =
-            User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (string.IsNullOrWhiteSpace(visitorIdValue) ||
-            !Guid.TryParse(visitorIdValue, out var visitorId))
+        return Unauthorized(new
         {
-            return Unauthorized(new
-            {
-                message = "Invalid visitor authentication."
-            });
-        }
-
-        var reservations =
-            await _context.RestaurantReservations
-                .AsNoTracking()
-                .Where(r => r.VisitorId == visitorId)
-                .OrderByDescending(r => r.CreatedAt)
-                .Select(r => new RestaurantReservationResponse
-                {
-                    Id = r.Id,
-
-                    RestaurantId = r.RestaurantId,
-                    RestaurantName = r.RestaurantName,
-
-                    ReservationDate = r.ReservationDate,
-                    TimeSlot = r.TimeSlot,
-
-                    PartySize = r.PartySize,
-
-                    PricePerPerson = r.PricePerPerson,
-                    TotalPrice = r.TotalPrice,
-
-                    Status = r.Status,
-
-                    CreatedAt = r.CreatedAt
-                })
-                .ToListAsync();
-
-        return Ok(reservations);
+            message = "Invalid visitor authentication."
+        });
     }
+
+    // Retrieve only reservations belonging to logged-in visitor
+    var reservations = await _context.RestaurantReservations
+        .AsNoTracking()
+        .Where(r => r.VisitorId == visitorId)
+        .OrderByDescending(r => r.ReservationDate)
+        .ThenByDescending(r => r.CreatedAt)
+        .Select(r => new RestaurantReservationListResponse
+        {
+            Id = r.Id,
+            RestaurantId = r.RestaurantId,
+            BookingType = "Restaurant Reservation",
+            ServiceName = r.RestaurantName,
+            Date = r.ReservationDate,
+            Time = r.TimeSlot,
+            PartySize = r.PartySize,
+            Status = r.Status.ToString(),
+            PricePerPerson = r.PricePerPerson,
+            TotalAmount = r.TotalPrice,
+            CreatedAt = r.CreatedAt
+        })
+        .ToListAsync();
+
+    return Ok(reservations);
+}
+
 }

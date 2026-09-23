@@ -298,31 +298,46 @@ public class BookingsController : ControllerBase
         return Ok(booking);
     }
 
-    // GET: /api/bookings/my
-    [HttpGet("my")]
-    public async Task<IActionResult> GetMyBookings()
+ // GET: /api/bookings/my
+[HttpGet("my")]
+public async Task<IActionResult> GetMyBookings()
+{
+    // Get logged-in visitor ID from JWT
+    var visitorIdValue =
+        User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    if (string.IsNullOrWhiteSpace(visitorIdValue) ||
+        !Guid.TryParse(visitorIdValue, out var visitorId))
     {
-        var visitorIdValue =
-            User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (string.IsNullOrWhiteSpace(visitorIdValue) ||
-            !Guid.TryParse(visitorIdValue, out var visitorId))
+        return Unauthorized(new
         {
-            return Unauthorized(new
-            {
-                message = "Invalid visitor authentication."
-            });
-        }
-
-        var bookings =
-            await _context.Bookings
-                .AsNoTracking()
-                .Where(b =>
-                    b.VisitorId == visitorId)
-                .OrderByDescending(b =>
-                    b.CreatedAt)
-                .ToListAsync();
-
-        return Ok(bookings);
+            message = "Invalid visitor authentication."
+        });
     }
+
+    // Retrieve only bookings belonging to the logged-in visitor
+    var bookings = await _context.Bookings
+        .AsNoTracking()
+        .Where(b => b.VisitorId == visitorId)
+        .OrderByDescending(b => b.BookingDate)
+        .ThenByDescending(b => b.CreatedAt)
+        .Select(b => new ExperienceBookingResponse
+        {
+            Id = b.Id,
+            ListingId = b.ListingId,
+            BookingType = "Experience Booking",
+            ServiceName = b.ListingTitle,
+            Date = b.BookingDate,
+            Time = b.TimeSlot,
+            ParticipantCount = b.ParticipantCount,
+            Status = b.Status.ToString(),
+            PaymentStatus = b.PaymentStatus.ToString(),
+            UnitPrice = b.UnitPrice,
+            TotalAmount = b.TotalAmount,
+            CreatedAt = b.CreatedAt
+        })
+        .ToListAsync();
+
+    return Ok(bookings);
+}
 }
