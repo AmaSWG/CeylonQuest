@@ -6,6 +6,10 @@ public class ProviderBookingResponse
 
     public Guid CustomerId { get; set; }
 
+    public string? CustomerName { get; set; }
+
+    public string? CustomerEmail { get; set; }
+
     public Guid ServiceId { get; set; }
 
     public string BookingType { get; set; } = string.Empty;
