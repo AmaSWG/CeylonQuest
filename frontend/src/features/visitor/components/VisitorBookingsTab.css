@@ -1,0 +1,234 @@
+.vb-page {
+  width: 100%;
+}
+
+.vb-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.vb-header h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.vb-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.vb-count {
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.vb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 20px;
+}
+
+.vb-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.vb-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+}
+
+.vb-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.vb-type {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.vb-type--experience {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.vb-type--restaurant {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.vb-status {
+  padding: 5px 9px;
+  border-radius: 20px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.vb-status--confirmed,
+.vb-status--completed {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.vb-status--pendingpayment,
+.vb-status--pending-payment,
+.vb-status--pending {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.vb-status--cancelled,
+.vb-status--canceled {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.vb-card__title {
+  margin: 0 0 20px;
+  color: #111827;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.vb-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.vb-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vb-detail__label {
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.vb-detail__value {
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.vb-price {
+  font-weight: 700;
+  color: #111827;
+}
+
+.vb-payment {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #f0f0f0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.vb-payment strong {
+  color: #111827;
+}
+
+.vb-state {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 40px 20px;
+  border: 1px dashed #d1d5db;
+  border-radius: 14px;
+  background: #fafafa;
+}
+
+.vb-state h3 {
+  margin: 12px 0 6px;
+  color: #1f2937;
+}
+
+.vb-state p {
+  margin: 0;
+  color: #6b7280;
+  max-width: 450px;
+}
+
+.vb-empty-icon {
+  font-size: 36px;
+}
+
+.vb-state--error {
+  border-color: #fecaca;
+  background: #fffafa;
+}
+
+.vb-retry-btn {
+  margin-top: 18px;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  cursor: pointer;
+  background: #1f2937;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.vb-loader {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 14px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #374151;
+  border-radius: 50%;
+  animation: vb-spin 0.8s linear infinite;
+}
+
+@keyframes vb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 700px) {
+  .vb-header {
+    flex-direction: column;
+  }
+
+  .vb-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vb-details {
+    grid-template-columns: 1fr;
+  }
+}

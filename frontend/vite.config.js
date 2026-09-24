@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
 
@@ -14,7 +13,20 @@ export default defineConfig({
         secure: false,
       },
 
-      // Booking Service - Experience / Accommodation bookings
+      // Booking Service - Unified visitor bookings/reservations
+      '/api/user-bookings': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
+      '/api/provider-bookings': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
+      // Booking Service - Experience bookings
       '/api/Bookings': {
         target: 'http://localhost:5229',
         changeOrigin: true,
@@ -29,6 +41,7 @@ export default defineConfig({
       },
 
       // Identity Service
+      // Keep this AFTER the more specific service routes.
       '/api': {
         target: 'http://localhost:5278',
         changeOrigin: true,
