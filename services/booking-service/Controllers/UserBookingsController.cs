@@ -37,25 +37,26 @@ public class UserBookingsController : ControllerBase
         }
 
         // 2. Retrieve experience bookings
-        var experienceBookings = await _context.Bookings
-            .AsNoTracking()
-            .Where(b => b.VisitorId == visitorId)
-            .Select(b => new UserBookingResponse
-            {
-                Id = b.Id,
-                ServiceId = b.ListingId,
-                BookingType = "Experience Booking",
-                ServiceName = b.ListingTitle,
-                Date = b.BookingDate,
-                Time = b.TimeSlot,
-                PeopleCount = b.ParticipantCount,
-                Status = b.Status.ToString(),
-                PaymentStatus = b.PaymentStatus.ToString(),
-                UnitPrice = b.UnitPrice,
-                TotalAmount = b.TotalAmount,
-                CreatedAt = b.CreatedAt
-            })
-            .ToListAsync();
+        var experienceBookings =
+            await _context.Bookings
+                .AsNoTracking()
+                .Where(b => b.VisitorId == visitorId)
+                .Select(b => new UserBookingResponse
+                {
+                    Id = b.Id,
+                    ServiceId = b.ListingId,
+                    BookingType = "Experience Booking",
+                    ServiceName = b.ListingTitle,
+                    Date = b.BookingDate,
+                    Time = b.TimeSlot,
+                    PeopleCount = b.ParticipantCount,
+                    Status = b.Status.ToString(),
+                    PaymentStatus = b.PaymentStatus.ToString(),
+                    UnitPrice = b.UnitPrice,
+                    TotalAmount = b.TotalAmount,
+                    CreatedAt = b.CreatedAt
+                })
+                .ToListAsync();
 
         // 3. Retrieve restaurant reservations
         var restaurantReservations =
@@ -83,12 +84,13 @@ public class UserBookingsController : ControllerBase
                 })
                 .ToListAsync();
 
-        // 4. Combine both types
-        var result = experienceBookings
-            .Concat(restaurantReservations)
-            .OrderByDescending(x => x.Date)
-            .ThenByDescending(x => x.CreatedAt)
-            .ToList();
+        // 4. Combine both booking types
+        var result =
+            experienceBookings
+                .Concat(restaurantReservations)
+                .OrderByDescending(x => x.Date)
+                .ThenByDescending(x => x.CreatedAt)
+                .ToList();
 
         // 5. Return unified list
         return Ok(result);
