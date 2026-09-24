@@ -11,12 +11,19 @@ public interface ICatalogService
     Task<CatalogListingResponse?> GetListingAsync(
         Guid listingId);
 
-        Task<CatalogRestaurantResponse?> GetRestaurantAsync(
-    Guid restaurantId);
+    Task<CatalogRestaurantResponse?> GetRestaurantAsync(
+        Guid restaurantId);
 
     Task<bool> ReserveCapacityAsync(
         Guid listingId,
         DateOnly date,
         string timeSlot,
         int participantCount);
+
+    // Story 9.1 - provider booking management
+    Task<List<CatalogProviderListingResponse>>
+        GetMyActivityListingsAsync(string accessToken);
+
+    Task<List<CatalogProviderListingResponse>>
+        GetMyRestaurantListingsAsync(string accessToken);
 }
