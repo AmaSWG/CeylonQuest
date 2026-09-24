@@ -16,134 +16,302 @@ public class UsersController : ControllerBase
     private readonly UserProfileService _profileService;
     private readonly IWebHostEnvironment _env;
 
-    public UsersController(UserProfileService profileService, IWebHostEnvironment env)
+    public UsersController(
+        UserProfileService profileService,
+        IWebHostEnvironment env)
     {
         _profileService = profileService;
         _env = env;
     }
 
+    // =====================================================
     // GET /api/users/me
+    // =====================================================
+
     [HttpGet("me")]
     public async Task<IActionResult> GetMyProfile()
     {
         var userId = GetCurrentUserId();
-        if (userId is null) return Unauthorized();
+
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
 
         try
         {
-            var profile = await _profileService.GetProfileAsync(userId.Value);
+            var profile =
+                await _profileService.GetProfileAsync(
+                    userId.Value);
+
             return Ok(profile);
         }
         catch (UserNotFoundException)
         {
-            return NotFound(new { message = "User profile not found." });
+            return NotFound(new
+            {
+                message = "User profile not found."
+            });
         }
     }
 
+    // =====================================================
     // PUT /api/users/me
+    // =====================================================
+
     [HttpPut("me")]
-    public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateProfileRequest request)
+    public async Task<IActionResult> UpdateMyProfile(
+        [FromBody] UpdateProfileRequest request)
     {
-        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+        if (!ModelState.IsValid)
+        {
+            return ValidationProblem(ModelState);
+        }
 
         var userId = GetCurrentUserId();
-        if (userId is null) return Unauthorized();
+
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
 
         try
         {
-            var profile = await _profileService.UpdateProfileAsync(userId.Value, request);
-            return Ok(new { message = "Profile updated successfully.", profile });
+            var profile =
+                await _profileService.UpdateProfileAsync(
+                    userId.Value,
+                    request);
+
+            return Ok(new
+            {
+                message = "Profile updated successfully.",
+                profile
+            });
         }
         catch (UserNotFoundException)
         {
-            return NotFound(new { message = "User profile not found." });
+            return NotFound(new
+            {
+                message = "User profile not found."
+            });
         }
     }
 
-    // GET /api/users/avatar/{fileName} and /uploads/avatars/{fileName}
+    // =====================================================
+    // GET /api/users/avatar/{fileName}
+    // GET /uploads/avatars/{fileName}
+    // =====================================================
+
     [HttpGet("avatar/{fileName}")]
     [HttpGet("/uploads/avatars/{fileName}")]
     [AllowAnonymous]
     public IActionResult GetAvatar(string fileName)
     {
-        var safeFileName = Path.GetFileName(fileName);
-        var avatarsFolder = Path.Combine(_env.ContentRootPath, "uploads", "avatars");
-        var filePath = Path.Combine(avatarsFolder, safeFileName);
-        if (!System.IO.File.Exists(filePath)) return NotFound();
+        var safeFileName =
+            Path.GetFileName(fileName);
 
-        var ext = Path.GetExtension(filePath).ToLowerInvariant();
-        var contentType = ext switch
+        var avatarsFolder =
+            Path.Combine(
+                _env.ContentRootPath,
+                "uploads",
+                "avatars");
+
+        var filePath =
+            Path.Combine(
+                avatarsFolder,
+                safeFileName);
+
+        if (!System.IO.File.Exists(filePath))
         {
-            ".jpg" or ".jpeg" => "image/jpeg",
-            ".png" => "image/png",
-            ".webp" => "image/webp",
-            _ => "application/octet-stream"
-        };
-        return PhysicalFile(filePath, contentType);
+            return NotFound();
+        }
+
+        var ext =
+            Path.GetExtension(filePath)
+                .ToLowerInvariant();
+
+        var contentType =
+            ext switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".webp" => "image/webp",
+                _ => "application/octet-stream"
+            };
+
+        return PhysicalFile(
+            filePath,
+            contentType);
     }
 
+    // =====================================================
     // POST /api/users/me/profile-picture
+    // =====================================================
+
     [HttpPost("me/profile-picture")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> UploadProfilePicture(IFormFile file)
+    public async Task<IActionResult> UploadProfilePicture(
+        IFormFile file)
     {
         var userId = GetCurrentUserId();
-        if (userId is null) return Unauthorized();
+
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
 
         if (file == null || file.Length == 0)
         {
-            return BadRequest(new { message = "Please select an image file to upload." });
+            return BadRequest(new
+            {
+                message =
+                    "Please select an image file to upload."
+            });
         }
 
         try
         {
-            // Direct Azure Blob Storage Upload
-            var profile = await _profileService.UploadProfilePictureAsync(userId.Value, file);
+            var profile =
+                await _profileService
+                    .UploadProfilePictureAsync(
+                        userId.Value,
+                        file);
+
             return Ok(new
             {
-                message = "Profile picture updated successfully.",
+                message =
+                    "Profile picture updated successfully.",
+
                 profile,
-                profilePictureUrl = profile.ProfilePictureUrl
+
+                profilePictureUrl =
+                    profile.ProfilePictureUrl
             });
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new
+            {
+                message = ex.Message
+            });
         }
         catch (UserNotFoundException)
         {
-            return NotFound(new { message = "User not found." });
+            return NotFound(new
+            {
+                message = "User not found."
+            });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Failed to upload image.", details = ex.Message });
+            return StatusCode(
+                500,
+                new
+                {
+                    message =
+                        "Failed to upload image.",
+
+                    details =
+                        ex.Message
+                });
         }
     }
 
+    // =====================================================
     // DELETE /api/users/me/profile-picture
+    // =====================================================
+
     [HttpDelete("me/profile-picture")]
     public async Task<IActionResult> DeleteProfilePicture()
     {
         var userId = GetCurrentUserId();
-        if (userId is null) return Unauthorized();
+
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
 
         try
         {
-            // Deletes from Azure Blob container
-            var profile = await _profileService.RemoveProfilePictureAsync(userId.Value);
-            return Ok(new { message = "Profile picture removed successfully.", profile });
+            var profile =
+                await _profileService
+                    .RemoveProfilePictureAsync(
+                        userId.Value);
+
+            return Ok(new
+            {
+                message =
+                    "Profile picture removed successfully.",
+
+                profile
+            });
         }
         catch (UserNotFoundException)
         {
-            return NotFound(new { message = "User not found." });
+            return NotFound(new
+            {
+                message = "User not found."
+            });
         }
     }
 
+    // =====================================================
+    // STORY 9.1
+    // GET /api/users/{userId}/booking-profile
+    //
+    // Returns only the customer information required
+    // for provider booking management.
+    // =====================================================
+
+    [HttpGet("{userId:guid}/booking-profile")]
+    [Authorize(Roles = "Provider")]
+    public async Task<IActionResult> GetBookingCustomerProfile(
+        Guid userId)
+    {
+        try
+        {
+            var profile =
+                await _profileService
+                    .GetProfileAsync(userId);
+
+            var response =
+                new BookingCustomerResponse
+                {
+                    Id = profile.Id,
+                    FirstName = profile.FirstName,
+                    LastName = profile.LastName,
+                    Email = profile.Email
+                };
+
+            return Ok(response);
+        }
+        catch (UserNotFoundException)
+        {
+            return NotFound(new
+            {
+                message =
+                    "Customer profile not found."
+            });
+        }
+    }
+
+    // =====================================================
+    // Get authenticated user's ID from JWT
+    // =====================================================
+
     private Guid? GetCurrentUserId()
     {
-        var raw = User.FindFirstValue(ClaimTypes.NameIdentifier) 
-               ?? User.FindFirstValue("sub")
-               ?? User.FindFirstValue("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
-        return Guid.TryParse(raw, out var id) ? id : null;
+        var raw =
+            User.FindFirstValue(
+                ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub")
+            ?? User.FindFirstValue(
+                "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
+
+        return Guid.TryParse(
+            raw,
+            out var id)
+                ? id
+                : null;
     }
 }
