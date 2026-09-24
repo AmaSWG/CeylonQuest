@@ -676,6 +676,7 @@ public async Task CreateReservation_ValidRequest_SavesReservationToDatabase()
     Assert.Equal(_visitorId, reservation.VisitorId);
     Assert.Equal(_restaurantId, reservation.RestaurantId);
 
+    // RestaurantReservation MODEL uses RestaurantName
     Assert.Equal(
         "Test Restaurant",
         reservation.RestaurantName);
@@ -855,99 +856,117 @@ public async Task CreateReservation_ValidRequest_ReturnsCorrectResponse()
     }
 
     // =========================================================
-    // TEST 24
-    // GetMyReservations only returns current visitor data
+// TEST 24
+// GetMyReservations only returns current visitor data
+// =========================================================
+
+[Fact]
+public async Task GetMyReservations_ReturnsOnlyCurrentVisitorsReservations()
+{
+    await using var context = CreateDbContext();
+
+    var otherVisitorId = Guid.NewGuid();
+
+    context.RestaurantReservations.AddRange(
+        new RestaurantReservation
+        {
+            Id = Guid.NewGuid(),
+            VisitorId = _visitorId,
+            RestaurantId = _restaurantId,
+            RestaurantName = "My Restaurant",
+            ReservationDate =
+                DateOnly.FromDateTime(
+                    DateTime.UtcNow.AddDays(1)),
+            TimeSlot = "09:00 AM - 10:00 AM",
+            PartySize = 4,
+            Status = ReservationStatus.Confirmed,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        },
+
+        new RestaurantReservation
+        {
+            Id = Guid.NewGuid(),
+            VisitorId = otherVisitorId,
+            RestaurantId = Guid.NewGuid(),
+            RestaurantName = "Other Restaurant",
+            ReservationDate =
+                DateOnly.FromDateTime(
+                    DateTime.UtcNow.AddDays(1)),
+            TimeSlot = "10:00 AM - 11:00 AM",
+            PartySize = 2,
+            Status = ReservationStatus.Confirmed,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+
+    await context.SaveChangesAsync();
+
+    var controller =
+        CreateController(context, _visitorId);
+
+    var result =
+        await controller.GetMyReservations();
+
+    var okResult =
+        Assert.IsType<OkObjectResult>(result);
+
+    var reservations =
+        Assert.IsAssignableFrom<
+            IEnumerable<RestaurantReservationListResponse>>(
+                okResult.Value);
+
+    var list = reservations.ToList();
+
+    Assert.Single(list);
+
+    // RestaurantReservationListResponse DTO uses ServiceName
+    Assert.Equal(
+        "My Restaurant",
+        list[0].ServiceName);
+
+    Assert.Equal(
+        "Restaurant Reservation",
+        list[0].BookingType);
+
+    Assert.Equal(
+        _restaurantId,
+        list[0].RestaurantId);
+
+    Assert.Equal(
+        4,
+        list[0].PartySize);
+
+    Assert.Equal(
+        "Confirmed",
+        list[0].Status);
+}
+
     // =========================================================
+// TEST 25
+// GetMyReservations returns empty list
+// =========================================================
 
-    [Fact]
-    public async Task GetMyReservations_ReturnsOnlyCurrentVisitorsReservations()
-    {
-        await using var context = CreateDbContext();
+[Fact]
+public async Task GetMyReservations_NoReservations_ReturnsEmptyList()
+{
+    await using var context = CreateDbContext();
 
-        var otherVisitorId = Guid.NewGuid();
+    var controller =
+        CreateController(context, _visitorId);
 
-        context.RestaurantReservations.AddRange(
-            new RestaurantReservation
-            {
-                Id = Guid.NewGuid(),
-                VisitorId = _visitorId,
-                RestaurantId = _restaurantId,
-                RestaurantName = "My Restaurant",
-                ReservationDate =
-                    DateOnly.FromDateTime(
-                        DateTime.UtcNow.AddDays(1)),
-                TimeSlot = "09:00 AM - 10:00 AM",
-                PartySize = 4,
-                Status = ReservationStatus.Confirmed,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            },
+    var result =
+        await controller.GetMyReservations();
 
-            new RestaurantReservation
-            {
-                Id = Guid.NewGuid(),
-                VisitorId = otherVisitorId,
-                RestaurantId = Guid.NewGuid(),
-                RestaurantName = "Other Restaurant",
-                ReservationDate =
-                    DateOnly.FromDateTime(
-                        DateTime.UtcNow.AddDays(1)),
-                TimeSlot = "10:00 AM - 11:00 AM",
-                PartySize = 2,
-                Status = ReservationStatus.Confirmed,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            });
+    var okResult =
+        Assert.IsType<OkObjectResult>(result);
 
-        await context.SaveChangesAsync();
+    var reservations =
+        Assert.IsAssignableFrom<
+            IEnumerable<RestaurantReservationListResponse>>(
+                okResult.Value);
 
-        var controller =
-            CreateController(context, _visitorId);
+    Assert.Empty(reservations);
+}
 
-        var result =
-            await controller.GetMyReservations();
-
-        var okResult =
-            Assert.IsType<OkObjectResult>(result);
-
-        var reservations =
-            Assert.IsAssignableFrom<
-                IEnumerable<RestaurantReservationResponse>>(
-                    okResult.Value);
-
-        var list = reservations.ToList();
-
-        Assert.Single(list);
-
-        Assert.Equal(
-            "My Restaurant",
-            list[0].RestaurantName);
-    }
-
-    // =========================================================
-    // TEST 25
-    // GetMyReservations returns empty list
-    // =========================================================
-
-    [Fact]
-    public async Task GetMyReservations_NoReservations_ReturnsEmptyList()
-    {
-        await using var context = CreateDbContext();
-
-        var controller =
-            CreateController(context, _visitorId);
-
-        var result =
-            await controller.GetMyReservations();
-
-        var okResult =
-            Assert.IsType<OkObjectResult>(result);
-
-        var reservations =
-            Assert.IsAssignableFrom<
-                IEnumerable<RestaurantReservationResponse>>(
-                    okResult.Value);
-
-        Assert.Empty(reservations);
-    }
 }
