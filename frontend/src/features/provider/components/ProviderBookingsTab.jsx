@@ -8,35 +8,27 @@ import EmptyState from '../../../components/common/EmptyState'
 function formatDate(value) {
   if (!value) return '—'
 
-  const date =
-    new Date(`${value}T00:00:00`)
+  const date = new Date(`${value}T00:00:00`)
 
   if (Number.isNaN(date.getTime())) {
     return value
   }
 
-  return date.toLocaleDateString(
-    'en-GB',
-    {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    }
-  )
+  return date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  })
 }
 
 function formatCurrency(amount) {
-  const value =
-    Number(amount ?? 0)
+  const value = Number(amount ?? 0)
 
-  return new Intl.NumberFormat(
-    'en-LK',
-    {
-      style: 'currency',
-      currency: 'LKR',
-      maximumFractionDigits: 0
-    }
-  ).format(value)
+  return new Intl.NumberFormat('en-LK', {
+    style: 'currency',
+    currency: 'LKR',
+    maximumFractionDigits: 0
+  }).format(value)
 }
 
 function normalizeStatus(status) {
@@ -44,6 +36,66 @@ function normalizeStatus(status) {
     .replace(/[_-]/g, ' ')
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .trim()
+}
+
+/*
+ * Converts backend booking/reservation statuses
+ * into the status groups used by the Provider UI.
+ *
+ * Experience Booking:
+ * PendingPayment -> pending
+ * Confirmed      -> confirmed
+ * Completed      -> completed
+ * Cancelled      -> cancelled
+ *
+ * Restaurant Reservation:
+ * Confirmed      -> confirmed
+ * Cancelled      -> cancelled
+ */
+function getStatusGroup(status) {
+  const value = String(status || '')
+    .replace(/[\s_-]/g, '')
+    .toLowerCase()
+
+  if (value === 'pendingpayment' || value === 'pending') {
+    return 'pending'
+  }
+
+  if (value === 'confirmed') {
+    return 'confirmed'
+  }
+
+  if (value === 'completed') {
+    return 'completed'
+  }
+
+  if (value === 'cancelled' || value === 'canceled') {
+    return 'cancelled'
+  }
+
+  return value
+}
+
+function getDisplayStatus(status) {
+  const group = getStatusGroup(status)
+
+  if (group === 'pending') {
+    return 'Pending'
+  }
+
+  if (group === 'confirmed') {
+    return 'Confirmed'
+  }
+
+  if (group === 'completed') {
+    return 'Completed'
+  }
+
+  if (group === 'cancelled') {
+    return 'Cancelled'
+  }
+
+  return normalizeStatus(status) || 'Pending'
 }
 
 function shortId(id) {
@@ -60,12 +112,12 @@ export default function ProviderBookingsTab({
   error = null,
   onRetry
 }) {
-  const [filter, setFilter] =
-    useState('all')
+  const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
 
-  const [search, setSearch] =
-    useState('')
-
+  /*
+   * Count bookings for each status filter.
+   */
   const counts = useMemo(() => {
     const result = {
       all: bookings.length,
@@ -76,74 +128,76 @@ export default function ProviderBookingsTab({
     }
 
     bookings.forEach((booking) => {
-      const status =
-        String(booking.status || '')
-          .toLowerCase()
+      const statusGroup = getStatusGroup(
+        booking.status
+      )
 
-      if (status.includes('pending')) {
-        result.pending += 1
-      }
-
-      if (status === 'confirmed') {
-        result.confirmed += 1
-      }
-
-      if (status === 'completed') {
-        result.completed += 1
-      }
-
-      if (status === 'cancelled') {
-        result.cancelled += 1
+      if (
+        Object.prototype.hasOwnProperty.call(
+          result,
+          statusGroup
+        )
+      ) {
+        result[statusGroup] += 1
       }
     })
 
     return result
   }, [bookings])
 
-  const filteredBookings =
-    useMemo(() => {
-      const query =
-        search.trim().toLowerCase()
+  /*
+   * Apply status filter + search.
+   */
+  const filteredBookings = useMemo(() => {
+    const query = search
+      .trim()
+      .toLowerCase()
 
-      return bookings.filter((booking) => {
-        const status =
-          String(booking.status || '')
-            .toLowerCase()
+    return bookings.filter((booking) => {
+      const statusGroup = getStatusGroup(
+        booking.status
+      )
 
-        if (
-          filter !== 'all' &&
-          !status.includes(filter)
-        ) {
-          return false
-        }
+      // Status filtering
+      if (
+        filter !== 'all' &&
+        statusGroup !== filter
+      ) {
+        return false
+      }
 
-        if (!query) {
-          return true
-        }
+      // No search query
+      if (!query) {
+        return true
+      }
 
-        const searchable =
-          [
-            booking.serviceName,
-            booking.bookingType,
-            booking.customerName,
-            booking.customerEmail,
-            booking.customerId,
-            booking.id
-          ]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase()
+      // Search supported booking information
+      const searchable = [
+        booking.serviceName,
+        booking.bookingType,
+        booking.customerName,
+        booking.customerEmail,
+        booking.customerId,
+        booking.id
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
 
-        return searchable.includes(query)
-      })
-    }, [bookings, filter, search])
+      return searchable.includes(query)
+    })
+  }, [bookings, filter, search])
 
+  /*
+   * Loading state
+   */
   if (loading) {
     return (
       <div className="pd-bookings-tab">
         <div className="pd-page-header">
           <div className="pd-page-header__left">
             <h1>Booking Management</h1>
+
             <p>
               Track customer bookings and reservations
               for your services.
@@ -168,12 +222,16 @@ export default function ProviderBookingsTab({
     )
   }
 
+  /*
+   * Error state
+   */
   if (error) {
     return (
       <div className="pd-bookings-tab">
         <div className="pd-page-header">
           <div className="pd-page-header__left">
             <h1>Booking Management</h1>
+
             <p>
               Track customer bookings and reservations
               for your services.
@@ -224,6 +282,8 @@ export default function ProviderBookingsTab({
 
       <div className="pd-bookings-card">
         <div className="pd-bookings-toolbar">
+
+          {/* Search */}
           <div className="pd-bookings-search">
             <span
               className="pd-bookings-search__icon"
@@ -245,6 +305,7 @@ export default function ProviderBookingsTab({
             />
           </div>
 
+          {/* Status Filters */}
           <div
             className="pd-bookings-filters"
             aria-label="Booking status filters"
@@ -276,6 +337,7 @@ export default function ProviderBookingsTab({
           </div>
         </div>
 
+        {/* Empty State */}
         {filteredBookings.length === 0 ? (
           <div className="pd-bookings-empty">
             <EmptyState
@@ -293,6 +355,8 @@ export default function ProviderBookingsTab({
             />
           </div>
         ) : (
+
+          /* Booking Table */
           <div className="pd-bookings-table-wrap">
             <table className="pd-bookings-table">
               <thead>
@@ -312,12 +376,15 @@ export default function ProviderBookingsTab({
                 {filteredBookings.map(
                   (booking) => (
                     <tr key={booking.id}>
+
+                      {/* Booking ID */}
                       <td>
                         <span className="pd-booking-id">
                           #{shortId(booking.id)}
                         </span>
                       </td>
 
+                      {/* Customer */}
                       <td>
                         <div className="pd-customer-cell">
                           <span className="pd-customer-avatar">
@@ -340,6 +407,7 @@ export default function ProviderBookingsTab({
                         </div>
                       </td>
 
+                      {/* Service */}
                       <td>
                         <strong className="pd-service-name">
                           {booking.serviceName ||
@@ -347,6 +415,7 @@ export default function ProviderBookingsTab({
                         </strong>
                       </td>
 
+                      {/* Booking Type */}
                       <td>
                         <span
                           className={
@@ -361,6 +430,7 @@ export default function ProviderBookingsTab({
                         </span>
                       </td>
 
+                      {/* Date + Time */}
                       <td>
                         <div className="pd-date-cell">
                           <strong>
@@ -375,10 +445,12 @@ export default function ProviderBookingsTab({
                         </div>
                       </td>
 
+                      {/* Participant / Party Size */}
                       <td>
                         {booking.peopleCount ?? '—'}
                       </td>
 
+                      {/* Amount + Payment */}
                       <td>
                         <strong>
                           {formatCurrency(
@@ -395,12 +467,13 @@ export default function ProviderBookingsTab({
                         )}
                       </td>
 
+                      {/* Status */}
                       <td>
                         <StatusBadge
                           status={
-                            normalizeStatus(
+                            getDisplayStatus(
                               booking.status
-                            ) || 'Pending'
+                            )
                           }
                         />
                       </td>
