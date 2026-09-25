@@ -24,16 +24,6 @@ namespace CeylonQuest.Tests.Pages
             _wait.Until(d => d.FindElement(By.CssSelector(".vd-filter-select")).Displayed);
         }
 
-        /*public void FilterByExperiences()
-        {
-            NavigateToExplore();
-            var select = new SelectElement(ServiceTypeFilter);
-            select.SelectByValue("experience");
-
-            // Wait until experience cards are populated in the DOM
-            _wait.Until(d => d.FindElements(By.CssSelector(".vd-service-card")).Count > 0);
-        }*/
-
         public void FilterByExperiences()
         {
             Console.WriteLine($"[DIAG:filter] start URL = {_driver.Url}");
