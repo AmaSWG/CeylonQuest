@@ -37,6 +37,25 @@ public class RestaurantReservation
     public ReservationStatus Status { get; set; } =
         ReservationStatus.Confirmed;
 
+    // =========================================================
+    // Cancellation information
+    // =========================================================
+
+    [MaxLength(500)]
+    public string? CancellationReason { get; set; }
+
+    public DateTime? CancelledAt { get; set; }
+
+    // =========================================================
+    // Refund information
+    // =========================================================
+
+    public decimal RefundPercentage { get; set; } = 0m;
+
+    public decimal RefundAmount { get; set; } = 0m;
+
+    public DateTime? RefundedAt { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
