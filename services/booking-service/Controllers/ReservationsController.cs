@@ -1,10 +1,13 @@
 using BookingService.Data;
 using BookingService.DTOs;
+using BookingService.Events;
 using BookingService.Models;
 using BookingService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Shared.Kafka;
+using System.Globalization;
 using System.Security.Claims;
 
 namespace BookingService.Controllers;
@@ -16,16 +19,21 @@ public class ReservationsController : ControllerBase
 {
     private readonly BookingDbContext _context;
     private readonly ICatalogService _catalogService;
+    private readonly IKafkaProducer _kafkaProducer;
 
     public ReservationsController(
         BookingDbContext context,
-        ICatalogService catalogService)
+        ICatalogService catalogService,
+        IKafkaProducer kafkaProducer)
     {
         _context = context;
         _catalogService = catalogService;
+        _kafkaProducer = kafkaProducer;
     }
 
+    // =========================================================
     // POST: /api/reservations
+    // =========================================================
     [HttpPost]
     public async Task<IActionResult> CreateReservation(
         [FromBody] CreateRestaurantReservationRequest request)
@@ -80,7 +88,7 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 6. Get trusted restaurant details from Provider Catalog
+        // 6. Get trusted restaurant details
         var restaurant =
             await _catalogService.GetRestaurantAsync(
                 request.RestaurantId);
@@ -177,7 +185,8 @@ public class ReservationsController : ControllerBase
 
         // 14. Check slot capacity
         if (selectedSlot.IsFullyBooked ||
-            request.PartySize > selectedSlot.RemainingCapacity)
+            request.PartySize >
+            selectedSlot.RemainingCapacity)
         {
             return BadRequest(new
             {
@@ -186,9 +195,9 @@ public class ReservationsController : ControllerBase
             });
         }
 
-        // 15. Calculate price on backend.
-        // Never trust a total supplied by the frontend.
-        var pricePerPerson = restaurant.PricePerPerson;
+        // 15. Calculate price on backend
+        var pricePerPerson =
+            restaurant.PricePerPerson;
 
         var totalPrice =
             pricePerPerson * request.PartySize;
@@ -211,96 +220,419 @@ public class ReservationsController : ControllerBase
         }
 
         // 17. Create reservation
-        var reservation = new RestaurantReservation
-        {
-            Id = Guid.NewGuid(),
-            VisitorId = visitorId,
+        var reservation =
+            new RestaurantReservation
+            {
+                Id = Guid.NewGuid(),
 
-            RestaurantId = request.RestaurantId,
-            RestaurantName = restaurant.Name,
+                VisitorId =
+                    visitorId,
 
-            ReservationDate = request.ReservationDate,
-            TimeSlot = request.TimeSlot,
+                RestaurantId =
+                    request.RestaurantId,
 
-            PartySize = request.PartySize,
+                RestaurantName =
+                    restaurant.Name,
 
-            PricePerPerson = pricePerPerson,
-            TotalPrice = totalPrice,
+                ReservationDate =
+                    request.ReservationDate,
 
-            Status = ReservationStatus.Confirmed,
+                TimeSlot =
+                    request.TimeSlot,
 
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+                PartySize =
+                    request.PartySize,
+
+                PricePerPerson =
+                    pricePerPerson,
+
+                TotalPrice =
+                    totalPrice,
+
+                Status =
+                    ReservationStatus.Confirmed,
+
+                CreatedAt =
+                    DateTime.UtcNow,
+
+                UpdatedAt =
+                    DateTime.UtcNow
+            };
 
         // 18. Save
-        _context.RestaurantReservations.Add(reservation);
+        _context.RestaurantReservations.Add(
+            reservation);
+
         await _context.SaveChangesAsync();
 
         // 19. Response
-        var response = new RestaurantReservationResponse
-        {
-            Id = reservation.Id,
+        var response =
+            new RestaurantReservationResponse
+            {
+                Id =
+                    reservation.Id,
 
-            RestaurantId = reservation.RestaurantId,
-            RestaurantName = reservation.RestaurantName,
+                RestaurantId =
+                    reservation.RestaurantId,
 
-            ReservationDate = reservation.ReservationDate,
-            TimeSlot = reservation.TimeSlot,
+                RestaurantName =
+                    reservation.RestaurantName,
 
-            PartySize = reservation.PartySize,
+                ReservationDate =
+                    reservation.ReservationDate,
 
-            PricePerPerson = reservation.PricePerPerson,
-            TotalPrice = reservation.TotalPrice,
+                TimeSlot =
+                    reservation.TimeSlot,
 
-            Status = reservation.Status,
+                PartySize =
+                    reservation.PartySize,
 
-            CreatedAt = reservation.CreatedAt
-        };
+                PricePerPerson =
+                    reservation.PricePerPerson,
+
+                TotalPrice =
+                    reservation.TotalPrice,
+
+                Status =
+                    reservation.Status,
+
+                CreatedAt =
+                    reservation.CreatedAt
+            };
 
         return Ok(response);
     }
 
+    // =========================================================
     // GET: /api/reservations/my
-[HttpGet("my")]
-public async Task<IActionResult> GetMyReservations()
-{
-    // Get logged-in visitor ID from JWT
-    var visitorIdValue =
-        User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-    if (string.IsNullOrWhiteSpace(visitorIdValue) ||
-        !Guid.TryParse(visitorIdValue, out var visitorId))
+    // =========================================================
+    [HttpGet("my")]
+    public async Task<IActionResult> GetMyReservations()
     {
-        return Unauthorized(new
+        // 1. Get logged-in visitor ID
+        var visitorIdValue =
+            User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(visitorIdValue) ||
+            !Guid.TryParse(visitorIdValue, out var visitorId))
         {
-            message = "Invalid visitor authentication."
-        });
+            return Unauthorized(new
+            {
+                message = "Invalid visitor authentication."
+            });
+        }
+
+        // 2. Retrieve reservations belonging to visitor
+        var reservations =
+            await _context.RestaurantReservations
+                .AsNoTracking()
+                .Where(r =>
+                    r.VisitorId == visitorId)
+                .OrderByDescending(r =>
+                    r.ReservationDate)
+                .ThenByDescending(r =>
+                    r.CreatedAt)
+                .Select(r =>
+                    new RestaurantReservationListResponse
+                    {
+                        Id =
+                            r.Id,
+
+                        RestaurantId =
+                            r.RestaurantId,
+
+                        BookingType =
+                            "Restaurant Reservation",
+
+                        ServiceName =
+                            r.RestaurantName,
+
+                        Date =
+                            r.ReservationDate,
+
+                        Time =
+                            r.TimeSlot,
+
+                        PartySize =
+                            r.PartySize,
+
+                        Status =
+                            r.Status.ToString(),
+
+                        PricePerPerson =
+                            r.PricePerPerson,
+
+                        TotalAmount =
+                            r.TotalPrice,
+
+                        CreatedAt =
+                            r.CreatedAt
+                    })
+                .ToListAsync();
+
+        return Ok(reservations);
     }
 
-    // Retrieve only reservations belonging to logged-in visitor
-    var reservations = await _context.RestaurantReservations
-        .AsNoTracking()
-        .Where(r => r.VisitorId == visitorId)
-        .OrderByDescending(r => r.ReservationDate)
-        .ThenByDescending(r => r.CreatedAt)
-        .Select(r => new RestaurantReservationListResponse
+    // =========================================================
+    // PUT: /api/reservations/{id}/cancel
+    // =========================================================
+    [HttpPut("{id:guid}/cancel")]
+    public async Task<IActionResult> CancelReservation(
+        Guid id,
+        [FromBody] CancelRestaurantReservationRequest request)
+    {
+        // 1. Get logged-in visitor ID
+        var visitorIdValue =
+            User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(visitorIdValue) ||
+            !Guid.TryParse(visitorIdValue, out var visitorId))
         {
-            Id = r.Id,
-            RestaurantId = r.RestaurantId,
-            BookingType = "Restaurant Reservation",
-            ServiceName = r.RestaurantName,
-            Date = r.ReservationDate,
-            Time = r.TimeSlot,
-            PartySize = r.PartySize,
-            Status = r.Status.ToString(),
-            PricePerPerson = r.PricePerPerson,
-            TotalAmount = r.TotalPrice,
-            CreatedAt = r.CreatedAt
-        })
-        .ToListAsync();
+            return Unauthorized(new
+            {
+                message =
+                    "Invalid visitor authentication."
+            });
+        }
 
-    return Ok(reservations);
-}
+        // 2. Find reservation belonging to visitor
+        var reservation =
+            await _context.RestaurantReservations
+                .FirstOrDefaultAsync(r =>
+                    r.Id == id &&
+                    r.VisitorId == visitorId);
 
+        if (reservation == null)
+        {
+            return NotFound(new
+            {
+                message =
+                    "Restaurant reservation not found."
+            });
+        }
+
+        // 3. Prevent duplicate cancellation
+        if (reservation.Status ==
+            ReservationStatus.Cancelled)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "This restaurant reservation has already been cancelled."
+            });
+        }
+
+        // 4. Validate time slot
+        if (string.IsNullOrWhiteSpace(
+            reservation.TimeSlot))
+        {
+            return BadRequest(new
+            {
+                message =
+                    "The reservation time slot is invalid."
+            });
+        }
+
+        // Example:
+        // "08:00 AM - 10:00 AM"
+        var timeParts =
+            reservation.TimeSlot.Split(
+                '-',
+                StringSplitOptions.TrimEntries |
+                StringSplitOptions.RemoveEmptyEntries);
+
+        if (timeParts.Length < 1)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "The reservation time slot is invalid."
+            });
+        }
+
+        var startTimeText =
+            timeParts[0].Trim();
+
+        // 5. Parse reservation start time
+        if (!DateTime.TryParseExact(
+                startTimeText,
+                "hh:mm tt",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var parsedStartTime))
+        {
+            return BadRequest(new
+            {
+                message =
+                    "The reservation start time could not be determined."
+            });
+        }
+
+        // 6. Combine reservation date + start time
+        var startTime =
+            TimeOnly.FromDateTime(
+                parsedStartTime);
+
+        var reservationStartDateTime =
+            reservation.ReservationDate
+                .ToDateTime(startTime);
+
+        // Current reservation date/time represents local time
+        var currentDateTime =
+            DateTime.Now;
+
+        // 7. Prevent cancellation of past reservation
+        if (reservationStartDateTime <=
+            currentDateTime)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Past restaurant reservations cannot be cancelled."
+            });
+        }
+
+        // 8. Calculate time remaining
+        var timeUntilReservation =
+            reservationStartDateTime -
+            currentDateTime;
+
+        var hoursUntilReservation =
+            timeUntilReservation.TotalHours;
+
+        // 9. Less than 24 hours = no cancellation
+        if (hoursUntilReservation < 24)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Restaurant reservations cannot be cancelled less than 24 hours before the reservation.",
+
+                hoursUntilReservation =
+                    Math.Round(
+                        hoursUntilReservation,
+                        2)
+            });
+        }
+
+        // 10. Determine refund percentage
+        decimal refundPercentage;
+
+        if (hoursUntilReservation >= 48)
+        {
+            refundPercentage = 100m;
+        }
+        else
+        {
+            refundPercentage = 50m;
+        }
+
+        // 11. Calculate simulated refund
+        var refundAmount =
+            reservation.TotalPrice *
+            (refundPercentage / 100m);
+
+        // 12. Store cancellation information
+        reservation.CancellationReason =
+            request.Reason;
+
+        reservation.CancelledAt =
+            DateTime.UtcNow;
+
+        reservation.RefundPercentage =
+            refundPercentage;
+
+        reservation.RefundAmount =
+            refundAmount;
+
+        // Restaurant currently has no PaymentStatus.
+        // For this story the refund is simulated.
+        reservation.RefundedAt =
+            DateTime.UtcNow;
+
+        // 13. Update reservation status
+        reservation.Status =
+            ReservationStatus.Cancelled;
+
+        reservation.UpdatedAt =
+            DateTime.UtcNow;
+
+        // 14. Save cancellation
+        await _context.SaveChangesAsync();
+
+        // 15. Create capacity-restoration event
+        var reservationCanceledEvent =
+            new BookingCanceledEvent
+            {
+                BookingId =
+                    reservation.Id,
+
+                // Existing event uses ListingId.
+                // For Restaurant this is RestaurantId.
+                ListingId =
+                    reservation.RestaurantId,
+
+                ListingType =
+                    "Restaurant",
+
+                BookingDate =
+                    reservation.ReservationDate
+                        .ToString("yyyy-MM-dd"),
+
+                TimeSlot =
+                    reservation.TimeSlot,
+
+                // Existing event uses ParticipantCount.
+                // For Restaurant this is PartySize.
+                ParticipantCount =
+                    reservation.PartySize,
+
+                Reason =
+                    reservation.CancellationReason,
+
+                CanceledAt =
+                    reservation.CancelledAt ??
+                    DateTime.UtcNow
+            };
+
+        // 16. Publish cancellation event
+        await _kafkaProducer.PublishAsync(
+            "booking.canceled",
+            reservation.Id.ToString(),
+            reservationCanceledEvent);
+
+        // 17. Response
+        return Ok(new
+        {
+            message =
+                "Restaurant reservation cancelled successfully.",
+
+            reservationId =
+                reservation.Id,
+
+            restaurantId =
+                reservation.RestaurantId,
+
+            status =
+                reservation.Status.ToString(),
+
+            totalAmount =
+                reservation.TotalPrice,
+
+            refundPercentage =
+                reservation.RefundPercentage,
+
+            refundAmount =
+                reservation.RefundAmount,
+
+            cancellationReason =
+                reservation.CancellationReason,
+
+            cancelledAt =
+                reservation.CancelledAt,
+
+            refundedAt =
+                reservation.RefundedAt
+        });
+    }
 }
