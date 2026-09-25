@@ -24,5 +24,17 @@ public class ExperienceBookingResponse
 
     public decimal TotalAmount { get; set; }
 
+    // Cancellation details
+    public string? CancellationReason { get; set; }
+
+    public DateTime? CancelledAt { get; set; }
+
+    // Refund details
+    public decimal RefundPercentage { get; set; }
+
+    public decimal RefundAmount { get; set; }
+
+    public DateTime? RefundedAt { get; set; }
+
     public DateTime CreatedAt { get; set; }
 }
