@@ -185,8 +185,7 @@ public class ReservationsController : ControllerBase
 
         // 14. Check slot capacity
         if (selectedSlot.IsFullyBooked ||
-            request.PartySize >
-            selectedSlot.RemainingCapacity)
+            request.PartySize > selectedSlot.RemainingCapacity)
         {
             return BadRequest(new
             {
@@ -364,6 +363,23 @@ public class ReservationsController : ControllerBase
 
                         TotalAmount =
                             r.TotalPrice,
+
+                        // Cancellation details
+                        CancellationReason =
+                            r.CancellationReason,
+
+                        CancelledAt =
+                            r.CancelledAt,
+
+                        // Refund details
+                        RefundPercentage =
+                            r.RefundPercentage,
+
+                        RefundAmount =
+                            r.RefundAmount,
+
+                        RefundedAt =
+                            r.RefundedAt,
 
                         CreatedAt =
                             r.CreatedAt
@@ -567,8 +583,7 @@ public class ReservationsController : ControllerBase
                 BookingId =
                     reservation.Id,
 
-                // Existing event uses ListingId.
-                // For Restaurant this is RestaurantId.
+                // For Restaurant, ListingId is RestaurantId
                 ListingId =
                     reservation.RestaurantId,
 
@@ -582,8 +597,7 @@ public class ReservationsController : ControllerBase
                 TimeSlot =
                     reservation.TimeSlot,
 
-                // Existing event uses ParticipantCount.
-                // For Restaurant this is PartySize.
+                // For Restaurant, ParticipantCount is PartySize
                 ParticipantCount =
                     reservation.PartySize,
 
