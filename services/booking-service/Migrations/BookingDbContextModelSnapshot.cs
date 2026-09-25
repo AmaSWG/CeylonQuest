@@ -31,6 +31,13 @@ namespace booking_service.Migrations
                     b.Property<DateOnly>("BookingDate")
                         .HasColumnType("date");
 
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -57,6 +64,15 @@ namespace booking_service.Migrations
                     b.Property<string>("PaymentStatus")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<decimal>("RefundAmount")
+                        .HasColumnType("decimal(65,30)");
+
+                    b.Property<decimal>("RefundPercentage")
+                        .HasColumnType("decimal(65,30)");
+
+                    b.Property<DateTime?>("RefundedAt")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Status")
                         .IsRequired()

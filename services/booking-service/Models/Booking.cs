@@ -46,6 +46,19 @@ public class Booking
     [MaxLength(200)]
     public string? PaymentReference { get; set; }
 
+    // Cancellation details
+    [MaxLength(500)]
+    public string? CancellationReason { get; set; }
+
+    public DateTime? CancelledAt { get; set; }
+
+    // Refund details
+    public decimal RefundAmount { get; set; } = 0;
+
+    public decimal RefundPercentage { get; set; } = 0;
+
+    public DateTime? RefundedAt { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
