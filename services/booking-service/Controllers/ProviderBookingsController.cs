@@ -26,13 +26,24 @@ public class ProviderBookingsController : ControllerBase
         _identityService = identityService;
     }
 
+    // =========================================================
     // GET: /api/provider-bookings/my
+    //
+    // Returns:
+    // - Experience bookings
+    // - Restaurant reservations
+    // - Accommodation bookings
+    //
+    // Only bookings belonging to the logged-in provider's
+    // services are returned.
+    // =========================================================
+
     [HttpGet("my")]
     public async Task<IActionResult> GetMyBookingsAndReservations()
     {
-        // -------------------------------------------------
-        // 1. Read the provider's JWT.
-        // -------------------------------------------------
+        // -----------------------------------------------------
+        // 1. Read provider JWT
+        // -----------------------------------------------------
 
         var authorization =
             Request.Headers.Authorization.ToString();
@@ -59,12 +70,9 @@ public class ProviderBookingsController : ControllerBase
             });
         }
 
-        // -------------------------------------------------
-        // 2. Ask Provider Catalog for this provider's
-        //    activity and restaurant listings.
-        //
-        //    Catalog Service performs the ownership check.
-        // -------------------------------------------------
+        // -----------------------------------------------------
+        // 2. Get provider-owned listings from Catalog Service
+        // -----------------------------------------------------
 
         var activityListings =
             await _catalogService
@@ -74,9 +82,13 @@ public class ProviderBookingsController : ControllerBase
             await _catalogService
                 .GetMyRestaurantListingsAsync(accessToken);
 
-        // -------------------------------------------------
-        // 3. Build provider-owned service ID collections.
-        // -------------------------------------------------
+        var accommodationListings =
+            await _catalogService
+                .GetMyAccommodationListingsAsync(accessToken);
+
+        // -----------------------------------------------------
+        // 3. Get IDs owned by this provider
+        // -----------------------------------------------------
 
         var activityIds =
             activityListings
@@ -88,10 +100,14 @@ public class ProviderBookingsController : ControllerBase
                 .Select(x => x.Id)
                 .ToHashSet();
 
-        // -------------------------------------------------
-        // 4. Retrieve only experience bookings belonging
-        //    to this provider's activity listings.
-        // -------------------------------------------------
+        var accommodationIds =
+            accommodationListings
+                .Select(x => x.Id)
+                .ToHashSet();
+
+        // -----------------------------------------------------
+        // 4. EXPERIENCE BOOKINGS
+        // -----------------------------------------------------
 
         var experienceBookings =
             await _context.Bookings
@@ -103,45 +119,58 @@ public class ProviderBookingsController : ControllerBase
                     {
                         Id = b.Id,
 
-                        CustomerId =
-                            b.VisitorId,
+                        CustomerId = b.VisitorId,
 
-                        ServiceId =
-                            b.ListingId,
+                        ServiceId = b.ListingId,
 
-                        BookingType =
-                            "Experience Booking",
+                        BookingType = "Experience Booking",
 
-                        ServiceName =
-                            b.ListingTitle,
+                        ServiceName = b.ListingTitle,
 
-                        Date =
-                            b.BookingDate,
+                        Date = b.BookingDate,
 
-                        Time =
-                            b.TimeSlot,
+                        Time = b.TimeSlot,
 
-                        PeopleCount =
-                            b.ParticipantCount,
+                        PeopleCount = b.ParticipantCount,
 
-                        Status =
-                            b.Status.ToString(),
+                        Status = b.Status.ToString(),
 
                         PaymentStatus =
                             b.PaymentStatus.ToString(),
 
-                        TotalAmount =
-                            b.TotalAmount,
+                        UnitPrice = b.UnitPrice,
+
+                        TotalAmount = b.TotalAmount,
+
+                        CheckInDate = null,
+
+                        CheckOutDate = null,
+
+                        NumberOfNights = null,
+
+                        CancellationReason =
+                            b.CancellationReason,
+
+                        CancelledAt =
+                            b.CancelledAt,
+
+                        RefundPercentage =
+                            b.RefundPercentage,
+
+                        RefundAmount =
+                            b.RefundAmount,
+
+                        RefundedAt =
+                            b.RefundedAt,
 
                         CreatedAt =
                             b.CreatedAt
                     })
                 .ToListAsync();
 
-        // -------------------------------------------------
-        // 5. Retrieve only restaurant reservations
-        //    belonging to this provider's restaurants.
-        // -------------------------------------------------
+        // -----------------------------------------------------
+        // 5. RESTAURANT RESERVATIONS
+        // -----------------------------------------------------
 
         var restaurantReservations =
             await _context.RestaurantReservations
@@ -153,11 +182,9 @@ public class ProviderBookingsController : ControllerBase
                     {
                         Id = r.Id,
 
-                        CustomerId =
-                            r.VisitorId,
+                        CustomerId = r.VisitorId,
 
-                        ServiceId =
-                            r.RestaurantId,
+                        ServiceId = r.RestaurantId,
 
                         BookingType =
                             "Restaurant Reservation",
@@ -177,37 +204,138 @@ public class ProviderBookingsController : ControllerBase
                         Status =
                             r.Status.ToString(),
 
-                        // Restaurant reservations currently
-                        // do not have a separate payment state.
                         PaymentStatus = null,
+
+                        UnitPrice =
+                            r.PricePerPerson,
 
                         TotalAmount =
                             r.TotalPrice,
+
+                        CheckInDate = null,
+
+                        CheckOutDate = null,
+
+                        NumberOfNights = null,
+
+                        CancellationReason =
+                            r.CancellationReason,
+
+                        CancelledAt =
+                            r.CancelledAt,
+
+                        RefundPercentage =
+                            r.RefundPercentage,
+
+                        RefundAmount =
+                            r.RefundAmount,
+
+                        RefundedAt =
+                            r.RefundedAt,
 
                         CreatedAt =
                             r.CreatedAt
                     })
                 .ToListAsync();
 
-        // -------------------------------------------------
-        // 6. Combine experience bookings and restaurant
-        //    reservations.
-        // -------------------------------------------------
+        // -----------------------------------------------------
+        // 6. ACCOMMODATION BOOKINGS
+        // -----------------------------------------------------
+
+        var accommodationBookings =
+            await _context.AccommodationBookings
+                .AsNoTracking()
+                .Where(a =>
+                    accommodationIds.Contains(
+                        a.AccommodationId))
+                .Select(a =>
+                    new ProviderBookingResponse
+                    {
+                        Id = a.Id,
+
+                        CustomerId = a.VisitorId,
+
+                        ServiceId =
+                            a.AccommodationId,
+
+                        BookingType =
+                            "Accommodation Booking",
+
+                        ServiceName =
+                            a.AccommodationName,
+
+                        // Main date shown in provider table
+                        Date =
+                            a.CheckInDate,
+
+                        Time =
+                            "Stay",
+
+                        PeopleCount =
+                            a.GuestCount,
+
+                        Status =
+                            a.Status.ToString(),
+
+                        PaymentStatus = null,
+
+                        // Price per night
+                        UnitPrice =
+                            a.PricePerNight,
+
+                        TotalAmount =
+                            a.TotalPrice,
+
+                        // Accommodation-specific fields
+                        CheckInDate =
+                            a.CheckInDate,
+
+                        CheckOutDate =
+                            a.CheckOutDate,
+
+                        NumberOfNights =
+                            a.NumberOfNights,
+
+                        // Cancellation / refund fields
+                        CancellationReason =
+                            a.CancellationReason,
+
+                        CancelledAt =
+                            a.CancelledAt,
+
+                        RefundPercentage =
+                            a.RefundPercentage,
+
+                        RefundAmount =
+                            a.RefundAmount,
+
+                        RefundedAt =
+                            a.RefundedAt,
+
+                        CreatedAt =
+                            a.CreatedAt
+                    })
+                .ToListAsync();
+
+        // -----------------------------------------------------
+        // 7. Combine all three booking types
+        // -----------------------------------------------------
 
         var result =
             experienceBookings
                 .Concat(restaurantReservations)
+                .Concat(accommodationBookings)
                 .OrderByDescending(x => x.Date)
                 .ThenByDescending(x => x.CreatedAt)
                 .ToList();
 
-        // -------------------------------------------------
-        // 7. Get each unique customer's name and email
-        //    from Identity Service.
+        // -----------------------------------------------------
+        // 8. Get unique customer profiles
         //
-        //    We only request each customer once even if
-        //    they have multiple bookings.
-        // -------------------------------------------------
+        // Uses your EXISTING IIdentityService.
+        // This avoids calling Identity Service repeatedly for
+        // the same customer.
+        // -----------------------------------------------------
 
         var customerIds =
             result
@@ -236,15 +364,17 @@ public class ProviderBookingsController : ControllerBase
             }
             catch
             {
-                // Keep the booking available even if
-                // customer profile lookup temporarily fails.
-                // Frontend can fall back to CustomerId.
+                // Keep booking information available even
+                // if Identity Service temporarily fails.
             }
         }
 
-        // -------------------------------------------------
-        // 8. Add customer name and email to each result.
-        // -------------------------------------------------
+        // -----------------------------------------------------
+        // 9. Add customer name/email
+        //
+        // IMPORTANT:
+        // BookingCustomerResponse uses FullName, NOT Name.
+        // -----------------------------------------------------
 
         foreach (var item in result)
         {
@@ -260,9 +390,9 @@ public class ProviderBookingsController : ControllerBase
             }
         }
 
-        // -------------------------------------------------
-        // 9. Return unified provider booking list.
-        // -------------------------------------------------
+        // -----------------------------------------------------
+        // 10. Return provider booking list
+        // -----------------------------------------------------
 
         return Ok(result);
     }
