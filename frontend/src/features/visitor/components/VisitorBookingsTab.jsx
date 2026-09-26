@@ -19,7 +19,6 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
     const [searchTerm, setSearchTerm] = useState('')
     const [statusFilter, setStatusFilter] = useState('all')
 
-
     // =========================================================
     // FETCH BOOKINGS
     // =========================================================
@@ -51,31 +50,23 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
             }
 
             if (response.status === 403) {
-                setError(
-                    'You are not authorized to view these bookings.'
-                )
+                setError('You are not authorized to view these bookings.')
                 return
             }
 
             if (!response.ok) {
-                const data =
-                    await response.json().catch(() => null)
+                const data = await response.json().catch(() => null)
 
                 setError(
                     data?.message ||
                     'Unable to load your bookings and reservations.'
                 )
-
                 return
             }
 
             const data = await response.json()
 
-            setBookings(
-                Array.isArray(data)
-                    ? data
-                    : []
-            )
+            setBookings(Array.isArray(data) ? data : [])
         } catch {
             setError(
                 'Network error. Please check your connection and try again.'
@@ -85,11 +76,9 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
         }
     }, [onSessionExpired])
 
-
     useEffect(() => {
         fetchBookings()
     }, [fetchBookings])
-
 
     // =========================================================
     // FORMATTERS
@@ -100,9 +89,7 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
             return '—'
         }
 
-        return new Date(
-            `${date}T00:00:00`
-        ).toLocaleDateString(
+        return new Date(`${date}T00:00:00`).toLocaleDateString(
             'en-US',
             {
                 year: 'numeric',
@@ -111,7 +98,6 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
             }
         )
     }
-
 
     const formatDateTime = (date) => {
         if (!date) {
@@ -127,63 +113,111 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
         return value.toLocaleString()
     }
 
-
     const formatMoney = (amount) => {
         const value = Number(amount ?? 0)
-
         return `LKR ${value.toLocaleString()}`
     }
 
-
     // =========================================================
-    // BOOKING HELPERS
+    // BOOKING TYPE HELPERS
     // =========================================================
 
     const isRestaurant = (booking) => {
-        return (
-            booking?.bookingType ===
-            'Restaurant Reservation'
-        )
+        return booking?.bookingType === 'Restaurant Reservation'
     }
 
+    const isAccommodation = (booking) => {
+        return booking?.bookingType === 'Accommodation Booking'
+    }
+
+    const isExperience = (booking) => {
+        return booking?.bookingType === 'Experience Booking'
+    }
+
+    const getBookingTypeLabel = (booking) => {
+        if (isRestaurant(booking)) {
+            return 'RESTAURANT'
+        }
+
+        if (isAccommodation(booking)) {
+            return 'ACCOMMODATION'
+        }
+
+        return 'EXPERIENCE'
+    }
+
+    const getBookingTypeClass = (booking) => {
+        if (isRestaurant(booking)) {
+            return 'vb-type vb-type--restaurant'
+        }
+
+        if (isAccommodation(booking)) {
+            return 'vb-type vb-type--accommodation'
+        }
+
+        return 'vb-type vb-type--experience'
+    }
+
+    const getPeopleLabel = (booking) => {
+        if (isRestaurant(booking)) {
+            return 'Party Size'
+        }
+
+        if (isAccommodation(booking)) {
+            return 'Guests'
+        }
+
+        return 'Participants'
+    }
+
+    const getCancellationTypeName = (booking) => {
+        if (isRestaurant(booking)) {
+            return 'restaurant reservation'
+        }
+
+        if (isAccommodation(booking)) {
+            return 'accommodation booking'
+        }
+
+        return 'experience booking'
+    }
+
+    const getShortCancellationTypeName = (booking) => {
+        if (isRestaurant(booking)) {
+            return 'Reservation'
+        }
+
+        return 'Booking'
+    }
+
+    // =========================================================
+    // STATUS HELPERS
+    // =========================================================
 
     const isCancelled = (booking) => {
-        const status =
-            String(booking?.status || '')
-                .toLowerCase()
+        const status = String(booking?.status || '').toLowerCase()
 
-        return (
-            status === 'cancelled' ||
-            status === 'canceled'
-        )
+        return status === 'cancelled' || status === 'canceled'
     }
-
 
     const isCompleted = (booking) => {
         return (
-            String(booking?.status || '')
-                .toLowerCase() === 'completed'
+            String(booking?.status || '').toLowerCase() ===
+            'completed'
         )
     }
-
 
     const canCancel = (booking) => {
-        return (
-            !isCancelled(booking) &&
-            !isCompleted(booking)
-        )
+        return !isCancelled(booking) && !isCompleted(booking)
     }
 
-
     const getStatusClass = (status) => {
-        const normalized =
-            String(status || '')
-                .toLowerCase()
-                .replace(/\s+/g, '-')
+        const normalized = String(status || '')
+            .toLowerCase()
+            .replace(/\s+/g, '-')
 
         return `vb-status vb-status--${normalized}`
     }
-
 
     // =========================================================
     // MODAL
@@ -197,7 +231,6 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
         setCancelError('')
     }
 
-
     const closeDetails = () => {
         if (cancelLoading) {
             return
@@ -210,10 +243,6 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
         setCancelError('')
     }
 
-
-    // User clicks Cancel in the table/details.
-    // Do NOT show the final cancellation form immediately.
-    // First show "Are you sure?"
     const openCancelConfirmation = (booking) => {
         setSelectedBooking(booking)
         setShowCancelConfirm(true)
@@ -222,8 +251,6 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
         setCancelError('')
     }
 
-
-    // User clicks "Yes, Continue to Cancel"
     const continueToCancellation = () => {
         setShowCancelConfirm(false)
         setShowCancelForm(true)
@@ -231,8 +258,6 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
         setCancelError('')
     }
 
-
-    // User clicks "No, Keep Booking"
     const keepBooking = () => {
         setShowCancelConfirm(false)
         setShowCancelForm(false)
@@ -240,8 +265,6 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
         setCancelError('')
     }
 
-
-    // From cancellation form -> back to confirmation
     const backToCancelConfirmation = () => {
         if (cancelLoading) {
             return
@@ -253,14 +276,12 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
         setCancelError('')
     }
 
-
     // =========================================================
     // FILTERING
     // =========================================================
 
     const filteredBookings = useMemo(() => {
-        const search =
-            searchTerm.trim().toLowerCase()
+        const search = searchTerm.trim().toLowerCase()
 
         return bookings.filter((booking) => {
             const matchesSearch =
@@ -284,14 +305,12 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
             }
 
             if (statusFilter === 'cancelled') {
-                matchesStatus =
-                    isCancelled(booking)
+                matchesStatus = isCancelled(booking)
             }
 
             return matchesSearch && matchesStatus
         })
     }, [bookings, searchTerm, statusFilter])
-
 
     // =========================================================
     // CANCEL BOOKING
@@ -302,8 +321,7 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
             return
         }
 
-        const token =
-            localStorage.getItem('authToken')
+        const token = localStorage.getItem('authToken')
 
         if (!token) {
             onSessionExpired?.()
@@ -314,12 +332,18 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
         setCancelError('')
 
         try {
-            const restaurant =
-                isRestaurant(selectedBooking)
+            let endpoint
 
-            const endpoint = restaurant
-                ? `/api/Reservations/${selectedBooking.id}/cancel`
-                : `/api/Bookings/${selectedBooking.id}/cancel`
+            if (isRestaurant(selectedBooking)) {
+                endpoint =
+                    `/api/Reservations/${selectedBooking.id}/cancel`
+            } else if (isAccommodation(selectedBooking)) {
+                endpoint =
+                    `/api/AccommodationBookings/${selectedBooking.id}/cancel`
+            } else {
+                endpoint =
+                    `/api/Bookings/${selectedBooking.id}/cancel`
+            }
 
             const response = await fetch(
                 bookingUrl(endpoint),
@@ -333,8 +357,7 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
 
                     body: JSON.stringify({
                         reason:
-                            cancellationReason.trim() ||
-                            null
+                            cancellationReason.trim() || null
                     })
                 }
             )
@@ -361,6 +384,13 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
             const refundAmount =
                 Number(data?.refundAmount ?? 0)
 
+            const typeName =
+                isRestaurant(selectedBooking)
+                    ? 'Restaurant reservation'
+                    : isAccommodation(selectedBooking)
+                        ? 'Accommodation booking'
+                        : 'Experience booking'
+
             setSelectedBooking(null)
             setShowCancelConfirm(false)
             setShowCancelForm(false)
@@ -368,10 +398,7 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
             setCancelError('')
 
             setSuccessMessage(
-                `${restaurant
-                    ? 'Restaurant reservation'
-                    : 'Experience booking'
-                } cancelled successfully. ` +
+                `${typeName} cancelled successfully. ` +
                 `Refund: ${refundPercentage}% ` +
                 `(${formatMoney(refundAmount)}).`
             )
@@ -386,7 +413,6 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
         }
     }
 
-
     // =========================================================
     // LOADING
     // =========================================================
@@ -394,16 +420,13 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
     if (loading) {
         return (
             <div className="vb-page">
-
                 <div className="vb-header">
                     <div>
-                        <h1>
-                            My Bookings & Reservations
-                        </h1>
+                        <h1>My Bookings & Reservations</h1>
 
                         <p>
-                            Track your upcoming and previous
-                            experiences and restaurant reservations.
+                            Track your experiences, restaurant
+                            reservations and accommodation bookings.
                         </p>
                     </div>
                 </div>
@@ -415,11 +438,9 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                         Loading your bookings and reservations...
                     </p>
                 </div>
-
             </div>
         )
     }
-
 
     // =========================================================
     // ERROR
@@ -428,29 +449,21 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
     if (error) {
         return (
             <div className="vb-page">
-
                 <div className="vb-header">
                     <div>
-                        <h1>
-                            My Bookings & Reservations
-                        </h1>
+                        <h1>My Bookings & Reservations</h1>
 
                         <p>
-                            Track your upcoming and previous
-                            experiences and restaurant reservations.
+                            Track your experiences, restaurant
+                            reservations and accommodation bookings.
                         </p>
                     </div>
                 </div>
 
                 <div className="vb-state vb-state--error">
+                    <h3>Unable to load bookings</h3>
 
-                    <h3>
-                        Unable to load bookings
-                    </h3>
-
-                    <p>
-                        {error}
-                    </p>
+                    <p>{error}</p>
 
                     <button
                         type="button"
@@ -459,13 +472,10 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                     >
                         Try Again
                     </button>
-
                 </div>
-
             </div>
         )
     }
-
 
     // =========================================================
     // PAGE
@@ -477,15 +487,12 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
             {/* HEADER */}
 
             <div className="vb-header">
-
                 <div>
-                    <h1>
-                        My Bookings & Reservations
-                    </h1>
+                    <h1>My Bookings & Reservations</h1>
 
                     <p>
-                        Track your upcoming and previous
-                        experiences and restaurant reservations.
+                        Track your experiences, restaurant
+                        reservations and accommodation bookings.
                     </p>
                 </div>
 
@@ -495,20 +502,15 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                         ? 'Booking'
                         : 'Bookings'}
                 </div>
-
             </div>
-
 
             {/* SUCCESS */}
 
             {successMessage && (
                 <div className="vb-success-message">
-
                     <span>✓</span>
 
-                    <span>
-                        {successMessage}
-                    </span>
+                    <span>{successMessage}</span>
 
                     <button
                         type="button"
@@ -518,17 +520,13 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                     >
                         ×
                     </button>
-
                 </div>
             )}
-
 
             {/* EMPTY */}
 
             {bookings.length === 0 ? (
-
                 <div className="vb-state">
-
                     <div className="vb-empty-icon">
                         📅
                     </div>
@@ -538,22 +536,17 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                     </h3>
 
                     <p>
-                        Your experience bookings and restaurant
-                        reservations will appear here.
+                        Your experience bookings, restaurant
+                        reservations and accommodation bookings
+                        will appear here.
                     </p>
-
                 </div>
-
             ) : (
-
                 <>
-
                     {/* TOOLBAR */}
 
                     <div className="vb-toolbar">
-
                         <div className="vb-search-wrapper">
-
                             <span className="vb-search-icon">
                                 ⌕
                             </span>
@@ -569,12 +562,9 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                     )
                                 }
                             />
-
                         </div>
 
-
                         <div className="vb-filters">
-
                             <button
                                 type="button"
                                 className={
@@ -588,7 +578,6 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                             >
                                 All
                             </button>
-
 
                             <button
                                 type="button"
@@ -604,7 +593,6 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                 Active
                             </button>
 
-
                             <button
                                 type="button"
                                 className={
@@ -618,26 +606,20 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                             >
                                 Cancelled
                             </button>
-
                         </div>
-
                     </div>
-
 
                     {/* BOOKINGS TABLE */}
 
                     <div className="vb-table-card">
-
                         <div className="vb-table-scroll">
-
                             <table className="vb-table">
-
                                 <thead>
                                     <tr>
                                         <th>TYPE</th>
                                         <th>SERVICE</th>
                                         <th>DATE</th>
-                                        <th>TIME</th>
+                                        <th>TIME / STAY</th>
                                         <th>PEOPLE</th>
                                         <th>AMOUNT</th>
                                         <th>STATUS</th>
@@ -645,189 +627,145 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                     </tr>
                                 </thead>
 
-
                                 <tbody>
-
                                     {filteredBookings.map(
-                                        (booking) => {
+                                        (booking) => (
+                                            <tr
+                                                key={`${booking.bookingType}-${booking.id}`}
+                                                className={
+                                                    isCancelled(
+                                                        booking
+                                                    )
+                                                        ? 'vb-row vb-row--cancelled'
+                                                        : 'vb-row'
+                                                }
+                                            >
+                                                <td>
+                                                    <span
+                                                        className={
+                                                            getBookingTypeClass(
+                                                                booking
+                                                            )
+                                                        }
+                                                    >
+                                                        {
+                                                            getBookingTypeLabel(
+                                                                booking
+                                                            )
+                                                        }
+                                                    </span>
+                                                </td>
 
-                                            const restaurant =
-                                                isRestaurant(
-                                                    booking
-                                                )
-
-                                            return (
-                                                <tr
-                                                    key={`${booking.bookingType}-${booking.id}`}
-                                                    className={
-                                                        isCancelled(
-                                                            booking
-                                                        )
-                                                            ? 'vb-row vb-row--cancelled'
-                                                            : 'vb-row'
-                                                    }
-                                                >
-
-                                                    {/* TYPE */}
-
-                                                    <td>
-
-                                                        <span
-                                                            className={
-                                                                restaurant
-                                                                    ? 'vb-type vb-type--restaurant'
-                                                                    : 'vb-type vb-type--experience'
-                                                            }
-                                                        >
-                                                            {restaurant
-                                                                ? 'RESTAURANT'
-                                                                : 'EXPERIENCE'}
-                                                        </span>
-
-                                                    </td>
-
-
-                                                    {/* SERVICE */}
-
-                                                    <td>
-
-                                                        <div className="vb-service-cell">
-
-                                                            <strong>
-                                                                {booking.serviceName ||
-                                                                    'Unnamed Service'}
-                                                            </strong>
-
-                                                            {booking.paymentStatus && (
-                                                                <span>
-                                                                    Payment:{' '}
-                                                                    {
-                                                                        booking.paymentStatus
-                                                                    }
-                                                                </span>
-                                                            )}
-
-                                                        </div>
-
-                                                    </td>
-
-
-                                                    {/* DATE */}
-
-                                                    <td className="vb-nowrap">
-                                                        {formatDate(
-                                                            booking.date
-                                                        )}
-                                                    </td>
-
-
-                                                    {/* TIME */}
-
-                                                    <td>
-                                                        <span className="vb-time-cell">
-                                                            {booking.time ||
-                                                                '—'}
-                                                        </span>
-                                                    </td>
-
-
-                                                    {/* PEOPLE */}
-
-                                                    <td>
-                                                        <span className="vb-people">
-                                                            {
-                                                                booking.peopleCount
-                                                            }
-                                                        </span>
-                                                    </td>
-
-
-                                                    {/* AMOUNT */}
-
-                                                    <td className="vb-nowrap">
-
-                                                        <strong className="vb-amount">
-                                                            {formatMoney(
-                                                                booking.totalAmount
-                                                            )}
+                                                <td>
+                                                    <div className="vb-service-cell">
+                                                        <strong>
+                                                            {booking.serviceName ||
+                                                                'Unnamed Service'}
                                                         </strong>
 
-                                                    </td>
+                                                        {booking.paymentStatus && (
+                                                            <span>
+                                                                Payment:{' '}
+                                                                {
+                                                                    booking.paymentStatus
+                                                                }
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
 
+                                                <td className="vb-nowrap">
+                                                    {isAccommodation(
+                                                        booking
+                                                    )
+                                                        ? formatDate(
+                                                            booking.checkInDate ||
+                                                            booking.date
+                                                        )
+                                                        : formatDate(
+                                                            booking.date
+                                                        )}
+                                                </td>
 
-                                                    {/* STATUS */}
+                                                <td>
+                                                    <span className="vb-time-cell">
+                                                        {isAccommodation(
+                                                            booking
+                                                        )
+                                                            ? `${booking.numberOfNights ?? 0} night${Number(booking.numberOfNights ?? 0) === 1 ? '' : 's'}`
+                                                            : booking.time ||
+                                                            '—'}
+                                                    </span>
+                                                </td>
 
-                                                    <td>
+                                                <td>
+                                                    <span className="vb-people">
+                                                        {
+                                                            booking.peopleCount
+                                                        }
+                                                    </span>
+                                                </td>
 
-                                                        <span
-                                                            className={
-                                                                getStatusClass(
-                                                                    booking.status
+                                                <td className="vb-nowrap">
+                                                    <strong className="vb-amount">
+                                                        {formatMoney(
+                                                            booking.totalAmount
+                                                        )}
+                                                    </strong>
+                                                </td>
+
+                                                <td>
+                                                    <span
+                                                        className={
+                                                            getStatusClass(
+                                                                booking.status
+                                                            )
+                                                        }
+                                                    >
+                                                        {booking.status ||
+                                                            'Unknown'}
+                                                    </span>
+                                                </td>
+
+                                                <td>
+                                                    <div className="vb-table-actions">
+                                                        <button
+                                                            type="button"
+                                                            className="vb-view-btn"
+                                                            onClick={() =>
+                                                                openDetails(
+                                                                    booking
                                                                 )
                                                             }
                                                         >
-                                                            {booking.status ||
-                                                                'Unknown'}
-                                                        </span>
+                                                            View Details
+                                                        </button>
 
-                                                    </td>
-
-
-                                                    {/* ACTIONS */}
-
-                                                    <td>
-
-                                                        <div className="vb-table-actions">
-
-                                                            <button
-                                                                type="button"
-                                                                className="vb-view-btn"
-                                                                onClick={() =>
-                                                                    openDetails(
-                                                                        booking
-                                                                    )
-                                                                }
-                                                            >
-                                                                View Details
-                                                            </button>
-
-
-                                                            {canCancel(
-                                                                booking
-                                                            ) && (
-
-                                                                    <button
-                                                                        type="button"
-                                                                        className="vb-cancel-btn"
-                                                                        onClick={() =>
-                                                                            openCancelConfirmation(
-                                                                                booking
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        Cancel
-                                                                    </button>
-
-                                                                )}
-
-                                                        </div>
-
-                                                    </td>
-
-                                                </tr>
-                                            )
-                                        }
+                                                        {canCancel(
+                                                            booking
+                                                        ) && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="vb-cancel-btn"
+                                                                    onClick={() =>
+                                                                        openCancelConfirmation(
+                                                                            booking
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )
                                     )}
-
                                 </tbody>
-
                             </table>
 
-
                             {filteredBookings.length === 0 && (
-
                                 <div className="vb-no-results">
-
                                     <div>⌕</div>
 
                                     <strong>
@@ -837,63 +775,43 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                     <p>
                                         Try another search or filter.
                                     </p>
-
                                 </div>
-
                             )}
-
                         </div>
-
                     </div>
-
                 </>
-
             )}
 
-
-            {/* =================================================
-                MODAL
-                ================================================= */}
+            {/* MODAL */}
 
             {selectedBooking && (
-
                 <div
                     className="vb-modal-overlay"
                     onMouseDown={(event) => {
-
                         if (
                             event.target ===
                             event.currentTarget
                         ) {
                             closeDetails()
                         }
-
                     }}
                 >
-
                     <div className="vb-modal">
-
 
                         {/* MODAL HEADER */}
 
                         <div className="vb-modal__header">
-
                             <div>
-
                                 <span
                                     className={
-                                        isRestaurant(
+                                        getBookingTypeClass(
                                             selectedBooking
                                         )
-                                            ? 'vb-type vb-type--restaurant'
-                                            : 'vb-type vb-type--experience'
                                     }
                                 >
-                                    {isRestaurant(
+                                    {getBookingTypeLabel(
                                         selectedBooking
-                                    )
-                                        ? 'RESTAURANT'
-                                        : 'EXPERIENCE'}
+                                    )}
                                 </span>
 
                                 <h2>
@@ -901,9 +819,7 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                         selectedBooking.serviceName
                                     }
                                 </h2>
-
                             </div>
-
 
                             <button
                                 type="button"
@@ -914,26 +830,18 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                             >
                                 ×
                             </button>
-
                         </div>
-
 
                         {/* MODAL BODY */}
 
                         <div className="vb-modal__body">
 
-
-                            {/* =============================
-                                BOOKING DETAILS
-                                ============================= */}
+                            {/* NORMAL DETAILS */}
 
                             {!showCancelForm &&
                                 !showCancelConfirm && (
-
                                     <>
-
                                         <div className="vb-modal-status">
-
                                             <span>
                                                 Status
                                             </span>
@@ -949,88 +857,71 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                     selectedBooking.status
                                                 }
                                             </span>
-
                                         </div>
 
+                                        {/* ACCOMMODATION DETAILS */}
 
-                                        <div className="vb-details-section">
+                                        {isAccommodation(
+                                            selectedBooking
+                                        ) ? (
+                                            <div className="vb-details-section">
+                                                <h3>
+                                                    Accommodation Information
+                                                </h3>
 
-                                            <h3>
-                                                Booking Information
-                                            </h3>
+                                                <div className="vb-detail-grid">
+                                                    <div className="vb-detail-item">
+                                                        <span>
+                                                            Check-in
+                                                        </span>
 
-                                            <div className="vb-detail-grid">
-
-
-                                                <div className="vb-detail-item">
-
-                                                    <span>
-                                                        Date
-                                                    </span>
-
-                                                    <strong>
-                                                        {formatDate(
-                                                            selectedBooking.date
-                                                        )}
-                                                    </strong>
-
-                                                </div>
-
-
-                                                <div className="vb-detail-item">
-
-                                                    <span>
-                                                        Time
-                                                    </span>
-
-                                                    <strong>
-                                                        {selectedBooking.time ||
-                                                            '—'}
-                                                    </strong>
-
-                                                </div>
-
-
-                                                <div className="vb-detail-item">
-
-                                                    <span>
-                                                        {isRestaurant(
-                                                            selectedBooking
-                                                        )
-                                                            ? 'Party Size'
-                                                            : 'Participants'}
-                                                    </span>
-
-                                                    <strong>
-                                                        {
-                                                            selectedBooking.peopleCount
-                                                        }
-                                                    </strong>
-
-                                                </div>
-
-
-                                                <div className="vb-detail-item">
-
-                                                    <span>
-                                                        Total Amount
-                                                    </span>
-
-                                                    <strong className="vb-detail-price">
-                                                        {formatMoney(
-                                                            selectedBooking.totalAmount
-                                                        )}
-                                                    </strong>
-
-                                                </div>
-
-
-                                                {selectedBooking.unitPrice != null && (
+                                                        <strong>
+                                                            {formatDate(
+                                                                selectedBooking.checkInDate
+                                                            )}
+                                                        </strong>
+                                                    </div>
 
                                                     <div className="vb-detail-item">
-
                                                         <span>
-                                                            Unit Price
+                                                            Check-out
+                                                        </span>
+
+                                                        <strong>
+                                                            {formatDate(
+                                                                selectedBooking.checkOutDate
+                                                            )}
+                                                        </strong>
+                                                    </div>
+
+                                                    <div className="vb-detail-item">
+                                                        <span>
+                                                            Number of Nights
+                                                        </span>
+
+                                                        <strong>
+                                                            {
+                                                                selectedBooking.numberOfNights ??
+                                                                '—'
+                                                            }
+                                                        </strong>
+                                                    </div>
+
+                                                    <div className="vb-detail-item">
+                                                        <span>
+                                                            Guests
+                                                        </span>
+
+                                                        <strong>
+                                                            {
+                                                                selectedBooking.peopleCount
+                                                            }
+                                                        </strong>
+                                                    </div>
+
+                                                    <div className="vb-detail-item">
+                                                        <span>
+                                                            Price Per Night
                                                         </span>
 
                                                         <strong>
@@ -1038,70 +929,134 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                                 selectedBooking.unitPrice
                                                             )}
                                                         </strong>
-
                                                     </div>
 
-                                                )}
+                                                    <div className="vb-detail-item">
+                                                        <span>
+                                                            Total Amount
+                                                        </span>
 
+                                                        <strong className="vb-detail-price">
+                                                            {formatMoney(
+                                                                selectedBooking.totalAmount
+                                                            )}
+                                                        </strong>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            /* EXPERIENCE / RESTAURANT DETAILS */
 
-                                                {selectedBooking.paymentStatus && (
+                                            <div className="vb-details-section">
+                                                <h3>
+                                                    Booking Information
+                                                </h3>
+
+                                                <div className="vb-detail-grid">
+                                                    <div className="vb-detail-item">
+                                                        <span>
+                                                            Date
+                                                        </span>
+
+                                                        <strong>
+                                                            {formatDate(
+                                                                selectedBooking.date
+                                                            )}
+                                                        </strong>
+                                                    </div>
 
                                                     <div className="vb-detail-item">
-
                                                         <span>
-                                                            Payment Status
+                                                            Time
+                                                        </span>
+
+                                                        <strong>
+                                                            {selectedBooking.time ||
+                                                                '—'}
+                                                        </strong>
+                                                    </div>
+
+                                                    <div className="vb-detail-item">
+                                                        <span>
+                                                            {getPeopleLabel(
+                                                                selectedBooking
+                                                            )}
                                                         </span>
 
                                                         <strong>
                                                             {
-                                                                selectedBooking.paymentStatus
+                                                                selectedBooking.peopleCount
                                                             }
                                                         </strong>
-
                                                     </div>
 
-                                                )}
+                                                    <div className="vb-detail-item">
+                                                        <span>
+                                                            Total Amount
+                                                        </span>
 
+                                                        <strong className="vb-detail-price">
+                                                            {formatMoney(
+                                                                selectedBooking.totalAmount
+                                                            )}
+                                                        </strong>
+                                                    </div>
+
+                                                    {selectedBooking.unitPrice != null && (
+                                                        <div className="vb-detail-item">
+                                                            <span>
+                                                                Unit Price
+                                                            </span>
+
+                                                            <strong>
+                                                                {formatMoney(
+                                                                    selectedBooking.unitPrice
+                                                                )}
+                                                            </strong>
+                                                        </div>
+                                                    )}
+
+                                                    {selectedBooking.paymentStatus && (
+                                                        <div className="vb-detail-item">
+                                                            <span>
+                                                                Payment Status
+                                                            </span>
+
+                                                            <strong>
+                                                                {
+                                                                    selectedBooking.paymentStatus
+                                                                }
+                                                            </strong>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-
-                                        </div>
-
+                                        )}
 
                                         {/* CANCELLED DETAILS */}
 
                                         {isCancelled(
                                             selectedBooking
                                         ) && (
-
                                                 <div className="vb-details-section vb-cancelled-section">
-
                                                     <h3>
                                                         Cancellation & Refund
                                                     </h3>
 
                                                     <div className="vb-detail-grid">
-
-
                                                         <div className="vb-detail-item vb-detail-item--full">
-
                                                             <span>
                                                                 Cancellation Reason
                                                             </span>
 
                                                             <strong>
-                                                                {
-                                                                    selectedBooking.cancellationReason ||
-                                                                    'No reason provided'
-                                                                }
+                                                                {selectedBooking.cancellationReason ||
+                                                                    'No reason provided'}
                                                             </strong>
-
                                                         </div>
 
-
                                                         {selectedBooking.cancelledAt && (
-
                                                             <div className="vb-detail-item">
-
                                                                 <span>
                                                                     Cancelled At
                                                                 </span>
@@ -1111,14 +1066,10 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                                         selectedBooking.cancelledAt
                                                                     )}
                                                                 </strong>
-
                                                             </div>
-
                                                         )}
 
-
                                                         <div className="vb-detail-item">
-
                                                             <span>
                                                                 Refund
                                                             </span>
@@ -1127,14 +1078,12 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                                 {Number(
                                                                     selectedBooking.refundPercentage ??
                                                                     0
-                                                                )}%
+                                                                )}
+                                                                %
                                                             </strong>
-
                                                         </div>
 
-
                                                         <div className="vb-detail-item">
-
                                                             <span>
                                                                 Refund Amount
                                                             </span>
@@ -1144,14 +1093,10 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                                     selectedBooking.refundAmount
                                                                 )}
                                                             </strong>
-
                                                         </div>
 
-
                                                         {selectedBooking.refundedAt && (
-
                                                             <div className="vb-detail-item">
-
                                                                 <span>
                                                                     Refunded At
                                                                 </span>
@@ -1161,34 +1106,21 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                                         selectedBooking.refundedAt
                                                                     )}
                                                                 </strong>
-
                                                             </div>
-
                                                         )}
-
                                                     </div>
-
                                                 </div>
-
                                             )}
-
                                     </>
-
                                 )}
 
-
-                            {/* =============================
-                                ARE YOU SURE?
-                                ============================= */}
+                            {/* ARE YOU SURE? */}
 
                             {showCancelConfirm && (
-
                                 <div className="vb-cancel-confirmation">
-
                                     <div className="vb-cancel-confirmation__icon">
                                         !
                                     </div>
-
 
                                     <h3>
                                         Are you sure you want to cancel this{' '}
@@ -1196,35 +1128,27 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                             selectedBooking
                                         )
                                             ? 'reservation'
-                                            : 'booking'}?
+                                            : 'booking'}
+                                        ?
                                     </h3>
 
-
                                     <p className="vb-cancel-confirmation__text">
-
                                         You are about to cancel your{' '}
-
-                                        {isRestaurant(
+                                        {getCancellationTypeName(
                                             selectedBooking
-                                        )
-                                            ? 'restaurant reservation'
-                                            : 'experience booking'}{' '}
-
+                                        )}{' '}
                                         for{' '}
 
                                         <strong>
                                             {
                                                 selectedBooking.serviceName
                                             }
-                                        </strong>.
-
+                                        </strong>
+                                        .
                                     </p>
 
-
                                     <div className="vb-confirm-booking-info">
-
                                         <div>
-
                                             <span>
                                                 Service
                                             </span>
@@ -1234,27 +1158,29 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                     selectedBooking.serviceName
                                                 }
                                             </strong>
-
                                         </div>
 
-
                                         <div>
-
                                             <span>
-                                                Date
+                                                {isAccommodation(
+                                                    selectedBooking
+                                                )
+                                                    ? 'Check-in'
+                                                    : 'Date'}
                                             </span>
 
                                             <strong>
                                                 {formatDate(
-                                                    selectedBooking.date
+                                                    isAccommodation(
+                                                        selectedBooking
+                                                    )
+                                                        ? selectedBooking.checkInDate
+                                                        : selectedBooking.date
                                                 )}
                                             </strong>
-
                                         </div>
 
-
                                         <div>
-
                                             <span>
                                                 Amount
                                             </span>
@@ -1264,61 +1190,45 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                     selectedBooking.totalAmount
                                                 )}
                                             </strong>
-
                                         </div>
-
                                     </div>
 
-
                                     <div className="vb-confirm-warning">
-
                                         <strong>
                                             Important
                                         </strong>
 
                                         <p>
                                             Your booking will not be
-                                            cancelled yet. If you continue,
-                                            you can review the refund policy
-                                            and enter a cancellation reason
-                                            before the final confirmation.
+                                            cancelled yet. If you
+                                            continue, you can review
+                                            the refund policy and
+                                            enter a cancellation
+                                            reason before the final
+                                            confirmation.
                                         </p>
-
                                     </div>
-
                                 </div>
-
                             )}
 
-
-                            {/* =============================
-                                CANCELLATION FORM
-                                ============================= */}
+                            {/* CANCELLATION FORM */}
 
                             {showCancelForm && (
-
                                 <div className="vb-cancel-form">
-
                                     <h3>
                                         Cancel{' '}
-                                        {isRestaurant(
+                                        {getShortCancellationTypeName(
                                             selectedBooking
-                                        )
-                                            ? 'Reservation'
-                                            : 'Booking'}
+                                        )}
                                     </h3>
-
 
                                     <p className="vb-cancel-intro">
                                         Please review the cancellation
                                         policy before confirming.
                                     </p>
 
-
                                     <div className="vb-cancel-summary">
-
                                         <div>
-
                                             <span>
                                                 Service
                                             </span>
@@ -1328,27 +1238,29 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                     selectedBooking.serviceName
                                                 }
                                             </strong>
-
                                         </div>
 
-
                                         <div>
-
                                             <span>
-                                                Date
+                                                {isAccommodation(
+                                                    selectedBooking
+                                                )
+                                                    ? 'Check-in'
+                                                    : 'Date'}
                                             </span>
 
                                             <strong>
                                                 {formatDate(
-                                                    selectedBooking.date
+                                                    isAccommodation(
+                                                        selectedBooking
+                                                    )
+                                                        ? selectedBooking.checkInDate
+                                                        : selectedBooking.date
                                                 )}
                                             </strong>
-
                                         </div>
 
-
                                         <div>
-
                                             <span>
                                                 Amount
                                             </span>
@@ -1358,14 +1270,10 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                     selectedBooking.totalAmount
                                                 )}
                                             </strong>
-
                                         </div>
-
                                     </div>
 
-
                                     <div className="vb-warning">
-
                                         <strong>
                                             Cancellation Policy
                                         </strong>
@@ -1384,9 +1292,7 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                             Less than 24 hours:
                                             cancellation is not allowed.
                                         </p>
-
                                     </div>
-
 
                                     <label
                                         className="vb-reason-label"
@@ -1398,7 +1304,6 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                             {' '}(optional)
                                         </span>
                                     </label>
-
 
                                     <textarea
                                         id="cancellationReason"
@@ -1417,41 +1322,28 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                         disabled={cancelLoading}
                                     />
 
-
                                     <div className="vb-character-count">
                                         {cancellationReason.length}/500
                                     </div>
 
-
                                     {cancelError && (
-
                                         <div className="vb-cancel-error">
                                             {cancelError}
                                         </div>
-
                                     )}
-
                                 </div>
-
                             )}
-
                         </div>
 
-
-                        {/* =================================================
-                            MODAL FOOTER
-                            ================================================= */}
+                        {/* MODAL FOOTER */}
 
                         <div className="vb-modal__footer">
 
-
-                            {/* NORMAL DETAILS BUTTONS */}
+                            {/* NORMAL DETAILS */}
 
                             {!showCancelForm &&
                                 !showCancelConfirm && (
-
                                     <>
-
                                         <button
                                             type="button"
                                             className="vb-close-btn"
@@ -1460,11 +1352,9 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                             Close
                                         </button>
 
-
                                         {canCancel(
                                             selectedBooking
                                         ) && (
-
                                                 <button
                                                     type="button"
                                                     className="vb-cancel-btn"
@@ -1478,35 +1368,30 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                         selectedBooking
                                                     )
                                                         ? 'Cancel Reservation'
-                                                        : 'Cancel Booking'}
+                                                        : isAccommodation(
+                                                            selectedBooking
+                                                        )
+                                                            ? 'Cancel Accommodation'
+                                                            : 'Cancel Booking'}
                                                 </button>
-
                                             )}
-
                                     </>
-
                                 )}
 
-
-                            {/* ARE YOU SURE BUTTONS */}
+                            {/* CONFIRMATION */}
 
                             {showCancelConfirm && (
-
                                 <>
-
                                     <button
                                         type="button"
                                         className="vb-close-btn"
                                         onClick={keepBooking}
                                     >
                                         No, Keep{' '}
-                                        {isRestaurant(
+                                        {getShortCancellationTypeName(
                                             selectedBooking
-                                        )
-                                            ? 'Reservation'
-                                            : 'Booking'}
+                                        )}
                                     </button>
-
 
                                     <button
                                         type="button"
@@ -1517,18 +1402,13 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                     >
                                         Yes, Continue to Cancel
                                     </button>
-
                                 </>
-
                             )}
 
-
-                            {/* FINAL CANCELLATION BUTTONS */}
+                            {/* FINAL CANCEL */}
 
                             {showCancelForm && (
-
                                 <>
-
                                     <button
                                         type="button"
                                         className="vb-close-btn"
@@ -1540,7 +1420,6 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                         Back
                                     </button>
 
-
                                     <button
                                         type="button"
                                         className="vb-confirm-cancel-btn"
@@ -1551,26 +1430,16 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                     >
                                         {cancelLoading
                                             ? 'Cancelling...'
-                                            : `Confirm ${isRestaurant(
+                                            : `Confirm ${getShortCancellationTypeName(
                                                 selectedBooking
-                                            )
-                                                ? 'Reservation'
-                                                : 'Booking'
-                                            } Cancellation`}
+                                            )} Cancellation`}
                                     </button>
-
                                 </>
-
                             )}
-
                         </div>
-
                     </div>
-
                 </div>
-
             )}
-
         </div>
     )
 }
