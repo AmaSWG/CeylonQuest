@@ -54,6 +54,28 @@ namespace CeylonQuest.Tests.Pages
                 _driver.FindElements(By.CssSelector(".vd-service-card")).Count);
         }
 
+        public void FilterByServiceType(string serviceType)
+        {
+            NavigateToExplore();
+            var select = new SelectElement(ServiceTypeFilter);
+            select.SelectByValue(serviceType);
+
+            // Trigger React onChange synthetic event
+            ((IJavaScriptExecutor)_driver).ExecuteScript(
+                @"var sel = arguments[0];
+                  var setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set;
+                  if (setter) setter.call(sel, arguments[1]);
+                  else sel.value = arguments[1];
+                  sel.dispatchEvent(new Event('input', { bubbles: true }));
+                  sel.dispatchEvent(new Event('change', { bubbles: true }));",
+                ServiceTypeFilter, serviceType);
+
+            _wait.Until(d => d.FindElements(By.CssSelector(".vd-service-card")).Count > 0);
+        }
+
+        public void FilterByAccommodations() => FilterByServiceType("accommodation");
+        public void FilterByRestaurants() => FilterByServiceType("restaurant");
+
         public void ClickFirstExperienceBookNow()
         {
             // 1. Wait until the Book Now button is both visible and enabled

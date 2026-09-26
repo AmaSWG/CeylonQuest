@@ -37,10 +37,25 @@ namespace CeylonQuest.Tests.Pages
                     DateInput, yyyyMmDd);
         }
 
+        public void SetCheckOutDate(string yyyyMmDd)
+        {
+            var dateInputs = _driver.FindElements(By.CssSelector("input[type='date'].vd-form-input"));
+            if (dateInputs.Count > 1)
+            {
+                var checkOutEl = dateInputs[1];
+                ((IJavaScriptExecutor)_driver).ExecuteScript(
+                        @"var el = arguments[0];
+                          var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+                          setter.call(el, arguments[1]);
+                          el.dispatchEvent(new Event('input',  { bubbles: true }));
+                          el.dispatchEvent(new Event('change', { bubbles: true }));",
+                        checkOutEl, yyyyMmDd);
+                System.Threading.Thread.Sleep(200);
+            }
+        }
+
         public string GetMinimumBookableDate()
         {
-            // React/HTML date inputs often expose the earliest selectable date via the `min` attribute.
-            // If the app doesn't set `min`, fall back to a date comfortably in the future.
             var min = DateInput.GetAttribute("min");
             if (!string.IsNullOrWhiteSpace(min))
                 return min;
@@ -50,12 +65,23 @@ namespace CeylonQuest.Tests.Pages
 
         public (string date, string slot) SelectFirstAvailableDateAndSlot(int daysToScan = 14)
         {
-            var startDate = DateTime.Today;
+            var startDate = DateTime.Today.AddDays(1);
             var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(4));
             for (int dayOffset = 0; dayOffset < daysToScan; dayOffset++)
             {
                 var candidate = startDate.AddDays(dayOffset).ToString("yyyy-MM-dd");
                 SetBookingDate(candidate);
+                System.Threading.Thread.Sleep(250);
+
+                // If accommodation modal, set check-out date (e.g. +3 nights to satisfy minStay)
+                var dateInputs = _driver.FindElements(By.CssSelector("input[type='date'].vd-form-input"));
+                if (dateInputs.Count > 1)
+                {
+                    var checkOut = startDate.AddDays(dayOffset + 3).ToString("yyyy-MM-dd");
+                    SetCheckOutDate(checkOut);
+                    System.Threading.Thread.Sleep(250);
+                }
+
                 try
                 {
                     var chosenOpt = wait.Until(d =>
@@ -80,7 +106,6 @@ namespace CeylonQuest.Tests.Pages
                     {
                         var slotValue = chosenOpt.GetAttribute("value")!;
                         var selectEl = _driver.FindElement(By.CssSelector("select.vd-form-input"));
-                        // Native Selenium selection + React synthetic events
                         var select = new SelectElement(selectEl);
                         select.SelectByValue(slotValue);
                         ((IJavaScriptExecutor)_driver).ExecuteScript(
@@ -148,9 +173,10 @@ namespace CeylonQuest.Tests.Pages
             GuestsInput.SendKeys(Keys.Control + "a");
             GuestsInput.SendKeys(Keys.Backspace);
             GuestsInput.SendKeys(count.ToString());
-            GuestsInput.SendKeys(Keys.Tab); // Triggers blur validation
+            GuestsInput.SendKeys(Keys.Tab);
             System.Threading.Thread.Sleep(150);
         }
+
         public int GetCurrentGuestCount()
         {
             var val = GuestsInput.GetAttribute("value");
@@ -185,7 +211,5 @@ namespace CeylonQuest.Tests.Pages
                 return false;
             }
         }
-        
-
     }
 }
