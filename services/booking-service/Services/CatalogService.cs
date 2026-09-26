@@ -149,7 +149,7 @@ public class CatalogService : ICatalogService
     }
 
     // =========================================================
-    // Story 9.1 - Provider-owned activity listings
+    // Provider-owned Activity Listings
     // =========================================================
 
     public async Task<List<CatalogProviderListingResponse>>
@@ -178,7 +178,7 @@ public class CatalogService : ICatalogService
     }
 
     // =========================================================
-    // Story 9.1 - Provider-owned restaurant listings
+    // Provider-owned Restaurant Listings
     // =========================================================
 
     public async Task<List<CatalogProviderListingResponse>>
@@ -187,6 +187,35 @@ public class CatalogService : ICatalogService
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
             "/api/catalog/restaurant-listings");
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                accessToken);
+
+        var response =
+            await _httpClient.SendAsync(request);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<CatalogProviderListingResponse>();
+        }
+
+        return await response.Content
+                   .ReadFromJsonAsync<List<CatalogProviderListingResponse>>()
+               ?? new List<CatalogProviderListingResponse>();
+    }
+
+    // =========================================================
+    // Provider-owned Accommodation Listings
+    // =========================================================
+
+    public async Task<List<CatalogProviderListingResponse>>
+        GetMyAccommodationListingsAsync(string accessToken)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/api/catalog/accommodation-listings");
 
         request.Headers.Authorization =
             new AuthenticationHeaderValue(

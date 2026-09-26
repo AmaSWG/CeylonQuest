@@ -23,10 +23,17 @@ public interface ICatalogService
         string timeSlot,
         int participantCount);
 
-    // Story 9.1 - Provider booking management
+    // =========================================================
+    // Story 9.1 - Provider Booking Management
+    // =========================================================
+
     Task<List<CatalogProviderListingResponse>>
         GetMyActivityListingsAsync(string accessToken);
 
     Task<List<CatalogProviderListingResponse>>
         GetMyRestaurantListingsAsync(string accessToken);
+
+    // Provider-owned accommodation listings
+    Task<List<CatalogProviderListingResponse>>
+        GetMyAccommodationListingsAsync(string accessToken);
 }
