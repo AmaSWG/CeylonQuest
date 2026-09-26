@@ -11,8 +11,11 @@ public interface ICatalogService
     Task<CatalogListingResponse?> GetListingAsync(
         Guid listingId);
 
-        Task<CatalogRestaurantResponse?> GetRestaurantAsync(
-    Guid restaurantId);
+    Task<CatalogRestaurantResponse?> GetRestaurantAsync(
+        Guid restaurantId);
+
+    Task<CatalogAccommodationResponse?> GetAccommodationAsync(
+        Guid accommodationId);
 
     Task<bool> ReserveCapacityAsync(
         Guid listingId,

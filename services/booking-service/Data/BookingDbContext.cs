@@ -17,13 +17,19 @@ public class BookingDbContext : DbContext
     // Story 8.1 - Restaurant reservations
     public DbSet<RestaurantReservation> RestaurantReservations { get; set; }
 
+    // Accommodation bookings
+    public DbSet<AccommodationBooking> AccommodationBookings { get; set; }
+
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
+
         // =========================================================
         // Story 7.1 - Experience Booking
         // =========================================================
+
         modelBuilder.Entity<Booking>(entity =>
         {
             entity.HasKey(b => b.Id);
@@ -47,9 +53,11 @@ public class BookingDbContext : DbContext
             entity.HasIndex(b => b.Status);
         });
 
+
         // =========================================================
         // Story 8.1 - Restaurant Reservation
         // =========================================================
+
         modelBuilder.Entity<RestaurantReservation>(entity =>
         {
             entity.HasKey(r => r.Id);
@@ -79,6 +87,43 @@ public class BookingDbContext : DbContext
                 r.RestaurantId,
                 r.ReservationDate,
                 r.TimeSlot
+            });
+        });
+
+
+        // =========================================================
+        // Accommodation Booking
+        // =========================================================
+
+        modelBuilder.Entity<AccommodationBooking>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+
+            // Store AccommodationBookingStatus enum as text
+            entity.Property(a => a.Status)
+                .HasConversion<string>();
+
+            // Price for one night
+            entity.Property(a => a.PricePerNight)
+                .HasPrecision(18, 2);
+
+            // PricePerNight × NumberOfNights
+            entity.Property(a => a.TotalPrice)
+                .HasPrecision(18, 2);
+
+            // Useful indexes
+            entity.HasIndex(a => a.VisitorId);
+
+            entity.HasIndex(a => a.AccommodationId);
+
+            entity.HasIndex(a => a.Status);
+
+            // Useful for accommodation date searches
+            entity.HasIndex(a => new
+            {
+                a.AccommodationId,
+                a.CheckInDate,
+                a.CheckOutDate
             });
         });
     }

@@ -14,8 +14,15 @@ export default defineConfig({
         secure: false,
       },
 
-      // Booking Service - Experience / Accommodation bookings
+      // Booking Service - Experience bookings
       '/api/Bookings': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
+      // Booking Service - Accommodation bookings
+      '/api/AccommodationBookings': {
         target: 'http://localhost:5229',
         changeOrigin: true,
         secure: false,

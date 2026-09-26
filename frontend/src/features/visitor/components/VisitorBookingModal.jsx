@@ -20,9 +20,16 @@ export default function VisitorBookingModal({
   onClose,
   onBookingSuccess
 }) {
+  // =========================================================
+  // STATE
+  // =========================================================
+
   const [selectedDate, setSelectedDate] = useState(
     new Date(Date.now() + 86400000).toISOString().split('T')[0]
   )
+
+  // Used only for Accommodation bookings
+  const [checkOutDate, setCheckOutDate] = useState('')
 
   const [selectedTimeSlot, setSelectedTimeSlot] = useState('')
   const [guestCount, setGuestCount] = useState(1)
@@ -34,20 +41,22 @@ export default function VisitorBookingModal({
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
 
+  // =========================================================
+  // LISTING TYPE
+  // =========================================================
+
   const isRestaurant = item?.type === 'Restaurant'
   const isAccommodation = item?.type === 'Accommodation'
   const isExperience = item?.type === 'Experience'
 
-  /*
-   * Decide how the listing price is measured.
-   */
+  // =========================================================
+  // BASIC LISTING VALUES
+  // =========================================================
+
   const unit =
     item?.unit ||
     (isAccommodation ? 'night' : 'person')
 
-  /*
-   * Maximum capacity configured for the listing.
-   */
   const maxCap = item
     ? isAccommodation
       ? item.maxGuests || 4
@@ -56,10 +65,33 @@ export default function VisitorBookingModal({
         : item.maxParticipants || 10
     : 1
 
-  /*
-   * Load availability whenever the listing
-   * or selected date changes.
-   */
+  const itemPrice = Number(item?.price || 0)
+
+  const minStayNights = isAccommodation
+    ? Number(item?.minStayNights || 1)
+    : 1
+
+  // =========================================================
+  // ACCOMMODATION NIGHT CALCULATION
+  // =========================================================
+
+  const accommodationNights =
+    isAccommodation && selectedDate && checkOutDate
+      ? Math.max(
+        0,
+        Math.round(
+          (
+            new Date(`${checkOutDate}T00:00:00`) -
+            new Date(`${selectedDate}T00:00:00`)
+          ) / 86400000
+        )
+      )
+      : 0
+
+  // =========================================================
+  // LOAD AVAILABILITY
+  // =========================================================
+
   useEffect(() => {
     if (!item || !selectedDate) return
 
@@ -88,9 +120,6 @@ export default function VisitorBookingModal({
 
         setAvailability(data)
 
-        /*
-         * Automatically choose the first available slot.
-         */
         const firstAvailableSlot = data.slots?.find(
           (slot) =>
             !slot.isFullyBooked &&
@@ -114,16 +143,13 @@ export default function VisitorBookingModal({
 
   if (!item) return null
 
-  /*
-   * Check whether the listing operates
-   * on the selected date.
-   */
+  // =========================================================
+  // AVAILABILITY VALUES
+  // =========================================================
+
   const isNotOperating =
     availability?.isOperatingDay === false
 
-  /*
-   * Check whether every slot is sold out.
-   */
   const isSoldOut =
     availability &&
     (
@@ -138,9 +164,6 @@ export default function VisitorBookingModal({
       )
     )
 
-  /*
-   * Find currently selected slot.
-   */
   const selectedSlot = availability?.slots?.find(
     (slot) => slot.timeSlot === selectedTimeSlot
   )
@@ -149,51 +172,37 @@ export default function VisitorBookingModal({
     selectedSlot?.remainingCapacity ?? 0
 
   /*
-   * Maximum that can currently be booked.
+   * IMPORTANT:
    *
-   * Example:
-   * listing maximum = 5
-   * remaining capacity = 4
+   * Accommodation remainingCapacity means number
+   * of accommodation units/rooms available.
    *
-   * currentMax = 4
+   * It does NOT mean maximum guests.
+   *
+   * Therefore Accommodation uses maxGuests directly.
    */
-  const currentMax = selectedTimeSlot
-    ? Math.min(maxCap, selectedSlotRemaining)
-    : maxCap
+  const currentMax = isAccommodation
+    ? maxCap
+    : selectedTimeSlot
+      ? Math.min(maxCap, selectedSlotRemaining)
+      : maxCap
 
-  /*
-   * Convert guestCount safely.
-   */
   const numericGuestCount =
     guestCount === ''
       ? 0
       : Number(guestCount)
 
-  /*
-   * Price.
-   */
-  const itemPrice = Number(item?.price || 0)
+  // =========================================================
+  // PRICE CALCULATIONS
+  // =========================================================
 
-  /*
-   * Story 7.1
-   *
-   * Experience:
-   * price per person × participant count.
-   *
-   * Accommodation:
-   * keep existing listing/base price.
-   */
   const estimatedTotal =
     isExperience
       ? itemPrice * numericGuestCount
-      : itemPrice
+      : isAccommodation
+        ? itemPrice * accommodationNights
+        : itemPrice
 
-  /*
-   * Story 8.1
-   *
-   * Restaurant:
-   * price per person × party size.
-   */
   const restaurantPricePerPerson =
     isRestaurant
       ? itemPrice
@@ -204,18 +213,29 @@ export default function VisitorBookingModal({
       ? restaurantPricePerPerson * numericGuestCount
       : 0
 
-  /*
-   * Handle participant / guest count.
-   */
+  // =========================================================
+  // ACCOMMODATION MINIMUM CHECKOUT DATE
+  // =========================================================
+
+  const minimumCheckoutDate =
+    isAccommodation && selectedDate
+      ? new Date(
+        new Date(`${selectedDate}T00:00:00`).getTime() +
+        minStayNights * 86400000
+      )
+        .toISOString()
+        .split('T')[0]
+      : ''
+
+  // =========================================================
+  // GUEST / PARTICIPANT COUNT
+  // =========================================================
+
   const handleGuestCountChange = (e) => {
     const rawValue = e.target.value
 
     setSubmitError(null)
 
-    /*
-     * Allow the field to temporarily be empty
-     * while the visitor is typing.
-     */
     if (rawValue === '') {
       setGuestCount('')
       return
@@ -223,47 +243,37 @@ export default function VisitorBookingModal({
 
     const value = Number(rawValue)
 
-    /*
-     * Only whole numbers.
-     */
     if (!Number.isInteger(value)) {
       return
     }
 
-    /*
-     * Do not accept negative numbers.
-     */
     if (value < 0) {
       return
     }
 
-    /*
-     * Keep the entered value so we can show
-     * an error instead of silently changing it.
-     */
     setGuestCount(value)
 
-    /*
-     * Validate against the listing's configured
-     * maximum capacity first.
-     */
+    // Listing maximum
     if (value > maxCap) {
       setSubmitError(
         isRestaurant
           ? `Maximum seating capacity is ${maxCap}.`
-          : `Maximum capacity is ${maxCap}.`
+          : isAccommodation
+            ? `This accommodation allows a maximum of ${maxCap} guest(s).`
+            : `Maximum capacity is ${maxCap}.`
       )
+
       return
     }
 
     /*
-     * Validate against the selected slot's
-     * remaining real-time capacity.
+     * Do NOT compare accommodation guest count with
+     * remainingCapacity.
      *
-     * Example:
-     * 4 places remain and visitor enters 5.
+     * remainingCapacity = rooms/units for Accommodation.
      */
     if (
+      !isAccommodation &&
       selectedTimeSlot &&
       selectedSlot &&
       value > selectedSlotRemaining
@@ -276,9 +286,6 @@ export default function VisitorBookingModal({
     }
   }
 
-  /*
-   * Validate again when leaving the input.
-   */
   const handleGuestCountBlur = () => {
     if (
       guestCount === '' ||
@@ -296,12 +303,16 @@ export default function VisitorBookingModal({
       setSubmitError(
         isRestaurant
           ? `Maximum seating capacity is ${maxCap}.`
-          : `Maximum capacity is ${maxCap}.`
+          : isAccommodation
+            ? `This accommodation allows a maximum of ${maxCap} guest(s).`
+            : `Maximum capacity is ${maxCap}.`
       )
+
       return
     }
 
     if (
+      !isAccommodation &&
       selectedTimeSlot &&
       selectedSlot &&
       value > selectedSlotRemaining
@@ -314,44 +325,77 @@ export default function VisitorBookingModal({
     }
   }
 
-  /*
-   * Story 7.1:
-   * Create Experience / Accommodation booking.
-   *
-   * Story 8.1:
-   * Create Restaurant reservation.
-   */
+  // =========================================================
+  // CONFIRM BOOKING
+  // =========================================================
+
   const handleConfirmBooking = async () => {
     setSubmitError(null)
 
-    /*
-     * Validate date.
-     */
+    // ---------------------------------------------------------
+    // Date validation
+    // ---------------------------------------------------------
+
     if (!selectedDate) {
       setSubmitError(
         isRestaurant
           ? 'Please select a reservation date.'
-          : 'Please select a booking date.'
+          : isAccommodation
+            ? 'Please select a check-in date.'
+            : 'Please select a booking date.'
       )
+
       return
     }
 
-    /*
-     * Validate time.
-     */
+    // ---------------------------------------------------------
+    // Accommodation checkout validation
+    // ---------------------------------------------------------
+
+    if (isAccommodation) {
+      if (!checkOutDate) {
+        setSubmitError(
+          'Please select a check-out date.'
+        )
+        return
+      }
+
+      if (checkOutDate <= selectedDate) {
+        setSubmitError(
+          'Check-out date must be after the check-in date.'
+        )
+        return
+      }
+
+      if (accommodationNights < minStayNights) {
+        setSubmitError(
+          `This accommodation requires a minimum stay of ${minStayNights} night(s).`
+        )
+        return
+      }
+    }
+
+    // ---------------------------------------------------------
+    // Availability slot
+    // ---------------------------------------------------------
+
     if (!selectedTimeSlot) {
       setSubmitError(
-        'Please select an available time slot.'
+        isAccommodation
+          ? 'No stay availability is available for the selected check-in date.'
+          : 'Please select an available time slot.'
       )
+
       return
     }
 
     const normalizedGuestCount =
       Number(guestCount)
 
-    /*
-     * Validate participant / party count.
-     */
+    // ---------------------------------------------------------
+    // Guest / participant validation
+    // ---------------------------------------------------------
+
     if (
       guestCount === '' ||
       !Number.isInteger(normalizedGuestCount) ||
@@ -360,29 +404,36 @@ export default function VisitorBookingModal({
       setSubmitError(
         isRestaurant
           ? 'Party size must be at least 1.'
-          : 'Participant count must be at least 1.'
+          : isAccommodation
+            ? 'Guest count must be at least 1.'
+            : 'Participant count must be at least 1.'
       )
+
       return
     }
 
-    /*
-     * Validate listing maximum.
-     */
     if (normalizedGuestCount > maxCap) {
       setSubmitError(
         isRestaurant
           ? `Maximum seating capacity is ${maxCap}.`
-          : `Maximum capacity is ${maxCap}.`
+          : isAccommodation
+            ? `This accommodation allows a maximum of ${maxCap} guest(s).`
+            : `Maximum capacity is ${maxCap}.`
       )
+
       return
     }
 
     /*
-     * Validate selected slot remaining capacity.
+     * Experience / Restaurant:
+     * participant count consumes slot capacity.
      *
-     * Backend validates this again.
+     * Accommodation:
+     * one room/unit consumes capacity = 1.
+     * Guest count is validated against maxGuests.
      */
     if (
+      !isAccommodation &&
       selectedSlot &&
       normalizedGuestCount >
       selectedSlot.remainingCapacity
@@ -392,12 +443,26 @@ export default function VisitorBookingModal({
           ? `Only ${selectedSlot.remainingCapacity} seat(s) are available for this time.`
           : `Only ${selectedSlot.remainingCapacity} place(s) are available for this time slot.`
       )
+
       return
     }
 
-    /*
-     * Check login token.
-     */
+    if (
+      isAccommodation &&
+      selectedSlot &&
+      selectedSlot.remainingCapacity < 1
+    ) {
+      setSubmitError(
+        'This accommodation is no longer available for the selected check-in date.'
+      )
+
+      return
+    }
+
+    // ---------------------------------------------------------
+    // Authentication
+    // ---------------------------------------------------------
+
     const token =
       localStorage.getItem('authToken')
 
@@ -405,12 +470,15 @@ export default function VisitorBookingModal({
       setSubmitError(
         'Your session has expired. Please log in again.'
       )
+
       return
     }
 
-    /*
-     * Restaurant payload.
-     */
+    // =========================================================
+    // PAYLOADS
+    // =========================================================
+
+    // Restaurant
     const restaurantPayload = {
       restaurantId: item.id,
       reservationDate: selectedDate,
@@ -418,12 +486,7 @@ export default function VisitorBookingModal({
       partySize: normalizedGuestCount
     }
 
-    /*
-     * Story 7.1 booking payload.
-     *
-     * Do not send the frontend calculated price.
-     * Backend calculates the trusted total.
-     */
+    // Experience
     const bookingPayload = {
       listingId: item.id,
       bookingDate: selectedDate,
@@ -431,13 +494,29 @@ export default function VisitorBookingModal({
       participantCount: normalizedGuestCount
     }
 
+    // Accommodation
+    const accommodationPayload = {
+      accommodationId: item.id,
+      checkInDate: selectedDate,
+      checkOutDate: checkOutDate,
+      guestCount: normalizedGuestCount
+    }
+
+    // =========================================================
+    // CORRECT ENDPOINT
+    // =========================================================
+
     const endpoint = isRestaurant
       ? '/api/Reservations'
-      : '/api/Bookings'
+      : isAccommodation
+        ? '/api/AccommodationBookings'
+        : '/api/Bookings'
 
     const payload = isRestaurant
       ? restaurantPayload
-      : bookingPayload
+      : isAccommodation
+        ? accommodationPayload
+        : bookingPayload
 
     setSubmitting(true)
 
@@ -456,16 +535,17 @@ export default function VisitorBookingModal({
         }
       )
 
-      /*
-       * Successful response.
-       */
-      if (response.ok) {
-        const result =
-          await response.json()
+      // =======================================================
+      // SUCCESS
+      // =======================================================
 
-        /*
-         * Story 8.1 Restaurant confirmation.
-         */
+      if (response.ok) {
+        const result = await response.json()
+
+        // -----------------------------------------------------
+        // Restaurant success
+        // -----------------------------------------------------
+
         if (isRestaurant) {
           if (onBookingSuccess) {
             const confirmedPrice =
@@ -502,12 +582,60 @@ export default function VisitorBookingModal({
           return
         }
 
-        /*
-         * Story 7.1 Experience / Accommodation
-         * confirmation.
-         *
-         * Use backend totalAmount as source of truth.
-         */
+        // -----------------------------------------------------
+        // Accommodation success
+        // -----------------------------------------------------
+
+        if (isAccommodation) {
+          if (onBookingSuccess) {
+            const confirmedPricePerNight =
+              Number(
+                result.pricePerNight ??
+                itemPrice
+              )
+
+            const confirmedTotal =
+              Number(
+                result.totalPrice ??
+                estimatedTotal
+              )
+
+            const confirmedNights =
+              Number(
+                result.numberOfNights ??
+                accommodationNights
+              )
+
+            onBookingSuccess(
+              `Accommodation booked successfully at ${result.accommodationName || item.title
+              }. ` +
+              `Check-in: ${result.checkInDate || selectedDate
+              }. ` +
+              `Check-out: ${result.checkOutDate || checkOutDate
+              }. ` +
+              `${confirmedNights} ${confirmedNights === 1
+                ? 'night'
+                : 'nights'
+              }. ` +
+              `Guests: ${result.guestCount ||
+              normalizedGuestCount
+              }. ` +
+              `LKR ${confirmedPricePerNight.toLocaleString()} per night. ` +
+              `Total: LKR ${confirmedTotal.toLocaleString()}. ` +
+              `Status: ${result.status || 'Confirmed'
+              }.`
+            )
+          } else {
+            onClose()
+          }
+
+          return
+        }
+
+        // -----------------------------------------------------
+        // Experience success
+        // -----------------------------------------------------
+
         if (onBookingSuccess) {
           onBookingSuccess(
             `Booking created for ${item.title} on ${selectedDate} ` +
@@ -524,9 +652,10 @@ export default function VisitorBookingModal({
         return
       }
 
-      /*
-       * Read backend validation/error message.
-       */
+      // =======================================================
+      // ERROR RESPONSE
+      // =======================================================
+
       const errorData = await response
         .json()
         .catch(() => null)
@@ -539,12 +668,18 @@ export default function VisitorBookingModal({
         setSubmitError(
           isRestaurant
             ? 'You are not authorized to create this reservation.'
-            : 'You are not authorized to create this booking.'
+            : isAccommodation
+              ? 'You are not authorized to book this accommodation.'
+              : 'You are not authorized to create this booking.'
         )
       } else if (response.status === 409) {
         setSubmitError(
           errorData?.message ||
-          'The selected capacity is no longer available. Please check availability and try again.'
+          (
+            isAccommodation
+              ? 'This accommodation is no longer available for the selected check-in date.'
+              : 'The selected capacity is no longer available. Please check availability and try again.'
+          )
         )
       } else {
         setSubmitError(
@@ -553,7 +688,9 @@ export default function VisitorBookingModal({
           (
             isRestaurant
               ? 'Failed to create reservation. Please try again.'
-              : 'Failed to create booking. Please try again.'
+              : isAccommodation
+                ? 'Failed to create accommodation booking. Please try again.'
+                : 'Failed to create booking. Please try again.'
           )
         )
       }
@@ -561,12 +698,18 @@ export default function VisitorBookingModal({
       setSubmitError(
         isRestaurant
           ? 'Network error while creating the reservation. Please check your connection.'
-          : 'Network error while creating the booking. Please check your connection.'
+          : isAccommodation
+            ? 'Network error while creating the accommodation booking. Please check your connection.'
+            : 'Network error while creating the booking. Please check your connection.'
       )
     } finally {
       setSubmitting(false)
     }
   }
+
+  // =========================================================
+  // UI
+  // =========================================================
 
   return (
     <div
@@ -622,7 +765,9 @@ export default function VisitorBookingModal({
               {' '}
               {isRestaurant
                 ? 'Price per Person'
-                : 'Base Rate'}
+                : isAccommodation
+                  ? 'Price per Night'
+                  : 'Base Rate'}
             </span>
 
             <span className="vd-booking-rate-price">
@@ -673,6 +818,20 @@ export default function VisitorBookingModal({
 
                   <span className="vd-detail-row__val">
                     Up to {maxCap} guests
+                  </span>
+                </div>
+
+                <div className="vd-detail-row">
+                  <span className="vd-detail-row__label">
+                    <CalendarMonthIcon size={16} />
+                    {' '}Minimum Stay:
+                  </span>
+
+                  <span className="vd-detail-row__val">
+                    {minStayNights}{' '}
+                    {minStayNights === 1
+                      ? 'night'
+                      : 'nights'}
                   </span>
                 </div>
               </>
@@ -749,13 +908,15 @@ export default function VisitorBookingModal({
           {/* BOOKING FORM */}
           <div className="vd-booking-form-grid">
 
-            {/* DATE */}
+            {/* CHECK-IN / BOOKING / RESERVATION DATE */}
             <div className="vd-form-group">
 
               <label className="vd-form-label">
                 {isRestaurant
                   ? 'Reservation Date'
-                  : 'Select Date'}
+                  : isAccommodation
+                    ? 'Check-in Date'
+                    : 'Select Date'}
               </label>
 
               <input
@@ -768,21 +929,55 @@ export default function VisitorBookingModal({
                     .split('T')[0]
                 }
                 onChange={(e) => {
-                  setSelectedDate(e.target.value)
+                  const newDate = e.target.value
+
+                  setSelectedDate(newDate)
                   setGuestCount(1)
                   setSubmitError(null)
+
+                  /*
+                   * Reset checkout when check-in changes.
+                   * This prevents an old invalid checkout date.
+                   */
+                  if (isAccommodation) {
+                    setCheckOutDate('')
+                  }
                 }}
               />
 
             </div>
 
-            {/* TIME */}
+            {/* ACCOMMODATION CHECK-OUT */}
+            {isAccommodation && (
+              <div className="vd-form-group">
+
+                <label className="vd-form-label">
+                  Check-out Date
+                </label>
+
+                <input
+                  type="date"
+                  className="vd-form-input"
+                  value={checkOutDate}
+                  min={minimumCheckoutDate}
+                  onChange={(e) => {
+                    setCheckOutDate(e.target.value)
+                    setSubmitError(null)
+                  }}
+                />
+
+              </div>
+            )}
+
+            {/* TIME / STAY AVAILABILITY */}
             <div className="vd-form-group">
 
               <label className="vd-form-label">
                 {isRestaurant
                   ? 'Reservation Time'
-                  : 'Select Time'}
+                  : isAccommodation
+                    ? 'Stay Availability'
+                    : 'Select Time'}
               </label>
 
               <select
@@ -790,7 +985,15 @@ export default function VisitorBookingModal({
                 value={selectedTimeSlot}
                 onChange={(e) => {
                   setSelectedTimeSlot(e.target.value)
-                  setGuestCount(1)
+
+                  /*
+                   * Do not unnecessarily reset Accommodation
+                   * guest count based on room inventory.
+                   */
+                  if (!isAccommodation) {
+                    setGuestCount(1)
+                  }
+
                   setSubmitError(null)
                 }}
                 disabled={
@@ -802,7 +1005,9 @@ export default function VisitorBookingModal({
               >
 
                 <option value="">
-                  Select a time slot
+                  {isAccommodation
+                    ? 'Select stay availability'
+                    : 'Select a time slot'}
                 </option>
 
                 {availability?.slots?.map((slot) => (
@@ -816,10 +1021,15 @@ export default function VisitorBookingModal({
                   >
                     {isRestaurant
                       ? slot.timeSlot
-                      : `${slot.timeSlot} — ${slot.remainingCapacity > 0
-                        ? `${slot.remainingCapacity} places left`
-                        : 'Fully Booked'
-                      }`}
+                      : isAccommodation
+                        ? `${slot.timeSlot} — ${slot.remainingCapacity > 0
+                          ? 'Available'
+                          : 'Fully Booked'
+                        }`
+                        : `${slot.timeSlot} — ${slot.remainingCapacity > 0
+                          ? `${slot.remainingCapacity} places left`
+                          : 'Fully Booked'
+                        }`}
                   </option>
                 ))}
 
@@ -827,14 +1037,16 @@ export default function VisitorBookingModal({
 
             </div>
 
-            {/* PARTICIPANTS */}
+            {/* PARTICIPANTS / GUESTS */}
             <div className="vd-form-group">
 
               <label className="vd-form-label">
 
                 {isRestaurant
                   ? 'Party Size'
-                  : 'Guests / Participants'}
+                  : isAccommodation
+                    ? 'Guests'
+                    : 'Guests / Participants'}
 
                 <span className="vd-form-label-hint">
                   {' '}
@@ -881,9 +1093,13 @@ export default function VisitorBookingModal({
                   <DangerIcon size={16} />
 
                   {' '}
+
                   {isRestaurant
                     ? 'Restaurant is not accepting reservations'
-                    : 'Listing does not operate'}{' '}
+                    : isAccommodation
+                      ? 'Accommodation is not available'
+                      : 'Listing does not operate'}{' '}
+
                   on this date ({selectedDate}).
 
                 </div>
@@ -898,9 +1114,12 @@ export default function VisitorBookingModal({
                   <DangerIcon size={16} />
 
                   {' '}
+
                   {isRestaurant
                     ? `No tables are available on ${selectedDate}.`
-                    : `Fully booked on ${selectedDate}.`}
+                    : isAccommodation
+                      ? `This accommodation is fully booked on ${selectedDate}.`
+                      : `Fully booked on ${selectedDate}.`}
 
                   {' '}Please select another date.
 
@@ -917,13 +1136,18 @@ export default function VisitorBookingModal({
                   <CheckCircleIcon size={16} />
 
                   {' '}
-                  Available on {selectedDate}
+
+                  {isAccommodation
+                    ? `Accommodation available for check-in on ${selectedDate}`
+                    : `Available on ${selectedDate}`}
 
                   {selectedTimeSlot &&
                     selectedSlotRemaining > 0
                     ? isRestaurant
                       ? ` — ${selectedSlotRemaining} seat(s) available at the selected time`
-                      : ` — ${selectedSlotRemaining} place(s) remaining in selected time slot`
+                      : isAccommodation
+                        ? ' — room available'
+                        : ` — ${selectedSlotRemaining} place(s) remaining in selected time slot`
                     : ''}
 
                 </div>
@@ -963,6 +1187,7 @@ export default function VisitorBookingModal({
                   LKR {estimatedTotal.toLocaleString()}
                 </span>
 
+                {/* EXPERIENCE BREAKDOWN */}
                 {isExperience && (
                   <span
                     style={{
@@ -978,6 +1203,25 @@ export default function VisitorBookingModal({
                     {numericGuestCount === 1
                       ? 'participant'
                       : 'participants'}
+                  </span>
+                )}
+
+                {/* ACCOMMODATION BREAKDOWN */}
+                {isAccommodation && (
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: '12px',
+                      marginTop: '4px'
+                    }}
+                  >
+                    LKR {itemPrice.toLocaleString()}
+                    {' × '}
+                    {accommodationNights}
+                    {' '}
+                    {accommodationNights === 1
+                      ? 'night'
+                      : 'nights'}
                   </span>
                 )}
 
@@ -1016,6 +1260,7 @@ export default function VisitorBookingModal({
               </div>
             )}
 
+            {/* CONFIRM BUTTON */}
             <button
               className="vd-btn-book"
               disabled={
@@ -1031,6 +1276,14 @@ export default function VisitorBookingModal({
                 numericGuestCount < 1 ||
                 numericGuestCount > maxCap ||
                 numericGuestCount > currentMax ||
+                (
+                  isAccommodation &&
+                  !checkOutDate
+                ) ||
+                (
+                  isAccommodation &&
+                  accommodationNights < minStayNights
+                ) ||
                 submitting
               }
               onClick={handleConfirmBooking}
@@ -1038,10 +1291,14 @@ export default function VisitorBookingModal({
               {submitting
                 ? isRestaurant
                   ? 'Reserving Table…'
-                  : 'Creating Booking…'
+                  : isAccommodation
+                    ? 'Booking Stay…'
+                    : 'Creating Booking…'
                 : isRestaurant
                   ? 'Reserve Table'
-                  : 'Confirm Booking'}
+                  : isAccommodation
+                    ? 'Book Stay'
+                    : 'Confirm Booking'}
             </button>
 
           </div>
