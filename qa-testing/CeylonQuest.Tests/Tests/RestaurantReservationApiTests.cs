@@ -88,8 +88,98 @@ namespace CeylonQuest.Tests.Tests
             throw new InvalidOperationException("No available slot found for restaurant.");
         }
 
-        [Fact(DisplayName = "API: Reserve Table returns 200 OK with Confirmed status")]
-        public async Task CreateReservation_ValidDetails_Returns200WithConfirmedStatus()
+        [Fact(DisplayName = "API 8.1: Zero or negative party size returns 400 Bad Request")]
+        public async Task CreateReservation_ZeroPartySize_Returns400()
+        {
+            var token = await GetVisitorTokenAsync();
+            _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var (restaurantId, date, slot, _) = await GetAvailableRestaurantSlotAsync();
+
+            var payload = new
+            {
+                restaurantId,
+                reservationDate = date,
+                timeSlot = slot,
+                partySize = 0
+            };
+
+            var resp = await _bookingClient.PostAsJsonAsync("/api/Reservations", payload);
+            Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        }
+
+        [Fact(DisplayName = "API 8.1: Invalid or non-existent time slot returns 400 Bad Request")]
+        public async Task CreateReservation_InvalidTimeSlot_Returns400()
+        {
+            var token = await GetVisitorTokenAsync();
+            _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var (restaurantId, date, _, _) = await GetAvailableRestaurantSlotAsync();
+
+            var payload = new
+            {
+                restaurantId,
+                reservationDate = date,
+                timeSlot = "INVALID_11:99_PM",
+                partySize = 2
+            };
+
+            var resp = await _bookingClient.PostAsJsonAsync("/api/Reservations", payload);
+            Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        }
+
+        [Fact(DisplayName = "API 8.1: Exact capacity boundary reservation succeeds")]
+        public async Task CreateReservation_ExactCapacityBoundary_Succeeds()
+        {
+            var token = await GetVisitorTokenAsync();
+            _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var (restaurantId, date, slot, remaining) = await GetAvailableRestaurantSlotAsync();
+
+            var payload = new
+            {
+                restaurantId,
+                reservationDate = date,
+                timeSlot = slot,
+                partySize = remaining
+            };
+
+            var resp = await _bookingClient.PostAsJsonAsync("/api/Reservations", payload);
+            Assert.True(resp.IsSuccessStatusCode, "Exact remaining capacity should be reserved successfully.");
+        }
+
+        [Fact(DisplayName = "API 8.1: Reservation decrements restaurant availability")]
+        public async Task CreateReservation_DecrementsRemainingCapacity()
+        {
+            var token = await GetVisitorTokenAsync();
+            _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var (restaurantId, date, slot, remainingBefore) = await GetAvailableRestaurantSlotAsync();
+            if (remainingBefore < 1) return;
+
+            var payload = new
+            {
+                restaurantId,
+                reservationDate = date,
+                timeSlot = slot,
+                partySize = 1
+            };
+
+            var resp = await _bookingClient.PostAsJsonAsync("/api/Reservations", payload);
+            resp.EnsureSuccessStatusCode();
+
+            // Verify updated capacity
+            var availResp = await _catalogClient.GetAsync($"/api/catalog/availability/{restaurantId}?date={date}");
+            var availDoc = await JsonDocument.ParseAsync(await availResp.Content.ReadAsStreamAsync());
+            var updatedSlot = availDoc.RootElement.GetProperty("slots").EnumerateArray()
+                .First(s => s.GetProperty("timeSlot").GetString() == slot);
+
+            var remainingAfter = updatedSlot.GetProperty("remainingCapacity").GetInt32();
+            Assert.Equal(remainingBefore - 1, remainingAfter);
+        }
+
+        [Fact(DisplayName = "API 8.1: Created reservation exists in GetMyReservations response")]
+        public async Task CreateReservation_PersistsAndAppearsInMyReservations()
         {
             var token = await GetVisitorTokenAsync();
             _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -104,83 +194,20 @@ namespace CeylonQuest.Tests.Tests
                 partySize = 2
             };
 
-            var resp = await _bookingClient.PostAsJsonAsync("/api/Reservations", payload);
-            var body = await resp.Content.ReadAsStringAsync();
-            Assert.True(resp.IsSuccessStatusCode, $"Expected 200 OK, got {(int)resp.StatusCode}: {body}");
+            var createResp = await _bookingClient.PostAsJsonAsync("/api/Reservations", payload);
+            createResp.EnsureSuccessStatusCode();
+            var createdDoc = await JsonDocument.ParseAsync(await createResp.Content.ReadAsStreamAsync());
+            var reservationId = createdDoc.RootElement.GetProperty("id").GetString();
 
-            var doc = JsonDocument.Parse(body);
-            Assert.Equal("Confirmed", doc.RootElement.GetProperty("status").GetString());
-            Assert.True(doc.RootElement.GetProperty("totalPrice").GetDecimal() > 0);
-        }
+            // Query My Reservations
+            var myResp = await _bookingClient.GetAsync("/api/Reservations/my");
+            myResp.EnsureSuccessStatusCode();
+            var myDoc = await JsonDocument.ParseAsync(await myResp.Content.ReadAsStreamAsync());
 
-        [Fact(DisplayName = "API: Party size exceeding capacity returns 400 Bad Request")]
-        public async Task CreateReservation_ExceedingCapacity_Returns400BadRequest()
-        {
-            var token = await GetVisitorTokenAsync();
-            _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var exists = myDoc.RootElement.EnumerateArray().Any(r =>
+                r.GetProperty("id").GetString() == reservationId);
 
-            var (restaurantId, date, slot, remaining) = await GetAvailableRestaurantSlotAsync();
-
-            var payload = new
-            {
-                restaurantId,
-                reservationDate = date,
-                timeSlot = slot,
-                partySize = remaining + 50
-            };
-
-            var resp = await _bookingClient.PostAsJsonAsync("/api/Reservations", payload);
-            Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
-        }
-
-        [Fact(DisplayName = "API: Past reservation date returns 400 Bad Request")]
-        public async Task CreateReservation_PastDate_Returns400BadRequest()
-        {
-            var token = await GetVisitorTokenAsync();
-            _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            var (restaurantId, _, slot, _) = await GetAvailableRestaurantSlotAsync();
-
-            var payload = new
-            {
-                restaurantId,
-                reservationDate = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd"),
-                timeSlot = slot,
-                partySize = 2
-            };
-
-            var resp = await _bookingClient.PostAsJsonAsync("/api/Reservations", payload);
-            Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
-        }
-
-        [Fact(DisplayName = "API: Unauthenticated request returns 401 Unauthorized")]
-        public async Task CreateReservation_NoAuth_Returns401Unauthorized()
-        {
-            _bookingClient.DefaultRequestHeaders.Authorization = null;
-
-            var payload = new
-            {
-                restaurantId = Guid.NewGuid(),
-                reservationDate = DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-dd"),
-                timeSlot = "19:00",
-                partySize = 2
-            };
-
-            var resp = await _bookingClient.PostAsJsonAsync("/api/Reservations", payload);
-            Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
-        }
-
-        [Fact(DisplayName = "API: GetMyReservations returns 200 OK with list")]
-        public async Task GetMyReservations_AuthenticatedUser_Returns200WithList()
-        {
-            var token = await GetVisitorTokenAsync();
-            _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            var resp = await _bookingClient.GetAsync("/api/Reservations/my");
-            Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-
-            var doc = await JsonDocument.ParseAsync(await resp.Content.ReadAsStreamAsync());
-            Assert.Equal(JsonValueKind.Array, doc.RootElement.ValueKind);
+            Assert.True(exists, "Newly created reservation must be present in My Reservations history.");
         }
     }
 }

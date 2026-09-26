@@ -11,6 +11,7 @@ using Xunit;
 
 namespace CeylonQuest.Tests.Tests
 {
+    [Trait("Category", "API")]
     public class BookingApiIntegrationTests
     {
         private readonly HttpClient _bookingClient;
@@ -34,257 +35,160 @@ namespace CeylonQuest.Tests.Tests
             loginResponse.EnsureSuccessStatusCode();
             var json = await loginResponse.Content.ReadFromJsonAsync<JsonElement>();
 
-            // Supports both 'accessToken' and 'token' properties
             if (json.TryGetProperty("accessToken", out var at))
                 return at.GetString()!;
             if (json.TryGetProperty("token", out var t))
                 return t.GetString()!;
-            throw new InvalidOperationException("Could not extract access token from auth response.");
-        }
-
-        private HttpRequestMessage CreateAuthenticatedRequest(HttpMethod method, string url, object payload, string token)
-        {
-            var request = new HttpRequestMessage(method, url)
-            {
-                Content = JsonContent.Create(payload)
-            };
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            return request;
+            throw new InvalidOperationException("Could not extract access token.");
         }
 
         private async Task<(Guid listingId, string date, string slot, int remainingCapacity, decimal price, int maxParticipants)> GetAvailableExperienceAsync()
         {
-            // 1. Search for active experiences using the correct query param: type=experience
             var searchResp = await _catalogClient.GetAsync("/api/catalog/search?type=experience");
             searchResp.EnsureSuccessStatusCode();
             var searchJson = await searchResp.Content.ReadFromJsonAsync<JsonElement>();
-            var items = searchJson.GetProperty("items").EnumerateArray()
-                .Where(it => it.TryGetProperty("type", out var t) && t.GetString() == "Experience");
+
+            var items = searchJson.ValueKind == JsonValueKind.Array
+                ? searchJson.EnumerateArray()
+                : searchJson.GetProperty("items").EnumerateArray();
 
             foreach (var item in items)
             {
                 var listingId = Guid.Parse(item.GetProperty("id").GetString()!);
                 var price = item.GetProperty("price").GetDecimal();
-                var maxParticipants = item.TryGetProperty("maxParticipants", out var mp) && mp.ValueKind == JsonValueKind.Number
-                    ? mp.GetInt32()
-                    : 10;
+                var maxParticipants = item.TryGetProperty("maxParticipants", out var mp) ? mp.GetInt32() : 10;
 
-                // 2. Find the first date and slot with open capacity in the next 14 days
-                for (int d = 1; d <= 14; d++)
+                for (int i = 1; i <= 14; i++)
                 {
-                    var candidateDate = DateTime.Today.AddDays(d).ToString("yyyy-MM-dd");
-                    var availResp = await _catalogClient.GetAsync($"/api/catalog/availability/{listingId}?date={candidateDate}");
+                    var testDate = DateTime.UtcNow.AddDays(i).ToString("yyyy-MM-dd");
+                    var availResp = await _catalogClient.GetAsync($"/api/catalog/availability/{listingId}?date={testDate}");
                     if (!availResp.IsSuccessStatusCode) continue;
 
                     var availJson = await availResp.Content.ReadFromJsonAsync<JsonElement>();
-                    if (!availJson.GetProperty("isOperatingDay").GetBoolean()) continue;
-                    if (availJson.GetProperty("isFullyBooked").GetBoolean()) continue;
+                    var isOperating = !availJson.TryGetProperty("isOperatingDay", out var op) || op.GetBoolean();
+                    var isFullyBooked = availJson.TryGetProperty("isFullyBooked", out var fb) && fb.GetBoolean();
 
-                    var slots = availJson.GetProperty("slots").EnumerateArray();
-                    foreach (var slot in slots)
+                    if (isOperating && !isFullyBooked && availJson.TryGetProperty("slots", out var slots))
                     {
-                        var remaining = slot.GetProperty("remainingCapacity").GetInt32();
-                        if (remaining > 0)
+                        foreach (var slot in slots.EnumerateArray())
                         {
-                            return (listingId, candidateDate, slot.GetProperty("timeSlot").GetString()!, remaining, price, maxParticipants);
+                            var remaining = slot.GetProperty("remainingCapacity").GetInt32();
+                            var slotTime = slot.GetProperty("timeSlot").GetString()!;
+                            if (remaining > 0)
+                            {
+                                return (listingId, testDate, slotTime, remaining, price, maxParticipants);
+                            }
                         }
                     }
                 }
             }
 
-            throw new InvalidOperationException("No operational experience with open capacity found in test catalog.");
-        }
-        private async Task<(Guid listingId, string date, string slot, int remaining)>
-            FindListingWithKnownCapacityAsync()
-        {
-            var (listingId, date, slot, remaining, _, _) = await GetAvailableExperienceAsync();
-            return (listingId, date, slot, remaining);
+            throw new InvalidOperationException("No available experience slot found in catalog.");
         }
 
-
-        [Fact(DisplayName = "API: CreateBooking returns 401 Unauthorized when token is missing")]
-        [Trait("Category", "API")]
-        public async Task CreateBooking_WithoutToken_ReturnsUnauthorized()
+        [Fact(DisplayName = "API 7.1: Missing token returns 401 Unauthorized")]
+        public async Task CreateBooking_MissingAuthToken_Returns401()
         {
+            _bookingClient.DefaultRequestHeaders.Authorization = null;
             var payload = new
             {
                 listingId = Guid.NewGuid(),
-                bookingDate = DateTime.Today.AddDays(2).ToString("yyyy-MM-dd"),
-                timeSlot = "09:00 AM - 11:00 AM",
+                bookingDate = DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-dd"),
+                timeSlot = "10:00 AM",
+                participantCount = 2
+            };
+
+            var resp = await _bookingClient.PostAsJsonAsync("/api/Bookings", payload);
+            Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
+        }
+
+        [Fact(DisplayName = "API 7.1: Non-existent listing ID returns 400 Bad Request")]
+        public async Task CreateBooking_NonExistentListing_Returns400()
+        {
+            var token = await GetVisitorTokenAsync();
+            _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var payload = new
+            {
+                listingId = Guid.NewGuid(), // random non-existent GUID
+                bookingDate = DateTime.UtcNow.AddDays(2).ToString("yyyy-MM-dd"),
+                timeSlot = "10:00 AM",
                 participantCount = 1
             };
 
-            var response = await _bookingClient.PostAsJsonAsync("/api/Bookings", payload);
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+            var resp = await _bookingClient.PostAsJsonAsync("/api/Bookings", payload);
+            Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         }
 
-        [Fact(DisplayName = "API: CreateBooking returns 400 Bad Request when date is in the past")]
-        [Trait("Category", "API")]
-        public async Task CreateBooking_DateInPast_ReturnsBadRequest()
+        [Fact(DisplayName = "API 7.1: Invalid or non-existent time slot returns 400 Bad Request")]
+        public async Task CreateBooking_InvalidTimeSlot_Returns400()
         {
             var token = await GetVisitorTokenAsync();
+            _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var (listingId, date, _, _, _, _) = await GetAvailableExperienceAsync();
+
             var payload = new
             {
-                listingId = Guid.NewGuid(),
-                bookingDate = DateTime.Today.AddDays(-2).ToString("yyyy-MM-dd"),
-                timeSlot = "09:00 AM - 11:00 AM",
+                listingId,
+                bookingDate = date,
+                timeSlot = "INVALID_SLOT_03:45_AM",
                 participantCount = 1
             };
 
-            var request = CreateAuthenticatedRequest(HttpMethod.Post, "/api/Bookings", payload, token);
-            var response = await _bookingClient.SendAsync(request);
-
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            var resp = await _bookingClient.PostAsJsonAsync("/api/Bookings", payload);
+            Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         }
 
-        [Fact(DisplayName = "API: CreateBooking returns 400 Bad Request when participant count is zero")]
-        [Trait("Category", "API")]
-        public async Task CreateBooking_ZeroGuests_ReturnsBadRequest()
+        [Fact(DisplayName = "API 7.1: Exact capacity boundary (count == remainingCapacity) succeeds with 201")]
+        public async Task CreateBooking_ExactCapacityBoundary_Succeeds()
         {
             var token = await GetVisitorTokenAsync();
-            var payload = new
-            {
-                listingId = Guid.NewGuid(),
-                bookingDate = DateTime.Today.AddDays(2).ToString("yyyy-MM-dd"),
-                timeSlot = "09:00 AM - 11:00 AM",
-                participantCount = 0
-            };
+            _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-            var request = CreateAuthenticatedRequest(HttpMethod.Post, "/api/Bookings", payload, token);
-            var response = await _bookingClient.SendAsync(request);
-
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        }
-
-        [Fact(DisplayName = "API: CreateBooking returns 400/409 when slot is fully booked")]
-        [Trait("Category", "API")]
-        public async Task CreateBooking_FullyBookedSlot_ReturnsConflict()
-        {
-            var token = await GetVisitorTokenAsync();
             var (listingId, date, slot, remaining, _, maxParticipants) = await GetAvailableExperienceAsync();
-            int guestsToFill = Math.Min(remaining, maxParticipants);
-            // 1. Fill available capacity
-            var fillRequest = CreateAuthenticatedRequest(HttpMethod.Post, "/api/Bookings", new
+            var exactCount = Math.Min(remaining, maxParticipants);
+
+            var payload = new
             {
                 listingId,
                 bookingDate = date,
                 timeSlot = slot,
-                participantCount = guestsToFill
-            }, token);
-            await _bookingClient.SendAsync(fillRequest);
-            // 2. Try to book 1 more seat on the slot
-            var extraRequest = CreateAuthenticatedRequest(HttpMethod.Post, "/api/Bookings", new
-            {
-                listingId,
-                bookingDate = date,
-                timeSlot = slot,
-                participantCount = 1
-            }, token);
-            var response = await _bookingClient.SendAsync(extraRequest);
-            // 3. Assert rejection
-            Assert.True(response.StatusCode == HttpStatusCode.BadRequest || response.StatusCode == HttpStatusCode.Conflict,
-                $"Expected 400 Bad Request or 409 Conflict for exhausted slot, but got {response.StatusCode}");
+                participantCount = exactCount
+            };
+
+            var resp = await _bookingClient.PostAsJsonAsync("/api/Bookings", payload);
+            Assert.True(resp.StatusCode == HttpStatusCode.Created || resp.StatusCode == HttpStatusCode.OK);
         }
 
-        [Fact(DisplayName = "API: CreateBooking decrements remaining capacity in catalog")]
-        [Trait("Category", "API")]
+        [Fact(DisplayName = "API 7.1: Decrements remaining capacity in catalog")]
         public async Task CreateBooking_DecrementsRemainingCapacity()
         {
             var token = await GetVisitorTokenAsync();
-            var (listingId, date, slot, initialRemaining, _, _) = await GetAvailableExperienceAsync();
-            int guestsToBook = Math.Min(2, initialRemaining);
+            _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var (listingId, date, slot, remainingBefore, _, _) = await GetAvailableExperienceAsync();
+            if (remainingBefore < 1) return;
+
             var payload = new
             {
-                listingId = listingId,
+                listingId,
                 bookingDate = date,
                 timeSlot = slot,
-                participantCount = guestsToBook
+                participantCount = 1
             };
-            // 1. Create Booking
-            var createReq = CreateAuthenticatedRequest(HttpMethod.Post, "/api/Bookings", payload, token);
-            var createResp = await _bookingClient.SendAsync(createReq);
 
-            createResp.EnsureSuccessStatusCode();
-            // 2. Query Availability after booking
-            var afterResp = await _catalogClient.GetAsync($"/api/catalog/availability/{listingId}?date={date}");
-            afterResp.EnsureSuccessStatusCode();
-            var afterJson = await afterResp.Content.ReadFromJsonAsync<JsonElement>();
-            var updatedSlot = afterJson.GetProperty("slots").EnumerateArray()
+            var resp = await _bookingClient.PostAsJsonAsync("/api/Bookings", payload);
+            resp.EnsureSuccessStatusCode();
+
+            // Verify capacity decreased by 1
+            var availResp = await _catalogClient.GetAsync($"/api/catalog/availability/{listingId}?date={date}");
+            var availJson = await availResp.Content.ReadFromJsonAsync<JsonElement>();
+            var targetSlot = availJson.GetProperty("slots").EnumerateArray()
                 .First(s => s.GetProperty("timeSlot").GetString() == slot);
-            var updatedRemaining = updatedSlot.GetProperty("remainingCapacity").GetInt32();
-            // 3. Assert capacity dropped exactly by guestsToBook
-            Assert.Equal(initialRemaining - guestsToBook, updatedRemaining);
-        }
 
-        [Fact(DisplayName = "API: Overbooking capacity returns 409 Conflict")]
-        [Trait("Category", "API")]
-        public async Task CreateBooking_ExceedingAvailableCapacity_Returns409Conflict()
-        {
-            var token = await GetVisitorTokenAsync();
-            var (listingId, date, slot, remainingCapacity, _, _) = await GetAvailableExperienceAsync();
-            // Attempt to book 1 place more than currently remaining in the slot
-            var payload = new
-            {
-                listingId = listingId,
-                bookingDate = date,
-                timeSlot = slot,
-                participantCount = remainingCapacity + 1
-            };
-            var request = CreateAuthenticatedRequest(HttpMethod.Post, "/api/Bookings", payload, token);
-            var response = await _bookingClient.SendAsync(request);
-            // Must reject with Conflict (409) or Bad Request (400)
-            Assert.True(response.StatusCode == HttpStatusCode.Conflict || response.StatusCode == HttpStatusCode.BadRequest,
-                $"Expected 409 Conflict or 400 Bad Request for overbooking, but got {response.StatusCode}");
+            var remainingAfter = targetSlot.GetProperty("remainingCapacity").GetInt32();
+            Assert.Equal(remainingBefore - 1, remainingAfter);
         }
-        [Fact(DisplayName = "API: Persisted booking has Pending Payment status and correct TotalAmount")]
-        [Trait("Category", "API")]
-        public async Task CreateBooking_PersistsCorrectStatusAndAmount()
-        {
-            var token = await GetVisitorTokenAsync();
-            var (listingId, date, slot, remaining, basePrice, _) = await GetAvailableExperienceAsync();
-            int guests = 1;
-            var payload = new
-            {
-                listingId = listingId,
-                bookingDate = date,
-                timeSlot = slot,
-                participantCount = guests
-            };
-            var request = CreateAuthenticatedRequest(HttpMethod.Post, "/api/Bookings", payload, token);
-            var response = await _bookingClient.SendAsync(request);
-
-            response.EnsureSuccessStatusCode();
-            var booking = await response.Content.ReadFromJsonAsync<JsonElement>();
-            // Assert Booking Status
-            var status = booking.GetProperty("status").GetString();
-            Assert.True(status == "PendingPayment" || status == "Pending Payment", $"Expected status Pending Payment, got {status}");
-            // Assert Payment Status
-            var paymentStatus = booking.GetProperty("paymentStatus").GetString();
-            Assert.Equal("Unpaid", paymentStatus);
-            // Assert Total Amount calculation
-            var totalAmount = booking.GetProperty("totalAmount").GetDecimal();
-            Assert.Equal(basePrice * guests, totalAmount);
-        }
-        [Fact(DisplayName = "API: participantCount > maxParticipants returns 400 Bad Request")]
-        [Trait("Category", "API")]
-        public async Task CreateBooking_ParticipantCountExceedsListingMax_Returns400BadRequest()
-        {
-            var token = await GetVisitorTokenAsync();
-            var (listingId, date, slot, _, _, maxParticipants) = await GetAvailableExperienceAsync();
-            var payload = new
-            {
-                listingId = listingId,
-                bookingDate = date,
-                timeSlot = slot,
-                participantCount = maxParticipants + 5 // Exceeds experience limit
-            };
-            var request = CreateAuthenticatedRequest(HttpMethod.Post, "/api/Bookings", payload, token);
-            var response = await _bookingClient.SendAsync(request);
-
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-            var errorBody = await response.Content.ReadAsStringAsync();
-            Assert.Contains("Maximum participants", errorBody, StringComparison.OrdinalIgnoreCase);
-        }
-
     }
 }

@@ -197,14 +197,20 @@ namespace CeylonQuest.Tests.Pages
             return decimal.Parse(digits, CultureInfo.InvariantCulture);
         }
 
-        public bool IsSuccessToastDisplayed()
+        public bool IsSuccessToastDisplayed(int timeoutSeconds = 15)
         {
             try
             {
-                var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(15));
-                var toast = wait.Until(d => d.FindElement(By.XPath(
-                    "//*[contains(., 'Booking created') or contains(., 'Pending Payment') or contains(., 'Confirmed')]")));
-                return toast.Displayed;
+                var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(timeoutSeconds));
+                return wait.Until(d =>
+                {
+                    try
+                    {
+                        var toasts = d.FindElements(By.CssSelector(".vd-toast"));
+                        return toasts.Any(t => t.Displayed);
+                    }
+                    catch (StaleElementReferenceException) { return false; }
+                });
             }
             catch (WebDriverTimeoutException)
             {

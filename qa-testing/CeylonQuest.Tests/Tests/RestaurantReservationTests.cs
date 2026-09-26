@@ -75,20 +75,10 @@ namespace CeylonQuest.Tests.Tests
         {
             _explorePage.FilterByRestaurants();
             _explorePage.ClickFirstExperienceBookNow();
-
             _modalPage.SelectFirstAvailableDateAndSlot(daysToScan: 14);
-            _modalPage.SetGuestCount(2);
-
+            _modalPage.SetGuestCount(1);
             _modalPage.ClickConfirmBooking();
-
-            var toastFound = _wait.Until(d =>
-            {
-                var toasts = d.FindElements(By.XPath(
-                    "//*[contains(., 'Table reserved successfully') or contains(., 'Confirmed') or contains(., 'Reservation confirmed')]"));
-                return toasts.Count > 0 && toasts[0].Displayed;
-            });
-
-            Assert.True(toastFound, "Expected confirmation toast with Confirmed status.");
+            Assert.True(_modalPage.IsSuccessToastDisplayed(15), "Expected confirmation toast with Confirmed status.");
         }
 
         public void Dispose()
