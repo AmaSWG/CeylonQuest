@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using Shared.Kafka;
+
 using Moq;
 
 using System.Security.Claims;
@@ -19,12 +21,15 @@ namespace BookingService.Tests;
 public class AccommodationBookingsControllerTests
 {
     private readonly Mock<ICatalogService> _catalogServiceMock;
+    private readonly Mock<IKafkaProducer> _kafkaProducerMock;
+
     private readonly Guid _visitorId;
     private readonly Guid _accommodationId;
 
     public AccommodationBookingsControllerTests()
     {
         _catalogServiceMock = new Mock<ICatalogService>();
+        _kafkaProducerMock = new Mock<IKafkaProducer>();
 
         _visitorId = Guid.NewGuid();
         _accommodationId = Guid.NewGuid();
@@ -51,7 +56,8 @@ public class AccommodationBookingsControllerTests
         var controller =
             new AccommodationBookingsController(
                 context,
-                _catalogServiceMock.Object);
+                _catalogServiceMock.Object,
+                _kafkaProducerMock.Object);
 
         if (visitorId.HasValue)
         {

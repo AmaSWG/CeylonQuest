@@ -1278,4 +1278,57 @@ public class BookingTests
                     }
             };
     }
+
+    // =========================================================
+    // HELPER METHOD: Unauthenticated visitor (empty principal)
+    // =========================================================
+    private static void SetUnauthenticatedUser(
+        BookingsController controller)
+    {
+        controller.ControllerContext =
+            new ControllerContext
+            {
+                HttpContext =
+                    new DefaultHttpContext
+                    {
+                        User = new ClaimsPrincipal(new ClaimsIdentity())
+                    }
+            };
+    }
+
+    [Fact]
+    public async Task GetBookingById_Unauthenticated_Returns401Unauthorized()
+    {
+        var options = CreateDatabaseOptions();
+        await using var context = new BookingDbContext(options);
+
+        var controller = new BookingsController(
+            context,
+            CreateCatalogService(),
+            new Mock<IKafkaProducer>().Object);
+
+        SetUnauthenticatedUser(controller);
+
+        var result = await controller.GetBookingById(Guid.NewGuid());
+
+        Assert.IsType<UnauthorizedObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task GetMyBookings_Unauthenticated_Returns401Unauthorized()
+    {
+        var options = CreateDatabaseOptions();
+        await using var context = new BookingDbContext(options);
+
+        var controller = new BookingsController(
+            context,
+            CreateCatalogService(),
+            new Mock<IKafkaProducer>().Object);
+
+        SetUnauthenticatedUser(controller);
+
+        var result = await controller.GetMyBookings();
+
+        Assert.IsType<UnauthorizedObjectResult>(result);
+    }
 }

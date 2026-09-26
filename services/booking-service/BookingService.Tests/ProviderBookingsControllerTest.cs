@@ -3,9 +3,11 @@ using BookingService.Data;
 using BookingService.DTOs;
 using BookingService.Models;
 using BookingService.Services;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
 using Moq;
 using Xunit;
 
@@ -52,14 +54,12 @@ public class ProviderBookingsControllerTests
             },
             new List<CatalogProviderListingResponse>());
 
-        var identityService =
-            CreateIdentityMock();
+        var identityService = CreateIdentityMock();
 
-        var controller =
-            CreateController(
-                context,
-                catalogService.Object,
-                identityService.Object);
+        var controller = CreateController(
+            context,
+            catalogService.Object,
+            identityService.Object);
 
         var result =
             await controller.GetMyBookingsAndReservations();
@@ -91,7 +91,6 @@ public class ProviderBookingsControllerTests
             list,
             x => x.ServiceId == otherActivityId);
     }
-
 
     // =====================================================
     // TEST 2
@@ -132,14 +131,12 @@ public class ProviderBookingsControllerTests
                 }
             });
 
-        var identityService =
-            CreateIdentityMock();
+        var identityService = CreateIdentityMock();
 
-        var controller =
-            CreateController(
-                context,
-                catalogService.Object,
-                identityService.Object);
+        var controller = CreateController(
+            context,
+            catalogService.Object,
+            identityService.Object);
 
         var result =
             await controller.GetMyBookingsAndReservations();
@@ -171,7 +168,6 @@ public class ProviderBookingsControllerTests
             list,
             x => x.ServiceId == otherRestaurantId);
     }
-
 
     // =====================================================
     // TEST 3
@@ -234,14 +230,12 @@ public class ProviderBookingsControllerTests
                 }
             });
 
-        var identityService =
-            CreateIdentityMock();
+        var identityService = CreateIdentityMock();
 
-        var controller =
-            CreateController(
-                context,
-                catalogService.Object,
-                identityService.Object);
+        var controller = CreateController(
+            context,
+            catalogService.Object,
+            identityService.Object);
 
         var result =
             await controller.GetMyBookingsAndReservations();
@@ -273,7 +267,6 @@ public class ProviderBookingsControllerTests
             list,
             x => x.ServiceId == providerRestaurantId);
     }
-
 
     // =====================================================
     // TEST 4
@@ -321,14 +314,12 @@ public class ProviderBookingsControllerTests
                 }
             });
 
-        var identityService =
-            CreateIdentityMock();
+        var identityService = CreateIdentityMock();
 
-        var controller =
-            CreateController(
-                context,
-                catalogService.Object,
-                identityService.Object);
+        var controller = CreateController(
+            context,
+            catalogService.Object,
+            identityService.Object);
 
         var result =
             await controller.GetMyBookingsAndReservations();
@@ -346,15 +337,12 @@ public class ProviderBookingsControllerTests
 
         Assert.Contains(
             list,
-            x => x.BookingType ==
-                 "Experience Booking");
+            x => x.BookingType == "Experience Booking");
 
         Assert.Contains(
             list,
-            x => x.BookingType ==
-                 "Restaurant Reservation");
+            x => x.BookingType == "Restaurant Reservation");
     }
-
 
     // =====================================================
     // TEST 5
@@ -406,11 +394,10 @@ public class ProviderBookingsControllerTests
                     Email = "chanumi@example.com"
                 });
 
-        var controller =
-            CreateController(
-                context,
-                catalogService.Object,
-                identityService.Object);
+        var controller = CreateController(
+            context,
+            catalogService.Object,
+            identityService.Object);
 
         var result =
             await controller.GetMyBookingsAndReservations();
@@ -444,7 +431,6 @@ public class ProviderBookingsControllerTests
             Times.Once);
     }
 
-
     // =====================================================
     // TEST 6
     // Restaurant reservation does not return a misleading
@@ -477,14 +463,12 @@ public class ProviderBookingsControllerTests
                 }
             });
 
-        var identityService =
-            CreateIdentityMock();
+        var identityService = CreateIdentityMock();
 
-        var controller =
-            CreateController(
-                context,
-                catalogService.Object,
-                identityService.Object);
+        var controller = CreateController(
+            context,
+            catalogService.Object,
+            identityService.Object);
 
         var result =
             await controller.GetMyBookingsAndReservations();
@@ -507,7 +491,6 @@ public class ProviderBookingsControllerTests
             reservation.PaymentStatus);
     }
 
-
     // =====================================================
     // TEST 7
     // Provider with no customer bookings gets empty list
@@ -522,14 +505,12 @@ public class ProviderBookingsControllerTests
             new List<CatalogProviderListingResponse>(),
             new List<CatalogProviderListingResponse>());
 
-        var identityService =
-            CreateIdentityMock();
+        var identityService = CreateIdentityMock();
 
-        var controller =
-            CreateController(
-                context,
-                catalogService.Object,
-                identityService.Object);
+        var controller = CreateController(
+            context,
+            catalogService.Object,
+            identityService.Object);
 
         var result =
             await controller.GetMyBookingsAndReservations();
@@ -549,7 +530,6 @@ public class ProviderBookingsControllerTests
                 It.IsAny<string>()),
             Times.Never);
     }
-
 
     // =====================================================
     // TEST 8
@@ -595,8 +575,12 @@ public class ProviderBookingsControllerTests
             x => x.GetMyRestaurantListingsAsync(
                 It.IsAny<string>()),
             Times.Never);
-    }
 
+        catalogService.Verify(
+            x => x.GetMyAccommodationListingsAsync(
+                It.IsAny<string>()),
+            Times.Never);
+    }
 
     // =====================================================
     // HELPERS
@@ -612,7 +596,6 @@ public class ProviderBookingsControllerTests
 
         return new BookingDbContext(options);
     }
-
 
     private static Mock<ICatalogService> CreateCatalogMock(
         List<CatalogProviderListingResponse> activities,
@@ -633,9 +616,20 @@ public class ProviderBookingsControllerTests
                     It.IsAny<string>()))
             .ReturnsAsync(restaurants);
 
+        // Important:
+        // ProviderBookingsController now also requests
+        // the provider's Accommodation listings.
+        // Existing tests do not create accommodation data,
+        // so return an EMPTY LIST instead of null.
+        mock
+            .Setup(x =>
+                x.GetMyAccommodationListingsAsync(
+                    It.IsAny<string>()))
+            .ReturnsAsync(
+                new List<CatalogProviderListingResponse>());
+
         return mock;
     }
-
 
     private static Mock<IIdentityService> CreateIdentityMock()
     {
@@ -652,7 +646,6 @@ public class ProviderBookingsControllerTests
 
         return mock;
     }
-
 
     private static ProviderBookingsController CreateController(
         BookingDbContext context,
@@ -679,7 +672,6 @@ public class ProviderBookingsControllerTests
 
         return controller;
     }
-
 
     private static Booking CreateBooking(
         Guid listingId,
@@ -715,7 +707,6 @@ public class ProviderBookingsControllerTests
                 DateTime.UtcNow
         };
     }
-
 
     private static RestaurantReservation CreateReservation(
         Guid restaurantId,
