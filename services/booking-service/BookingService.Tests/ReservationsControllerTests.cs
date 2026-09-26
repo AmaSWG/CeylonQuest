@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 using Moq;
+using Shared.Kafka;
 
 using System.Security.Claims;
 
@@ -19,12 +20,14 @@ namespace BookingService.Tests;
 public class ReservationsControllerTests
 {
     private readonly Mock<ICatalogService> _catalogServiceMock;
+    private readonly Mock<IKafkaProducer> _kafkaProducerMock;
     private readonly Guid _visitorId;
     private readonly Guid _restaurantId;
 
     public ReservationsControllerTests()
     {
         _catalogServiceMock = new Mock<ICatalogService>();
+        _kafkaProducerMock = new Mock<IKafkaProducer>();
 
         _visitorId = Guid.NewGuid();
         _restaurantId = Guid.NewGuid();
@@ -49,7 +52,8 @@ public class ReservationsControllerTests
     {
         var controller = new ReservationsController(
             context,
-            _catalogServiceMock.Object);
+            _catalogServiceMock.Object,
+            _kafkaProducerMock.Object);
 
         if (visitorId.HasValue)
         {
@@ -97,17 +101,17 @@ public class ReservationsControllerTests
         };
     }
 
-   private CatalogRestaurantResponse CreateValidRestaurant()
-{
-    return new CatalogRestaurantResponse
+    private CatalogRestaurantResponse CreateValidRestaurant()
     {
-        Id = _restaurantId,
-        Name = "Test Restaurant",
-        PricePerPerson = 2000m,
-        SeatingCapacity = 30,
-        IsActive = true
-    };
-}
+        return new CatalogRestaurantResponse
+        {
+            Id = _restaurantId,
+            Name = "Test Restaurant",
+            PricePerPerson = 2000m,
+            SeatingCapacity = 30,
+            IsActive = true
+        };
+    }
 
     private CatalogAvailabilityResponse CreateValidAvailability()
     {
@@ -650,53 +654,51 @@ public class ReservationsControllerTests
         Assert.NotNull(okResult.Value);
     }
 
-// =========================================================
-// TEST 18
-// Successful reservation stored in database
-// =========================================================
+    // =========================================================
+    // TEST 18
+    // Successful reservation stored in database
+    // =========================================================
 
-[Fact]
-public async Task CreateReservation_ValidRequest_SavesReservationToDatabase()
-{
-    await using var context = CreateDbContext();
+    [Fact]
+    public async Task CreateReservation_ValidRequest_SavesReservationToDatabase()
+    {
+        await using var context = CreateDbContext();
 
-    var controller =
-        CreateController(context, _visitorId);
+        var controller =
+            CreateController(context, _visitorId);
 
-    var request = CreateValidRequest();
+        var request = CreateValidRequest();
 
-    SetupSuccessfulCatalog();
+        SetupSuccessfulCatalog();
 
-    await controller.CreateReservation(request);
+        await controller.CreateReservation(request);
 
-    var reservation =
-        await context.RestaurantReservations
-            .SingleAsync();
+        var reservation =
+            await context.RestaurantReservations
+                .SingleAsync();
 
-    Assert.Equal(_visitorId, reservation.VisitorId);
-    Assert.Equal(_restaurantId, reservation.RestaurantId);
+        Assert.Equal(_visitorId, reservation.VisitorId);
+        Assert.Equal(_restaurantId, reservation.RestaurantId);
 
-    // RestaurantReservation MODEL uses RestaurantName
-    Assert.Equal(
-        "Test Restaurant",
-        reservation.RestaurantName);
+        Assert.Equal(
+            "Test Restaurant",
+            reservation.RestaurantName);
 
-    Assert.Equal(
-        request.ReservationDate,
-        reservation.ReservationDate);
+        Assert.Equal(
+            request.ReservationDate,
+            reservation.ReservationDate);
 
-    Assert.Equal(
-        request.TimeSlot,
-        reservation.TimeSlot);
+        Assert.Equal(
+            request.TimeSlot,
+            reservation.TimeSlot);
 
-    Assert.Equal(
-        request.PartySize,
-        reservation.PartySize);
+        Assert.Equal(
+            request.PartySize,
+            reservation.PartySize);
 
-    // Pricing
-    Assert.Equal(2000m, reservation.PricePerPerson);
-    Assert.Equal(8000m, reservation.TotalPrice);
-}
+        Assert.Equal(2000m, reservation.PricePerPerson);
+        Assert.Equal(8000m, reservation.TotalPrice);
+    }
 
     // =========================================================
     // TEST 19
@@ -726,61 +728,59 @@ public async Task CreateReservation_ValidRequest_SavesReservationToDatabase()
             reservation.Status);
     }
 
-// =========================================================
-// TEST 20
-// Correct response data including pricing
-// =========================================================
+    // =========================================================
+    // TEST 20
+    // Correct response data including pricing
+    // =========================================================
 
-[Fact]
-public async Task CreateReservation_ValidRequest_ReturnsCorrectResponse()
-{
-    await using var context = CreateDbContext();
+    [Fact]
+    public async Task CreateReservation_ValidRequest_ReturnsCorrectResponse()
+    {
+        await using var context = CreateDbContext();
 
-    var controller =
-        CreateController(context, _visitorId);
+        var controller =
+            CreateController(context, _visitorId);
 
-    var request = CreateValidRequest();
+        var request = CreateValidRequest();
 
-    SetupSuccessfulCatalog();
+        SetupSuccessfulCatalog();
 
-    var result =
-        await controller.CreateReservation(request);
+        var result =
+            await controller.CreateReservation(request);
 
-    var okResult =
-        Assert.IsType<OkObjectResult>(result);
+        var okResult =
+            Assert.IsType<OkObjectResult>(result);
 
-    var response =
-        Assert.IsType<RestaurantReservationResponse>(
-            okResult.Value);
+        var response =
+            Assert.IsType<RestaurantReservationResponse>(
+                okResult.Value);
 
-    Assert.Equal(_restaurantId, response.RestaurantId);
+        Assert.Equal(_restaurantId, response.RestaurantId);
 
-    Assert.Equal(
-        "Test Restaurant",
-        response.RestaurantName);
+        Assert.Equal(
+            "Test Restaurant",
+            response.RestaurantName);
 
-    Assert.Equal(
-        request.ReservationDate,
-        response.ReservationDate);
+        Assert.Equal(
+            request.ReservationDate,
+            response.ReservationDate);
 
-    Assert.Equal(
-        request.TimeSlot,
-        response.TimeSlot);
+        Assert.Equal(
+            request.TimeSlot,
+            response.TimeSlot);
 
-    Assert.Equal(
-        request.PartySize,
-        response.PartySize);
+        Assert.Equal(
+            request.PartySize,
+            response.PartySize);
 
-    Assert.Equal(
-        ReservationStatus.Confirmed,
-        response.Status);
+        Assert.Equal(
+            ReservationStatus.Confirmed,
+            response.Status);
 
-    // Pricing
-    Assert.Equal(2000m, response.PricePerPerson);
-    Assert.Equal(8000m, response.TotalPrice);
-}
+        Assert.Equal(2000m, response.PricePerPerson);
+        Assert.Equal(8000m, response.TotalPrice);
+    }
 
-    
     // =========================================================
     // TEST 21
     // Capacity service called correctly
@@ -856,117 +856,115 @@ public async Task CreateReservation_ValidRequest_ReturnsCorrectResponse()
     }
 
     // =========================================================
-// TEST 24
-// GetMyReservations only returns current visitor data
-// =========================================================
+    // TEST 24
+    // GetMyReservations only returns current visitor data
+    // =========================================================
 
-[Fact]
-public async Task GetMyReservations_ReturnsOnlyCurrentVisitorsReservations()
-{
-    await using var context = CreateDbContext();
+    [Fact]
+    public async Task GetMyReservations_ReturnsOnlyCurrentVisitorsReservations()
+    {
+        await using var context = CreateDbContext();
 
-    var otherVisitorId = Guid.NewGuid();
+        var otherVisitorId = Guid.NewGuid();
 
-    context.RestaurantReservations.AddRange(
-        new RestaurantReservation
-        {
-            Id = Guid.NewGuid(),
-            VisitorId = _visitorId,
-            RestaurantId = _restaurantId,
-            RestaurantName = "My Restaurant",
-            ReservationDate =
-                DateOnly.FromDateTime(
-                    DateTime.UtcNow.AddDays(1)),
-            TimeSlot = "09:00 AM - 10:00 AM",
-            PartySize = 4,
-            Status = ReservationStatus.Confirmed,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        },
+        context.RestaurantReservations.AddRange(
+            new RestaurantReservation
+            {
+                Id = Guid.NewGuid(),
+                VisitorId = _visitorId,
+                RestaurantId = _restaurantId,
+                RestaurantName = "My Restaurant",
+                ReservationDate =
+                    DateOnly.FromDateTime(
+                        DateTime.UtcNow.AddDays(1)),
+                TimeSlot = "09:00 AM - 10:00 AM",
+                PartySize = 4,
+                Status = ReservationStatus.Confirmed,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
 
-        new RestaurantReservation
-        {
-            Id = Guid.NewGuid(),
-            VisitorId = otherVisitorId,
-            RestaurantId = Guid.NewGuid(),
-            RestaurantName = "Other Restaurant",
-            ReservationDate =
-                DateOnly.FromDateTime(
-                    DateTime.UtcNow.AddDays(1)),
-            TimeSlot = "10:00 AM - 11:00 AM",
-            PartySize = 2,
-            Status = ReservationStatus.Confirmed,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        });
+            new RestaurantReservation
+            {
+                Id = Guid.NewGuid(),
+                VisitorId = otherVisitorId,
+                RestaurantId = Guid.NewGuid(),
+                RestaurantName = "Other Restaurant",
+                ReservationDate =
+                    DateOnly.FromDateTime(
+                        DateTime.UtcNow.AddDays(1)),
+                TimeSlot = "10:00 AM - 11:00 AM",
+                PartySize = 2,
+                Status = ReservationStatus.Confirmed,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
 
-    await context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
-    var controller =
-        CreateController(context, _visitorId);
+        var controller =
+            CreateController(context, _visitorId);
 
-    var result =
-        await controller.GetMyReservations();
+        var result =
+            await controller.GetMyReservations();
 
-    var okResult =
-        Assert.IsType<OkObjectResult>(result);
+        var okResult =
+            Assert.IsType<OkObjectResult>(result);
 
-    var reservations =
-        Assert.IsAssignableFrom<
-            IEnumerable<RestaurantReservationListResponse>>(
-                okResult.Value);
+        var reservations =
+            Assert.IsAssignableFrom<
+                IEnumerable<RestaurantReservationListResponse>>(
+                    okResult.Value);
 
-    var list = reservations.ToList();
+        var list = reservations.ToList();
 
-    Assert.Single(list);
+        Assert.Single(list);
 
-    // RestaurantReservationListResponse DTO uses ServiceName
-    Assert.Equal(
-        "My Restaurant",
-        list[0].ServiceName);
+        Assert.Equal(
+            "My Restaurant",
+            list[0].ServiceName);
 
-    Assert.Equal(
-        "Restaurant Reservation",
-        list[0].BookingType);
+        Assert.Equal(
+            "Restaurant Reservation",
+            list[0].BookingType);
 
-    Assert.Equal(
-        _restaurantId,
-        list[0].RestaurantId);
+        Assert.Equal(
+            _restaurantId,
+            list[0].RestaurantId);
 
-    Assert.Equal(
-        4,
-        list[0].PartySize);
+        Assert.Equal(
+            4,
+            list[0].PartySize);
 
-    Assert.Equal(
-        "Confirmed",
-        list[0].Status);
-}
+        Assert.Equal(
+            "Confirmed",
+            list[0].Status);
+    }
 
     // =========================================================
-// TEST 25
-// GetMyReservations returns empty list
-// =========================================================
+    // TEST 25
+    // GetMyReservations returns empty list
+    // =========================================================
 
-[Fact]
-public async Task GetMyReservations_NoReservations_ReturnsEmptyList()
-{
-    await using var context = CreateDbContext();
+    [Fact]
+    public async Task GetMyReservations_NoReservations_ReturnsEmptyList()
+    {
+        await using var context = CreateDbContext();
 
-    var controller =
-        CreateController(context, _visitorId);
+        var controller =
+            CreateController(context, _visitorId);
 
-    var result =
-        await controller.GetMyReservations();
+        var result =
+            await controller.GetMyReservations();
 
-    var okResult =
-        Assert.IsType<OkObjectResult>(result);
+        var okResult =
+            Assert.IsType<OkObjectResult>(result);
 
-    var reservations =
-        Assert.IsAssignableFrom<
-            IEnumerable<RestaurantReservationListResponse>>(
-                okResult.Value);
+        var reservations =
+            Assert.IsAssignableFrom<
+                IEnumerable<RestaurantReservationListResponse>>(
+                    okResult.Value);
 
-    Assert.Empty(reservations);
-}
-
+        Assert.Empty(reservations);
+    }
 }
