@@ -24,5 +24,16 @@ public class AccommodationBookingResponse
 
     public AccommodationBookingStatus Status { get; set; }
 
+    // Cancellation / Refund information
+    public string? CancellationReason { get; set; }
+
+    public DateTime? CancelledAt { get; set; }
+
+    public decimal RefundPercentage { get; set; }
+
+    public decimal RefundAmount { get; set; }
+
+    public DateTime? RefundedAt { get; set; }
+
     public DateTime CreatedAt { get; set; }
 }
