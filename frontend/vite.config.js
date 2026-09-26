@@ -33,6 +33,13 @@ export default defineConfig({
         secure: false,
       },
 
+      // Booking Service - Accommodation bookings
+      '/api/AccommodationBookings': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
       // Booking Service - Restaurant reservations
       '/api/Reservations': {
         target: 'http://localhost:5229',

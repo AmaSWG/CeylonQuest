@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using BookingService.DTOs;
 
@@ -14,10 +13,13 @@ public class CatalogService : ICatalogService
         _httpClient = httpClient;
     }
 
-    public async Task<CatalogAvailabilityResponse?>
-        GetAvailabilityAsync(
-            Guid listingId,
-            DateOnly date)
+    // =========================================================
+    // Experience / Restaurant / Accommodation Availability
+    // =========================================================
+
+    public async Task<CatalogAvailabilityResponse?> GetAvailabilityAsync(
+        Guid listingId,
+        DateOnly date)
     {
         var url =
             $"/api/catalog/availability/{listingId}?date={date:yyyy-MM-dd}";
@@ -33,8 +35,12 @@ public class CatalogService : ICatalogService
             .ReadFromJsonAsync<CatalogAvailabilityResponse>();
     }
 
-    public async Task<CatalogListingResponse?>
-        GetListingAsync(Guid listingId)
+    // =========================================================
+    // Story 7.1 - Experience
+    // =========================================================
+
+    public async Task<CatalogListingResponse?> GetListingAsync(
+        Guid listingId)
     {
         var url =
             $"/api/catalog/activity-listings/public/{listingId}";
@@ -50,8 +56,12 @@ public class CatalogService : ICatalogService
             .ReadFromJsonAsync<CatalogListingResponse>();
     }
 
-    public async Task<CatalogRestaurantResponse?>
-        GetRestaurantAsync(Guid restaurantId)
+    // =========================================================
+    // Story 8.1 - Restaurant
+    // =========================================================
+
+    public async Task<CatalogRestaurantResponse?> GetRestaurantAsync(
+        Guid restaurantId)
     {
         var response = await _httpClient.GetAsync(
             "/api/catalog/restaurant-listings/public");
@@ -63,8 +73,7 @@ public class CatalogService : ICatalogService
 
         var restaurants =
             await response.Content
-                .ReadFromJsonAsync<
-                    List<CatalogRestaurantResponse>>();
+                .ReadFromJsonAsync<List<CatalogRestaurantResponse>>();
 
         if (restaurants == null)
         {
@@ -74,6 +83,38 @@ public class CatalogService : ICatalogService
         return restaurants.FirstOrDefault(
             restaurant => restaurant.Id == restaurantId);
     }
+
+    // =========================================================
+    // Accommodation
+    // =========================================================
+
+    public async Task<CatalogAccommodationResponse?> GetAccommodationAsync(
+        Guid accommodationId)
+    {
+        var response = await _httpClient.GetAsync(
+            "/api/catalog/accommodation-listings/public");
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var accommodations =
+            await response.Content
+                .ReadFromJsonAsync<List<CatalogAccommodationResponse>>();
+
+        if (accommodations == null)
+        {
+            return null;
+        }
+
+        return accommodations.FirstOrDefault(
+            accommodation => accommodation.Id == accommodationId);
+    }
+
+    // =========================================================
+    // Reserve Capacity
+    // =========================================================
 
     public async Task<bool> ReserveCapacityAsync(
         Guid listingId,
@@ -98,71 +139,12 @@ public class CatalogService : ICatalogService
             return true;
         }
 
+        // 409 means requested capacity could not be reserved
         if (response.StatusCode == HttpStatusCode.Conflict)
         {
             return false;
         }
 
         return false;
-    }
-
-    // =====================================================
-    // Story 9.1 - Provider-owned activity listings
-    // =====================================================
-
-    public async Task<List<CatalogProviderListingResponse>>
-        GetMyActivityListingsAsync(string accessToken)
-    {
-        using var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            "/api/catalog/activity-listings");
-
-        request.Headers.Authorization =
-            new AuthenticationHeaderValue(
-                "Bearer",
-                accessToken);
-
-        var response =
-            await _httpClient.SendAsync(request);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return new List<CatalogProviderListingResponse>();
-        }
-
-        return await response.Content
-                   .ReadFromJsonAsync<
-                       List<CatalogProviderListingResponse>>()
-               ?? new List<CatalogProviderListingResponse>();
-    }
-
-    // =====================================================
-    // Story 9.1 - Provider-owned restaurant listings
-    // =====================================================
-
-    public async Task<List<CatalogProviderListingResponse>>
-        GetMyRestaurantListingsAsync(string accessToken)
-    {
-        using var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            "/api/catalog/restaurant-listings");
-
-        request.Headers.Authorization =
-            new AuthenticationHeaderValue(
-                "Bearer",
-                accessToken);
-
-        var response =
-            await _httpClient.SendAsync(request);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return new List<CatalogProviderListingResponse>();
-        }
-
-        return await response.Content
-                   .ReadFromJsonAsync<
-                       List<CatalogProviderListingResponse>>()
-               ?? new List<CatalogProviderListingResponse>();
     }
 }

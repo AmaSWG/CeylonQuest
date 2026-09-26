@@ -14,13 +14,16 @@ public interface ICatalogService
     Task<CatalogRestaurantResponse?> GetRestaurantAsync(
         Guid restaurantId);
 
+    Task<CatalogAccommodationResponse?> GetAccommodationAsync(
+        Guid accommodationId);
+
     Task<bool> ReserveCapacityAsync(
         Guid listingId,
         DateOnly date,
         string timeSlot,
         int participantCount);
 
-    // Story 9.1 - provider booking management
+    // Story 9.1 - Provider booking management
     Task<List<CatalogProviderListingResponse>>
         GetMyActivityListingsAsync(string accessToken);
 

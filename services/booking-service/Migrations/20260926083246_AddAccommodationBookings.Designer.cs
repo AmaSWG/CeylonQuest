@@ -4,6 +4,7 @@ using BookingService.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace booking_service.Migrations
 {
     [DbContext(typeof(BookingDbContext))]
-    partial class BookingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260926083246_AddAccommodationBookings")]
+    partial class AddAccommodationBookings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -91,13 +94,6 @@ namespace booking_service.Migrations
                     b.Property<DateOnly>("BookingDate")
                         .HasColumnType("date");
 
-                    b.Property<string>("CancellationReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
-
-                    b.Property<DateTime?>("CancelledAt")
-                        .HasColumnType("datetime(6)");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -124,15 +120,6 @@ namespace booking_service.Migrations
                     b.Property<string>("PaymentStatus")
                         .IsRequired()
                         .HasColumnType("longtext");
-
-                    b.Property<decimal>("RefundAmount")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<decimal>("RefundPercentage")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<DateTime?>("RefundedAt")
-                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -174,13 +161,6 @@ namespace booking_service.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("CancellationReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
-
-                    b.Property<DateTime?>("CancelledAt")
-                        .HasColumnType("datetime(6)");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -190,15 +170,6 @@ namespace booking_service.Migrations
                     b.Property<decimal>("PricePerPerson")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("RefundAmount")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<decimal>("RefundPercentage")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<DateTime?>("RefundedAt")
-                        .HasColumnType("datetime(6)");
 
                     b.Property<DateOnly>("ReservationDate")
                         .HasColumnType("date");
