@@ -13,8 +13,10 @@ public class CatalogService : ICatalogService
         _httpClient = httpClient;
     }
 
-    // Story 7.1 / Story 8.1
-    // Get availability for a listing on a selected date
+    // =========================================================
+    // Experience / Restaurant / Accommodation Availability
+    // =========================================================
+
     public async Task<CatalogAvailabilityResponse?> GetAvailabilityAsync(
         Guid listingId,
         DateOnly date)
@@ -33,8 +35,11 @@ public class CatalogService : ICatalogService
             .ReadFromJsonAsync<CatalogAvailabilityResponse>();
     }
 
-    // Story 7.1
-    // Get experience/listing information
+
+    // =========================================================
+    // Story 7.1 - Experience
+    // =========================================================
+
     public async Task<CatalogListingResponse?> GetListingAsync(
         Guid listingId)
     {
@@ -52,8 +57,11 @@ public class CatalogService : ICatalogService
             .ReadFromJsonAsync<CatalogListingResponse>();
     }
 
-    // Story 8.1
-    // Get restaurant information from the public restaurant endpoint
+
+    // =========================================================
+    // Story 8.1 - Restaurant
+    // =========================================================
+
     public async Task<CatalogRestaurantResponse?> GetRestaurantAsync(
         Guid restaurantId)
     {
@@ -78,8 +86,40 @@ public class CatalogService : ICatalogService
             restaurant => restaurant.Id == restaurantId);
     }
 
-    // Story 7.1 / Story 8.1
-    // Reserve capacity before creating booking/reservation
+
+    // =========================================================
+    // Accommodation
+    // =========================================================
+
+    public async Task<CatalogAccommodationResponse?> GetAccommodationAsync(
+        Guid accommodationId)
+    {
+        var response = await _httpClient.GetAsync(
+            "/api/catalog/accommodation-listings/public");
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var accommodations =
+            await response.Content
+                .ReadFromJsonAsync<List<CatalogAccommodationResponse>>();
+
+        if (accommodations == null)
+        {
+            return null;
+        }
+
+        return accommodations.FirstOrDefault(
+            accommodation => accommodation.Id == accommodationId);
+    }
+
+
+    // =========================================================
+    // Reserve Capacity
+    // =========================================================
+
     public async Task<bool> ReserveCapacityAsync(
         Guid listingId,
         DateOnly date,
