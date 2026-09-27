@@ -2,6 +2,7 @@ namespace BookingService.Events;
 
 public class PaymentCompletedEvent
 {
+    public string BookingType { get; set; } = "Experience";
     public Guid PaymentId { get; set; }
 
     public Guid BookingId { get; set; }
