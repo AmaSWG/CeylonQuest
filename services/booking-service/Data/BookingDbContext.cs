@@ -69,6 +69,11 @@ public class BookingDbContext : DbContext
         // =========================================================
         modelBuilder.Entity<PaymentTransaction>(entity =>
         {
+            // IMPORTANT:
+            // Existing migration created this table using
+            // the singular name "PaymentTransaction".
+            entity.ToTable("PaymentTransaction");
+
             entity.HasKey(p => p.Id);
 
             entity.Property(p => p.Amount)
@@ -84,10 +89,7 @@ public class BookingDbContext : DbContext
             entity.HasIndex(p => p.TransactionReference)
                 .IsUnique();
 
-            entity.HasOne(p => p.Booking)
-                .WithMany()
-                .HasForeignKey(p => p.BookingId)
-                .OnDelete(DeleteBehavior.Cascade);
+            entity.Property(p => p.BookingType).HasDefaultValue("Experience");
         });
 
 
@@ -96,6 +98,7 @@ public class BookingDbContext : DbContext
         // =========================================================
         modelBuilder.Entity<RestaurantReservation>(entity =>
         {
+            entity.Property(r => r.PaymentStatus).HasConversion<string>();
             entity.HasKey(r => r.Id);
 
             // Store ReservationStatus enum as text
@@ -132,6 +135,7 @@ public class BookingDbContext : DbContext
         // =========================================================
         modelBuilder.Entity<AccommodationBooking>(entity =>
         {
+            entity.Property(a => a.PaymentStatus).HasConversion<string>();
             entity.HasKey(a => a.Id);
 
             // Store AccommodationBookingStatus enum as text
