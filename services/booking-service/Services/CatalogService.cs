@@ -7,11 +7,44 @@ namespace BookingService.Services;
 
 public class CatalogService : ICatalogService
 {
+        public async Task<List<CatalogAdminListingResponse>> GetAdminListingsAsync(string accessToken)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/api/catalog/reports/admin-listings");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            using var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<CatalogAdminListingResponse>>()
+                ?? throw new System.Text.Json.JsonException("Missing admin catalog response.");
+        }
+
     private readonly HttpClient _httpClient;
 
     public CatalogService(HttpClient httpClient)
     {
         _httpClient = httpClient;
+    }
+
+    // Same authenticated catalog endpoints as provider booking management,
+    // but reporting must distinguish lookup failures from genuinely empty inventory.
+    public async Task<ProviderReportListingIds> GetReportOwnedListingIdsAsync(string accessToken)
+    {
+        async Task<HashSet<Guid>> GetIds(string path)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, path);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            using var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            var listings = await response.Content.ReadFromJsonAsync<List<CatalogProviderListingResponse>>()
+                ?? throw new System.Text.Json.JsonException("Missing provider inventory response.");
+            return listings.Select(l => l.Id).ToHashSet();
+        }
+
+        return new ProviderReportListingIds
+        {
+            ActivityIds = await GetIds("/api/catalog/activity-listings"),
+            RestaurantIds = await GetIds("/api/catalog/restaurant-listings"),
+            AccommodationIds = await GetIds("/api/catalog/accommodation-listings")
+        };
     }
 
     // =========================================================

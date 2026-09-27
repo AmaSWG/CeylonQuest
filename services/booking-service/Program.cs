@@ -178,6 +178,9 @@ builder.Services.AddSwaggerGen(options =>
 // ICatalogService -> CatalogService
 // =========================================================
 
+builder.Services.AddScoped<IBookingsRevenueReportService, BookingsRevenueReportService>();
+builder.Services.AddScoped<IAdminBookingsRevenueReportService, AdminBookingsRevenueReportService>();
+
 builder.Services.AddHttpClient<
     ICatalogService,
     CatalogService>(client =>
