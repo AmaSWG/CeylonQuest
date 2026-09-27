@@ -7,7 +7,6 @@ public class CreatePaymentRequest
     [Required]
     public Guid BookingId { get; set; }
 
-    // true  = successful simulated payment
-    // false = failed/cancelled/back payment
-    public bool SimulateSuccess { get; set; }
+    [RegularExpression("^(Experience|Accommodation|Restaurant)$")]
+    public string BookingType { get; set; } = "Experience";
 }
