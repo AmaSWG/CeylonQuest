@@ -10,8 +10,30 @@ using Shared.Kafka;
 using Shared.Storage;
 using BookingService.Data;
 using BookingService.Services;
+using Stripe;
 
 var builder = WebApplication.CreateBuilder(args);
+
+
+// =========================================================
+// Stripe Sandbox
+// =========================================================
+
+var stripeSecretKey = builder.Configuration["Stripe:SecretKey"];
+
+if (string.IsNullOrWhiteSpace(stripeSecretKey))
+{
+    throw new InvalidOperationException(
+        "Stripe SecretKey is not configured."
+    );
+}
+
+StripeConfiguration.ApiKey = stripeSecretKey;
+if (!stripeSecretKey.StartsWith("sk_test_", StringComparison.Ordinal) &&
+    !stripeSecretKey.StartsWith("rk_test_", StringComparison.Ordinal))
+{
+    throw new InvalidOperationException("Only Stripe Sandbox/test API keys are supported.");
+}
 
 
 // =========================================================
@@ -98,8 +120,7 @@ builder.Services.AddAuthentication(options =>
             ValidAudience = jwtAudience,
 
             IssuerSigningKey =
-                new SymmetricSecurityKey(
-                    signingKeyBytes),
+                new SymmetricSecurityKey(signingKeyBytes),
 
             RoleClaimType =
                 ClaimTypes.Role,
@@ -124,9 +145,7 @@ builder.Services.AddSwaggerGen(options =>
         "v1",
         new OpenApiInfo
         {
-            Title =
-                "CeylonQuest Booking Service API",
-
+            Title = "CeylonQuest Booking Service API",
             Version = "v1"
         });
 
@@ -136,19 +155,11 @@ builder.Services.AddSwaggerGen(options =>
         new OpenApiSecurityScheme
         {
             Name = "Authorization",
-
-            Type =
-                SecuritySchemeType.Http,
-
+            Type = SecuritySchemeType.Http,
             Scheme = "bearer",
-
             BearerFormat = "JWT",
-
-            In =
-                ParameterLocation.Header,
-
-            Description =
-                "Enter your JWT access token."
+            In = ParameterLocation.Header,
+            Description = "Enter your JWT access token."
         });
 
     options.AddSecurityRequirement(
@@ -160,13 +171,10 @@ builder.Services.AddSwaggerGen(options =>
                     Reference =
                         new OpenApiReference
                         {
-                            Type =
-                                ReferenceType.SecurityScheme,
-
+                            Type = ReferenceType.SecurityScheme,
                             Id = "Bearer"
                         }
                 },
-
                 Array.Empty<string>()
             }
         });
@@ -178,8 +186,13 @@ builder.Services.AddSwaggerGen(options =>
 // ICatalogService -> CatalogService
 // =========================================================
 
-builder.Services.AddScoped<IBookingsRevenueReportService, BookingsRevenueReportService>();
-builder.Services.AddScoped<IAdminBookingsRevenueReportService, AdminBookingsRevenueReportService>();
+builder.Services.AddScoped<
+    IBookingsRevenueReportService,
+    BookingsRevenueReportService>();
+
+builder.Services.AddScoped<
+    IAdminBookingsRevenueReportService,
+    AdminBookingsRevenueReportService>();
 
 builder.Services.AddHttpClient<
     ICatalogService,
@@ -187,8 +200,7 @@ builder.Services.AddHttpClient<
 {
     client.BaseAddress =
         new Uri(
-            builder.Configuration[
-                "Services:ProviderCatalog"]
+            builder.Configuration["Services:ProviderCatalog"]
             ?? "http://localhost:5141"
         );
 });
@@ -196,17 +208,18 @@ builder.Services.AddHttpClient<
 
 // =========================================================
 // Identity Service
-// IIdentityService -> IdentityService
+// IIdentityService -> BookingService.Services.IdentityService
 // =========================================================
 
+// Full namespace is used because Stripe also contains
+// a class called IdentityService.
 builder.Services.AddHttpClient<
     IIdentityService,
-    IdentityService>(client =>
+    BookingService.Services.IdentityService>(client =>
 {
     client.BaseAddress =
         new Uri(
-            builder.Configuration[
-                "Services:Identity"]
+            builder.Configuration["Services:Identity"]
             ?? "http://localhost:5278"
         );
 });
@@ -216,8 +229,7 @@ builder.Services.AddHttpClient<
 // CORS
 // =========================================================
 
-const string FrontendPolicy =
-    "FrontendPolicy";
+const string FrontendPolicy = "FrontendPolicy";
 
 var allowedOrigins =
     builder.Configuration
