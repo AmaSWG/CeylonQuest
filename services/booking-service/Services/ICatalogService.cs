@@ -4,6 +4,10 @@ namespace BookingService.Services;
 
 public interface ICatalogService
 {
+    Task<List<CatalogAdminListingResponse>> GetAdminListingsAsync(string accessToken);
+
+    Task<ProviderReportListingIds> GetReportOwnedListingIdsAsync(string accessToken);
+
     Task<CatalogAvailabilityResponse?> GetAvailabilityAsync(
         Guid listingId,
         DateOnly date);
