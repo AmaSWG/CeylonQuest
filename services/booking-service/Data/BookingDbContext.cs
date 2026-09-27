@@ -17,6 +17,11 @@ public class BookingDbContext : DbContext
     public DbSet<Booking> Bookings { get; set; }
 
     // =========================================================
+    // Simulated Payment Transactions
+    // =========================================================
+    public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
+
+    // =========================================================
     // Story 8.1 - Restaurant Reservations
     // =========================================================
     public DbSet<RestaurantReservation> RestaurantReservations { get; set; }
@@ -35,7 +40,6 @@ public class BookingDbContext : DbContext
         // =========================================================
         // Story 7.1 - Experience Booking
         // =========================================================
-
         modelBuilder.Entity<Booking>(entity =>
         {
             entity.HasKey(b => b.Id);
@@ -61,36 +65,35 @@ public class BookingDbContext : DbContext
 
 
         // =========================================================
-// Simulated Payment Transaction
-// =========================================================
-modelBuilder.Entity<PaymentTransaction>(entity =>
-{
-    entity.HasKey(p => p.Id);
+        // Simulated Payment Transaction
+        // =========================================================
+        modelBuilder.Entity<PaymentTransaction>(entity =>
+        {
+            entity.HasKey(p => p.Id);
 
-    entity.Property(p => p.Amount)
-        .HasPrecision(18, 2);
+            entity.Property(p => p.Amount)
+                .HasPrecision(18, 2);
 
-    entity.Property(p => p.Status)
-        .HasConversion<string>();
+            entity.Property(p => p.Status)
+                .HasConversion<string>();
 
-    entity.HasIndex(p => p.BookingId);
+            entity.HasIndex(p => p.BookingId);
 
-    entity.HasIndex(p => p.VisitorId);
+            entity.HasIndex(p => p.VisitorId);
 
-    entity.HasIndex(p => p.TransactionReference)
-        .IsUnique();
+            entity.HasIndex(p => p.TransactionReference)
+                .IsUnique();
 
-    entity.HasOne(p => p.Booking)
-        .WithMany()
-        .HasForeignKey(p => p.BookingId)
-        .OnDelete(DeleteBehavior.Cascade);
-});
+            entity.HasOne(p => p.Booking)
+                .WithMany()
+                .HasForeignKey(p => p.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
 
         // =========================================================
         // Story 8.1 - Restaurant Reservation
         // =========================================================
-
         modelBuilder.Entity<RestaurantReservation>(entity =>
         {
             entity.HasKey(r => r.Id);
@@ -127,7 +130,6 @@ modelBuilder.Entity<PaymentTransaction>(entity =>
         // =========================================================
         // Accommodation Booking
         // =========================================================
-
         modelBuilder.Entity<AccommodationBooking>(entity =>
         {
             entity.HasKey(a => a.Id);
