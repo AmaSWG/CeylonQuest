@@ -26,6 +26,14 @@ export default defineConfig({
         secure: false,
       },
 
+      // Booking Service - Admin bookings and revenue report.
+      // Keep this more specific route before the generic Identity /api proxy.
+      '/api/admin/reports/bookings-revenue': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
       // Booking Service - Experience bookings
       '/api/Bookings': {
         target: 'http://localhost:5229',

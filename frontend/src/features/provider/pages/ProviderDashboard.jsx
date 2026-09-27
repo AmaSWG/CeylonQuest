@@ -27,6 +27,7 @@ import ProviderOverviewTab from '../components/ProviderOverviewTab'
 import ProviderBusinessProfileTab from '../components/ProviderBusinessProfileTab'
 import ProviderListingsTab from '../components/ProviderListingsTab'
 import ProviderBookingsTab from '../components/ProviderBookingsTab'
+import ProviderBookingsRevenueReportTab from '../components/ProviderBookingsRevenueReportTab'
 import ProviderNotificationsTab from '../components/ProviderNotificationsTab'
 import ProviderAccountTab from '../components/ProviderAccountTab'
 
@@ -653,6 +654,12 @@ function ProviderDashboard({ onLogout }) {
     },
 
     {
+      key: 'bookings-revenue',
+      icon: <BarChartIcon size={18} />,
+      label: 'Bookings & Revenue'
+    },
+
+    {
       key: 'notifications',
       icon:
         <NotificationsActiveIcon
@@ -788,6 +795,10 @@ function ProviderDashboard({ onLogout }) {
           onLogout={handleLogout}
           isAdmin={false}
         />
+      )}
+
+      {activeTab === 'bookings-revenue' && (
+        <ProviderBookingsRevenueReportTab token={token} onLogout={handleLogout} />
       )}
 
 
