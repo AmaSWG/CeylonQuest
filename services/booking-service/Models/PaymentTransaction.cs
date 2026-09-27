@@ -30,6 +30,8 @@ public class PaymentTransaction
 
     public DateTime? ProcessedAt { get; set; }
 
-    // Relationship to Booking
-    public Booking Booking { get; set; } = null!;
+    // BookingId identifies an entity in the table selected by BookingType.
+    [Required]
+    [MaxLength(30)]
+    public string BookingType { get; set; } = "Experience";
 }
