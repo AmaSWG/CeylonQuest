@@ -65,15 +65,15 @@ public class BookingsRevenueReportTests
         Seed(db, Guid.NewGuid());
         var report = await new BookingsRevenueReportService(db, Catalog(ownedId).Object)
             .GenerateAsync("provider-token", new());
-        Assert.Equal(9, report.TotalBookings);
+        Assert.Equal(11, report.TotalBookings);
         Assert.Equal(900m, report.TotalRevenue);
         Assert.Equal(3, report.StatusCounts["Confirmed"]);
         Assert.Equal(3, report.StatusCounts["Cancelled"]);
         Assert.Equal(2, report.StatusCounts["Completed"]);
-        Assert.Equal(1, report.StatusCounts["PendingPayment"]);
+        Assert.Equal(3, report.StatusCounts["PendingPayment"]);
         Assert.Equal(4, report.BookingTypeCounts["Experience"]);
-        Assert.Equal(2, report.BookingTypeCounts["Restaurant"]);
-        Assert.Equal(3, report.BookingTypeCounts["Accommodation"]);
+        Assert.Equal(3, report.BookingTypeCounts["Restaurant"]);
+        Assert.Equal(4, report.BookingTypeCounts["Accommodation"]);
         Assert.All(report.Records.Where(r => r.Status is "Cancelled" or "PendingPayment"), r => Assert.Equal(0m, r.Revenue));
     }
 
@@ -81,6 +81,8 @@ public class BookingsRevenueReportTests
     [InlineData("Experience", "Confirmed", 90)]
     [InlineData("Restaurant", "Confirmed", 180)]
     [InlineData("Accommodation", "Completed", 270)]
+    [InlineData("Accommodation", "PendingPayment", 0)]
+    [InlineData("Restaurant", "PendingPayment", 0)]
     [InlineData("experience", "confirmed", 90)]
     public async Task CombinedFilters_UseInclusiveServiceDate(string type, string status, int revenue)
     {
@@ -106,12 +108,11 @@ public class BookingsRevenueReportTests
         Seed(db, id, Day.AddDays(-1)); Seed(db, id); Seed(db, id, Day.AddDays(1));
         var report = await new BookingsRevenueReportService(db, Catalog(id).Object).GenerateAsync("provider-token",
             new() { StartDate = startOnly ? Day : null, EndDate = startOnly ? null : Day });
-        Assert.Equal(18, report.TotalBookings);
+        Assert.Equal(22, report.TotalBookings);
     }
 
     [Theory]
     [InlineData("Restaurant", "Completed")]
-    [InlineData("Accommodation", "PendingPayment")]
     public async Task ValidButInapplicableStatuses_ReturnEmpty(string type, string status)
     {
         using var db = CreateDb(); var id = Guid.NewGuid(); Seed(db, id);

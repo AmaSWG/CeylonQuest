@@ -1732,7 +1732,7 @@ public class AccommodationBookingsControllerTests
 
         Assert.Equal(
 
-            AccommodationBookingStatus.Confirmed,
+            AccommodationBookingStatus.PendingPayment,
 
             booking.Status);
 
@@ -1868,7 +1868,7 @@ public class AccommodationBookingsControllerTests
 
         Assert.Equal(
 
-            AccommodationBookingStatus.Confirmed,
+            AccommodationBookingStatus.PendingPayment,
 
             response.Status);
 

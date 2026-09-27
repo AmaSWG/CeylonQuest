@@ -1406,7 +1406,7 @@ public class ReservationsControllerTests
 
     // TEST 19
 
-    // New reservation status should be Confirmed
+    // New reservation stays pending until payment succeeds
 
     // =========================================================
 
@@ -1414,7 +1414,7 @@ public class ReservationsControllerTests
 
     [Fact]
 
-    public async Task CreateReservation_ValidRequest_StatusIsConfirmed()
+    public async Task CreateReservation_ValidRequest_StatusIsPendingPayment()
 
     {
 
@@ -1450,7 +1450,7 @@ public class ReservationsControllerTests
 
         Assert.Equal(
 
-            ReservationStatus.Confirmed,
+            ReservationStatus.PendingPayment,
 
             reservation.Status);
 
@@ -1550,7 +1550,7 @@ public class ReservationsControllerTests
 
         Assert.Equal(
 
-            ReservationStatus.Confirmed,
+            ReservationStatus.PendingPayment,
 
             response.Status);
 
