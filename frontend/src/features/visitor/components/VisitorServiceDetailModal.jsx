@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import './VisitorServiceDetailModal.css'
 import {
   CloseIcon,
-  CalendarMonthIcon,
   GroupIcon,
   RestaurantIcon,
   HotelIcon,
@@ -14,23 +13,6 @@ import {
   DiningIcon
 } from '../../../components/Icons'
 
-const formatAvailabilityDate = (value) => {
-  if (!value) return null
-  const date = new Date(`${String(value).slice(0, 10)}T00:00:00Z`)
-  if (Number.isNaN(date.getTime())) return null
-  return date.toLocaleDateString('en-GB', {
-    day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'
-  })
-}
-
-const getAvailabilityPeriod = (item) => {
-  const from = formatAvailabilityDate(item.validFrom)
-  const until = formatAvailabilityDate(item.validUntil)
-  if (from && until) return `${from} – ${until}`
-  if (from) return `From ${from} (no end date set)`
-  if (until) return `Until ${until}`
-  return 'Not specified'
-}
 export default function VisitorServiceDetailModal({ item, onClose, onOpenBooking }) {
   const [lightboxIndex, setLightboxIndex] = useState(null)
 
@@ -154,12 +136,6 @@ export default function VisitorServiceDetailModal({ item, onClose, onOpenBooking
                     <AccessTimeFilledIcon size={16} /> Duration:
                   </span>
                   <span className="vd-detail-row__val">{item.duration || 'Flexible'}</span>
-                </div>
-                <div className="vd-detail-row">
-                  <span className="vd-detail-row__label">
-                    <CalendarMonthIcon size={16} /> Available Period:
-                  </span>
-                  <span className="vd-detail-row__val">{getAvailabilityPeriod(item)}</span>
                 </div>
                 <div className="vd-detail-row">
                   <span className="vd-detail-row__label">

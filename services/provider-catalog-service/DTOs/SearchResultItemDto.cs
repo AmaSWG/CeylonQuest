@@ -33,8 +33,6 @@ public class SearchResultItemDto
     public int? MaxParticipants { get; set; }
     public string? AvailableDays { get; set; }
     public string? TimeSlots { get; set; }
-    public DateTime? ValidFrom { get; set; }
-    public DateTime? ValidUntil { get; set; }
 
     // Restaurant specific fields
     public string? CuisineType { get; set; }

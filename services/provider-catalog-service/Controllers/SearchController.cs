@@ -141,8 +141,6 @@ public class SearchController : ControllerBase
                 MaxParticipants = a.MaxParticipants,
                 AvailableDays = a.AvailableDays,
                 TimeSlots = a.TimeSlots,
-                ValidFrom = a.ValidFrom,
-                ValidUntil = a.ValidUntil,
                 CreatedAt = a.CreatedAt,
                 Images = ParseImages(a.Images)
             }).ToList();

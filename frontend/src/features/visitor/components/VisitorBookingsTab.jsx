@@ -931,7 +931,17 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                         </strong>
                                                     </div>
 
+                                                    <div className="vb-detail-item">
+                                                        <span>
+                                                            Total Amount
+                                                        </span>
 
+                                                        <strong className="vb-detail-price">
+                                                            {formatMoney(
+                                                                selectedBooking.totalAmount
+                                                            )}
+                                                        </strong>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ) : (
@@ -980,7 +990,17 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                         </strong>
                                                     </div>
 
+                                                    <div className="vb-detail-item">
+                                                        <span>
+                                                            Total Amount
+                                                        </span>
 
+                                                        <strong className="vb-detail-price">
+                                                            {formatMoney(
+                                                                selectedBooking.totalAmount
+                                                            )}
+                                                        </strong>
+                                                    </div>
 
                                                     {selectedBooking.unitPrice != null && (
                                                         <div className="vb-detail-item">
@@ -1012,11 +1032,6 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                 </div>
                                             </div>
                                         )}
-
-                                        <div className="vb-total-panel">
-                                            <span>Total Amount</span>
-                                            <strong>{formatMoney(selectedBooking.totalAmount)}</strong>
-                                        </div>
 
                                         {/* CANCELLED DETAILS */}
 
