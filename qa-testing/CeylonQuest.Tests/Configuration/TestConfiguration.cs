@@ -12,6 +12,8 @@ namespace CeylonQuest.Tests.Configuration
         public int ImplicitWaitSeconds { get; set; } = 10;
         public string VisitorEmail { get; set; } = "amayagunasekara4@gmail.com";
         public string VisitorPassword { get; set; } = "Amaya@123!";
+        public string ProviderEmail { get; set; } = "contact@serendibtrails.example.com";
+        public string ProviderPassword { get; set; } = "Chanumi@2002";
     }
 
     public static class TestConfiguration
