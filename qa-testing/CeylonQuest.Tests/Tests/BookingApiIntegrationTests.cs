@@ -11,7 +11,6 @@ using Xunit;
 
 namespace CeylonQuest.Tests.Tests
 {
-    [Trait("Category", "API")]
     public class BookingApiIntegrationTests
     {
         private readonly HttpClient _bookingClient;
@@ -86,8 +85,9 @@ namespace CeylonQuest.Tests.Tests
             throw new InvalidOperationException("No available experience slot found in catalog.");
         }
 
-        [Fact(DisplayName = "API 7.1: Missing token returns 401 Unauthorized")]
-        public async Task CreateBooking_MissingAuthToken_Returns401()
+        [Fact(DisplayName = "CQExBTC-06: Missing token returns 401 Unauthorized")]
+        [Trait("TestCase", "CQExBTC-06")]
+        public async Task CQExBTC_06_CreateBooking_MissingAuthToken_Returns401()
         {
             _bookingClient.DefaultRequestHeaders.Authorization = null;
             var payload = new
@@ -102,8 +102,9 @@ namespace CeylonQuest.Tests.Tests
             Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
         }
 
-        [Fact(DisplayName = "API 7.1: Non-existent listing ID returns 400 Bad Request")]
-        public async Task CreateBooking_NonExistentListing_Returns400()
+        [Fact(DisplayName = "CQExBTC-07: Non-existent listing ID returns 400 Bad Request")]
+        [Trait("API", "CQExBTC-07")]
+        public async Task CQExBTC_07_CreateBooking_NonExistentListing_Returns400()
         {
             var token = await GetVisitorTokenAsync();
             _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -120,8 +121,9 @@ namespace CeylonQuest.Tests.Tests
             Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         }
 
-        [Fact(DisplayName = "API 7.1: Invalid or non-existent time slot returns 400 Bad Request")]
-        public async Task CreateBooking_InvalidTimeSlot_Returns400()
+        [Fact(DisplayName = "CQExBTC-08: Invalid or non-existent time slot returns 400 Bad Request")]
+        [Trait("API", "CQExBTC-08")]
+        public async Task CQExBTC_08_CreateBooking_InvalidTimeSlot_Returns400()
         {
             var token = await GetVisitorTokenAsync();
             _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -140,8 +142,9 @@ namespace CeylonQuest.Tests.Tests
             Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         }
 
-        [Fact(DisplayName = "API 7.1: Exact capacity boundary (count == remainingCapacity) succeeds with 201")]
-        public async Task CreateBooking_ExactCapacityBoundary_Succeeds()
+        [Fact(DisplayName = "CQExBTC-09: Exact capacity boundary (count == remainingCapacity) succeeds with 201")]
+        [Trait("TestCase", "CQExBTC-09")]
+        public async Task CQExBTC_09_CreateBooking_ExactCapacityBoundary_Succeeds()
         {
             var token = await GetVisitorTokenAsync();
             _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -161,8 +164,9 @@ namespace CeylonQuest.Tests.Tests
             Assert.True(resp.StatusCode == HttpStatusCode.Created || resp.StatusCode == HttpStatusCode.OK);
         }
 
-        [Fact(DisplayName = "API 7.1: Decrements remaining capacity in catalog")]
-        public async Task CreateBooking_DecrementsRemainingCapacity()
+        [Fact(DisplayName = "CQExBTC-10: Decrements remaining capacity in catalog")]
+        [Trait("API", "CQExBTC-10")]
+        public async Task CQExBTC_10_CreateBooking_DecrementsRemainingCapacity()
         {
             var token = await GetVisitorTokenAsync();
             _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);

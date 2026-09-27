@@ -61,8 +61,9 @@ namespace CeylonQuest.Tests.Tests
             }
         }
 
-        [Fact(DisplayName = "Scenario 1: Select Booking Details - Allows user to select date, time and participants")]
-        public void Scenario1_ShouldAllowSelectingBookingDetails()
+        [Fact(DisplayName = "CQExBTC-01: Select Booking Details - Allows user to select date, time and participants")]
+        [Trait("TestCase", "CQExBTC-01")]
+        public void CQExBTC_01_ShouldAllowSelectingBookingDetails()
         {
             _explorePage.FilterByExperiences();
             _explorePage.ClickFirstExperienceBookNow();
@@ -77,8 +78,9 @@ namespace CeylonQuest.Tests.Tests
             Assert.True(_bookingModal.WaitForConfirmButtonEnabled(),"Confirm Booking button should be enabled for valid details.");
         }
 
-        [Fact(DisplayName = "Scenario 2: Validate Booking Details - Prevent booking when required fields are missing")]
-        public void Scenario2_ShouldValidateBookingDetails()
+        [Fact(DisplayName = "CQExBTC-02: Validate Booking Details - Prevent booking when required fields are missing")]
+        [Trait("TestCase", "CQExBTC-02")]
+        public void CQExBTC_02_ShouldValidateBookingDetails()
         {
             _explorePage.FilterByExperiences();
             _explorePage.ClickFirstExperienceBookNow();
@@ -90,8 +92,9 @@ namespace CeylonQuest.Tests.Tests
             Assert.Equal(1, _bookingModal.GetCurrentGuestCount());
         }
 
-        [Fact(DisplayName = "Scenario 3: Validate Experience Availability - Prevent overbooking capacity")]
-        public void Scenario3_ShouldPreventOverbooking()
+        [Fact(DisplayName = "CQExBTC-03: Validate Experience Availability - Prevent overbooking capacity")]
+        [Trait("TestCase", "CQExBTC-03")]
+        public void CQExBTC_03_ShouldPreventOverbooking()
         {
             _explorePage.FilterByExperiences();
             _explorePage.ClickFirstExperienceBookNow();
@@ -106,8 +109,9 @@ namespace CeylonQuest.Tests.Tests
                 "Overbooking must be prevented by clamping input or disabling confirm button.");
         }
 
-        [Fact(DisplayName = "Scenario 4: Calculate Booking Amount - Dynamic calculation based on price * count")]
-        public void Scenario4_ShouldCalculateTotalAmountCorrectly()
+        [Fact(DisplayName = "CQExBTC-04: Calculate Booking Amount - Dynamic calculation based on price * count")]
+        [Trait("TestCase", "CQExBTC-04")]
+        public void CQExBTC_04_ShouldCalculateTotalAmountCorrectly()
         {
             _explorePage.FilterByExperiences();
             _explorePage.ClickFirstExperienceBookNow();
@@ -122,8 +126,9 @@ namespace CeylonQuest.Tests.Tests
             Assert.Equal(basePrice * 3, _bookingModal.GetEstimatedTotal());
         }
 
-        [Fact(DisplayName = "Scenario 5: Create Booking - Creates booking with Pending Payment status")]
-        public void Scenario5_ShouldCreateBookingWithPendingPaymentStatus()
+        [Fact(DisplayName = "CQExBTC-05: Create Booking - Creates booking with Pending Payment status")]
+        [Trait("TestCase", "CQExBTC-05")]
+        public void CQExBTC_05_ShouldCreateBookingWithPendingPaymentStatus()
         {
             _explorePage.FilterByExperiences();
             _explorePage.ClickFirstExperienceBookNow();

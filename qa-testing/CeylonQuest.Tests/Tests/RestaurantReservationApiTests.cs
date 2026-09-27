@@ -11,7 +11,6 @@ using Xunit;
 
 namespace CeylonQuest.Tests.Tests
 {
-    [Trait("Category", "API")]
     public class RestaurantReservationApiTests
     {
         private readonly HttpClient _catalogClient;
@@ -88,8 +87,9 @@ namespace CeylonQuest.Tests.Tests
             throw new InvalidOperationException("No available slot found for restaurant.");
         }
 
-        [Fact(DisplayName = "API 8.1: Zero or negative party size returns 400 Bad Request")]
-        public async Task CreateReservation_ZeroPartySize_Returns400()
+        [Fact(DisplayName = "CQResBTC-04: Zero or negative party size returns 400 Bad Request")]
+        [Trait("TestCase", "CQResBTC-04")]
+        public async Task CQResBTC_04_CreateReservation_ZeroPartySize_Returns400()
         {
             var token = await GetVisitorTokenAsync();
             _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -108,8 +108,9 @@ namespace CeylonQuest.Tests.Tests
             Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         }
 
-        [Fact(DisplayName = "API 8.1: Invalid or non-existent time slot returns 400 Bad Request")]
-        public async Task CreateReservation_InvalidTimeSlot_Returns400()
+        [Fact(DisplayName = "CQResBTC-05: Invalid or non-existent time slot returns 400 Bad Request")]
+        [Trait("TestCase", "CQResBTC-05")]
+        public async Task CQResBTC_05_CreateReservation_InvalidTimeSlot_Returns400()
         {
             var token = await GetVisitorTokenAsync();
             _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -128,8 +129,9 @@ namespace CeylonQuest.Tests.Tests
             Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         }
 
-        [Fact(DisplayName = "API 8.1: Exact capacity boundary reservation succeeds")]
-        public async Task CreateReservation_ExactCapacityBoundary_Succeeds()
+        [Fact(DisplayName = "CQResBTC-06: Exact capacity boundary reservation succeeds")]
+        [Trait("TestCase", "CQResBTC-06")]
+        public async Task CQResBTC_06_CreateReservation_ExactCapacityBoundary_Succeeds()
         {
             var token = await GetVisitorTokenAsync();
             _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -148,8 +150,9 @@ namespace CeylonQuest.Tests.Tests
             Assert.True(resp.IsSuccessStatusCode, "Exact remaining capacity should be reserved successfully.");
         }
 
-        [Fact(DisplayName = "API 8.1: Reservation decrements restaurant availability")]
-        public async Task CreateReservation_DecrementsRemainingCapacity()
+        [Fact(DisplayName = "CQResBTC-07: Reservation decrements restaurant availability")]
+        [Trait("TestCase", "CQResBTC-07")]
+        public async Task CQResBTC_07_CreateReservation_DecrementsRemainingCapacity()
         {
             var token = await GetVisitorTokenAsync();
             _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -178,8 +181,9 @@ namespace CeylonQuest.Tests.Tests
             Assert.Equal(remainingBefore - 1, remainingAfter);
         }
 
-        [Fact(DisplayName = "API 8.1: Created reservation exists in GetMyReservations response")]
-        public async Task CreateReservation_PersistsAndAppearsInMyReservations()
+        [Fact(DisplayName = "CQResBTC-08: Created reservation exists in GetMyReservations response")]
+        [Trait("TestCase", "CQResBTC-08")]
+        public async Task CQResBTC_08_CreateReservation_PersistsAndAppearsInMyReservations()
         {
             var token = await GetVisitorTokenAsync();
             _bookingClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);

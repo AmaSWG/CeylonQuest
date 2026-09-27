@@ -36,7 +36,8 @@ namespace CeylonQuest.Tests.Tests
             _loginPage.Login(TestConfiguration.Settings.VisitorEmail, TestConfiguration.Settings.VisitorPassword);
         }
 
-        [Fact(DisplayName = "Accommodation UI: Guest count change keeps fixed nightly rate")]
+        [Fact(DisplayName = "CQAccBTC-01: Guest count change keeps fixed nightly rate")]
+        [Trait("TestCase", "CQAccBTC-01")]
         public void Accommodation_GuestCountChange_DoesNotMultiplyBaseRate()
         {
             _explorePage.FilterByAccommodations();
@@ -62,7 +63,8 @@ namespace CeylonQuest.Tests.Tests
             Assert.True(_modalPage.WaitForConfirmButtonEnabled(5), "Booking button should be enabled for valid accommodation details.");
         }
 
-        [Fact(DisplayName = "Accommodation UI: Exceeding maxGuests disables booking button")]
+        [Fact(DisplayName = "CQAccBTC-02: Exceeding maxGuests disables booking button")]
+        [Trait("TestCase", "CQAccBTC-02")]
         public void Accommodation_ExceedingMaxGuests_ShowsErrorAndDisablesConfirm()
         {
             _explorePage.FilterByAccommodations();

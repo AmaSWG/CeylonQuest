@@ -36,8 +36,9 @@ namespace CeylonQuest.Tests.Tests
             _loginPage.Login(TestConfiguration.Settings.VisitorEmail, TestConfiguration.Settings.VisitorPassword);
         }
 
-        [Fact(DisplayName = "Restaurant UI: Select details and calculate price per person")]
-        public void Restaurant_SelectDetails_CalculatesPerPersonPrice()
+        [Fact(DisplayName = "CQResBTC-01: Select details and calculate price per person")]
+        [Trait("TestCase", "CQResBTC-01")]
+        public void CQResBTC_01_Restaurant_SelectDetails_CalculatesPerPersonPrice()
         {
             _explorePage.FilterByRestaurants();
             _explorePage.ClickFirstExperienceBookNow();
@@ -55,8 +56,9 @@ namespace CeylonQuest.Tests.Tests
             Assert.True(_modalPage.WaitForConfirmButtonEnabled(5), "Reserve Table button should be enabled for valid party size.");
         }
 
-        [Fact(DisplayName = "Restaurant UI: Exceeding seating capacity disables reservation button")]
-        public void Restaurant_ExceedingCapacity_DisablesButton()
+        [Fact(DisplayName = "CQResBTC-02: Exceeding seating capacity disables reservation button")]
+        [Trait("TestCase", "CQResBTC-02")]
+        public void CQResBTC_02_Restaurant_ExceedingCapacity_DisablesButton()
         {
             _explorePage.FilterByRestaurants();
             _explorePage.ClickFirstExperienceBookNow();
@@ -70,8 +72,9 @@ namespace CeylonQuest.Tests.Tests
             Assert.True(isButtonDisabled || hasErrorMessage, "UI must prevent overcapacity reservation.");
         }
 
-        [Fact(DisplayName = "Restaurant UI: Reserve table confirms successfully")]
-        public void Restaurant_ValidReservation_CreatesConfirmedReservation()
+        [Fact(DisplayName = "CQResBTC-03: Reserve table confirms successfully")]
+        [Trait("TestCase", "CQResBTC-03")]
+        public void CQResBTC_03_Restaurant_ValidReservation_CreatesConfirmedReservation()
         {
             _explorePage.FilterByRestaurants();
             _explorePage.ClickFirstExperienceBookNow();
