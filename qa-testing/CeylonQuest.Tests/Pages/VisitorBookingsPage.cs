@@ -32,6 +32,15 @@ namespace CeylonQuest.Tests.Pages
         private By ModalTitle => By.CssSelector(".vb-modal__header h2");
         private By ModalCloseBtn => By.CssSelector(".vb-modal__close, .vb-close-btn");
 
+        // Cancellation Elements
+        private By FirstCancelBtn => By.CssSelector("table.vb-table tbody tr .vb-cancel-btn");
+        private By ConfirmCancelContinueBtn => By.CssSelector(".vb-confirm-cancel-btn");
+        private By CancellationReasonInput => By.Id("cancellationReason");
+        private By FinalConfirmCancelBtn => By.XPath("//button[contains(@class, 'vb-confirm-cancel-btn') and contains(text(), 'Confirm')]");
+        private By SuccessMessageBanner => By.CssSelector(".vb-success-message");
+        private By CancelledSection => By.CssSelector(".vb-cancelled-section");
+
+
         public void NavigateToBookingsTab()
         {
             // Wait for navigation sidebar to be ready
@@ -117,6 +126,44 @@ namespace CeylonQuest.Tests.Pages
             var closeBtn = _wait.Until(d => d.FindElement(ModalCloseBtn));
             ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", closeBtn);
             _wait.Until(d => d.FindElements(ModalOverlay).Count == 0 || !d.FindElement(ModalOverlay).Displayed);
+        }
+
+        public void CancelFirstActiveBooking(string reason = "Schedule changed")
+        {
+            // 1. Click 'Cancel' button on first active row
+            var cancelBtn = _wait.Until(d => d.FindElement(FirstCancelBtn));
+            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", cancelBtn);
+            // 2. Step 1 confirmation: Click 'Yes, Continue to Cancel'
+            var continueBtn = _wait.Until(d => d.FindElement(ConfirmCancelContinueBtn));
+            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", continueBtn);
+            // 3. Step 2 form: Enter optional reason
+            if (!string.IsNullOrEmpty(reason))
+            {
+                var reasonField = _wait.Until(d => d.FindElement(CancellationReasonInput));
+                reasonField.Clear();
+                reasonField.SendKeys(reason);
+            }
+            // 4. Click 'Confirm Booking Cancellation'
+            var finalBtn = _wait.Until(d => d.FindElement(FinalConfirmCancelBtn));
+            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", finalBtn);
+            // 5. Wait for success banner
+            _wait.Until(d => d.FindElement(SuccessMessageBanner).Displayed);
+        }
+        public bool IsSuccessBannerDisplayed()
+        {
+            try
+            {
+                return _wait.Until(d => d.FindElement(SuccessMessageBanner).Displayed);
+            }
+            catch { return false; }
+        }
+        public bool IsCancellationDetailsDisplayedInModal()
+        {
+            try
+            {
+                return _wait.Until(d => d.FindElement(CancelledSection).Displayed);
+            }
+            catch { return false; }
         }
     }
 }
