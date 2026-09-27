@@ -260,7 +260,7 @@ public class AccommodationBookingsController : ControllerBase
                 totalPrice,
 
             Status =
-                AccommodationBookingStatus.Confirmed,
+                AccommodationBookingStatus.PendingPayment,
 
             CancellationReason = null,
 

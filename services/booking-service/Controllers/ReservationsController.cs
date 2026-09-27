@@ -249,7 +249,7 @@ public class ReservationsController : ControllerBase
                     totalPrice,
 
                 Status =
-                    ReservationStatus.Confirmed,
+                    ReservationStatus.PendingPayment,
 
                 CreatedAt =
                     DateTime.UtcNow,
