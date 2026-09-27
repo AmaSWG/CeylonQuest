@@ -45,7 +45,7 @@ public class BookingsRevenueReportService : IBookingsRevenueReportService
         }
 
         if (Includes("Restaurant") && owned.RestaurantIds.Count > 0 &&
-            (!status.HasValue || status == BookingStatus.Confirmed || status == BookingStatus.Cancelled))
+            status != BookingStatus.Completed)
         {
             var reservations = _db.RestaurantReservations.AsNoTracking().Where(r => owned.RestaurantIds.Contains(r.RestaurantId));
             if (query.StartDate.HasValue) reservations = reservations.Where(r => r.ReservationDate >= query.StartDate.Value);
@@ -63,7 +63,7 @@ public class BookingsRevenueReportService : IBookingsRevenueReportService
             }).ToListAsync());
         }
 
-        if (Includes("Accommodation") && owned.AccommodationIds.Count > 0 && status != BookingStatus.PendingPayment)
+        if (Includes("Accommodation") && owned.AccommodationIds.Count > 0)
         {
             var stays = _db.AccommodationBookings.AsNoTracking().Where(a => owned.AccommodationIds.Contains(a.AccommodationId));
             if (query.StartDate.HasValue) stays = stays.Where(a => a.CheckInDate >= query.StartDate.Value);
