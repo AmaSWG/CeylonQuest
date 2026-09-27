@@ -61,6 +61,33 @@ public class BookingDbContext : DbContext
 
 
         // =========================================================
+// Simulated Payment Transaction
+// =========================================================
+modelBuilder.Entity<PaymentTransaction>(entity =>
+{
+    entity.HasKey(p => p.Id);
+
+    entity.Property(p => p.Amount)
+        .HasPrecision(18, 2);
+
+    entity.Property(p => p.Status)
+        .HasConversion<string>();
+
+    entity.HasIndex(p => p.BookingId);
+
+    entity.HasIndex(p => p.VisitorId);
+
+    entity.HasIndex(p => p.TransactionReference)
+        .IsUnique();
+
+    entity.HasOne(p => p.Booking)
+        .WithMany()
+        .HasForeignKey(p => p.BookingId)
+        .OnDelete(DeleteBehavior.Cascade);
+});
+
+
+        // =========================================================
         // Story 8.1 - Restaurant Reservation
         // =========================================================
 

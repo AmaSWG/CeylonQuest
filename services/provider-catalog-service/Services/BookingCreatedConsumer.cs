@@ -83,10 +83,11 @@ public class BookingCreatedConsumer : KafkaConsumerBase
         }
 
         _logger.LogInformation(
-            "Received {Topic} for Booking {BookingId}, Listing {ListingId}, Date {Date}, Slot {Slot}, Participants {Participants}. Capacity was already reserved before booking creation; no additional deduction is required.",
+            "Received {Topic} for Booking {BookingId}, Listing {ListingId}, Type {ListingType}, Date {Date}, Slot {Slot}, Capacity quantity {ParticipantCount}. Capacity was already reserved before booking creation; no additional deduction is required.",
             topic,
             evt.BookingId,
             evt.ListingId,
+            evt.ListingType,
             evt.BookingDate,
             evt.TimeSlot,
             evt.ParticipantCount);

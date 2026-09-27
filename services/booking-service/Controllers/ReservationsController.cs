@@ -264,6 +264,22 @@ public class ReservationsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        await _kafkaProducer.PublishAsync(
+            "booking.created",
+            reservation.Id.ToString(),
+            new BookingCreatedEvent
+            {
+                BookingId = reservation.Id,
+                VisitorId = reservation.VisitorId,
+                ListingId = reservation.RestaurantId,
+                ListingType = "Restaurant",
+                BookingDate = reservation.ReservationDate.ToString("yyyy-MM-dd"),
+                TimeSlot = reservation.TimeSlot,
+                ParticipantCount = reservation.PartySize,
+                TotalAmount = reservation.TotalPrice,
+                CreatedAt = reservation.CreatedAt
+            });
+
         // 19. Response
         var response =
             new RestaurantReservationResponse

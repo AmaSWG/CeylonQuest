@@ -240,6 +240,8 @@ public class BookingsController : ControllerBase
                 BookingId = booking.Id,
                 VisitorId = booking.VisitorId,
                 ListingId = booking.ListingId,
+                ListingType = "Experience",
+                CreatedAt = booking.CreatedAt,
 
                 BookingDate =
                     booking.BookingDate.ToString("yyyy-MM-dd"),
@@ -625,7 +627,7 @@ public class BookingsController : ControllerBase
                     booking.ListingId,
 
                 ListingType =
-                    booking.ListingType,
+                    "Experience",
 
                 BookingDate =
                     booking.BookingDate

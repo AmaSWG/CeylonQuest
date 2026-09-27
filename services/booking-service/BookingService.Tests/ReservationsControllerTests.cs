@@ -1600,6 +1600,22 @@ public class ReservationsControllerTests
 
         await controller.CreateReservation(request);
 
+        var saved = Assert.Single(context.RestaurantReservations);
+        _kafkaProducerMock.Verify(x => x.PublishAsync(
+            "booking.created",
+            saved.Id.ToString(),
+            It.Is<BookingService.Events.BookingCreatedEvent>(e =>
+                e.BookingId == saved.Id &&
+                e.VisitorId == saved.VisitorId &&
+                e.ListingId == saved.RestaurantId &&
+                e.ListingType == "Restaurant" &&
+                e.BookingDate == saved.ReservationDate.ToString("yyyy-MM-dd") &&
+                e.TimeSlot == saved.TimeSlot &&
+                e.ParticipantCount == request.PartySize &&
+                e.TotalAmount == saved.TotalPrice &&
+                e.CreatedAt == saved.CreatedAt),
+            It.IsAny<CancellationToken>()), Times.Once);
+
 
 
         _catalogServiceMock.Verify(
