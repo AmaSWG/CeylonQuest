@@ -929,33 +929,10 @@ export default function ProviderBookingsTab({
                   </div>
 
 
-                  <div className="pd-booking-detail-item">
-
-                    <span>
-                      Booking ID
-                    </span>
-
-                    <strong>
-                      {selectedBooking.id}
-                    </strong>
-
-                  </div>
 
 
-                  <div className="pd-booking-detail-item">
 
-                    <span>
-                      Customer ID
-                    </span>
 
-                    <strong>
-
-                      {selectedBooking.customerId ||
-                        '—'}
-
-                    </strong>
-
-                  </div>
 
                 </div>
 

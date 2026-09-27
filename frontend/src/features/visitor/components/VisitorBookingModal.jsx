@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import './VisitorBookingModal.css'
+import ExperienceAvailabilityDetails from './ExperienceAvailabilityDetails'
 
 import {
   CloseIcon,
@@ -840,6 +841,7 @@ export default function VisitorBookingModal({
             {/* EXPERIENCE */}
             {isExperience && (
               <>
+                <ExperienceAvailabilityDetails item={item} />
                 <div className="vd-detail-row">
                   <span className="vd-detail-row__label">
                     <AccessTimeFilledIcon size={16} />
