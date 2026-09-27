@@ -80,7 +80,7 @@ export default function OverviewTab({ stats, users = [], applications = [], book
           </div>
         </div>
 
-        <div className="ad-metric-card" className="ad-cursor-pointer" onClick={() => onNavigate('bookings')}>
+        <div className="ad-metric-card">
           <div className="ad-metric-icon ad-metric-icon--green"><CalendarMonthIcon size={24} /></div>
           <div className="ad-metric-info">
             <div className="ad-metric-title">Platform Bookings</div>
@@ -100,9 +100,6 @@ export default function OverviewTab({ stats, users = [], applications = [], book
         </button>
         <button className="ad-quick-btn ad-quick-btn--secondary" onClick={() => onNavigate('providers')}>
           <WorkIcon size={16} /> View Approved Providers
-        </button>
-        <button className="ad-quick-btn ad-quick-btn--secondary" onClick={() => onNavigate('bookings')}>
-          <CalendarMonthIcon size={16} /> View Bookings Overview
         </button>
       </div>
 

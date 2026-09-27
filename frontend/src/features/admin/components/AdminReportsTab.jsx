@@ -5,6 +5,7 @@ import {
   ManageSearchIcon
 } from '../../../components/Icons'
 import InventoryReportView from '../../../components/InventoryReportView'
+import AdminBookingsRevenueReportTab from './AdminBookingsRevenueReportTab'
 import { apiUrl } from '../../../api/client'
 
 function initials(first, last) {
@@ -393,12 +394,21 @@ export default function ReportsTab({ token, onLogout }) {
         >
           <ManageSearchIcon size={16} /> Identity & Registrations Report
         </button>
+        <button
+          type="button"
+          className={`cq-report-subtab-btn ${reportSubTab === 'bookings' ? 'active' : ''}`}
+          onClick={() => setReportSubTab('bookings')}
+        >
+          <BarChartIcon size={16} /> Bookings &amp; Revenue Report
+        </button>
       </div>
 
       {reportSubTab === 'inventory' ? (
         <InventoryReportView token={token} onLogout={onLogout} isAdmin={true} />
-      ) : (
+      ) : reportSubTab === 'registrations' ? (
         <RegistrationReportsSection token={token} onLogout={onLogout} />
+      ) : (
+        <AdminBookingsRevenueReportTab token={token} onLogout={onLogout} />
       )}
     </div>
   )
