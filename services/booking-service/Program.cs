@@ -192,6 +192,24 @@ builder.Services.AddHttpClient<
 
 
 // =========================================================
+// Identity Service
+// IIdentityService -> IdentityService
+// =========================================================
+
+builder.Services.AddHttpClient<
+    IIdentityService,
+    IdentityService>(client =>
+{
+    client.BaseAddress =
+        new Uri(
+            builder.Configuration[
+                "Services:Identity"]
+            ?? "http://localhost:5278"
+        );
+});
+
+
+// =========================================================
 // CORS
 // =========================================================
 

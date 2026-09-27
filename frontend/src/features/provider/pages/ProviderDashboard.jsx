@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
+
 import './ProviderDashboard.css'
+
 import {
   DashboardIcon,
   StorefrontIcon,
@@ -11,9 +13,15 @@ import {
   CheckCircleIcon,
   CancelIcon
 } from '../../../components/Icons'
+
 import InventoryReportView from '../../../components/InventoryReportView'
 import DashboardLayout from '../../../components/DashboardLayout'
-import { apiUrl, catalogUrl } from '../../../api/client'
+
+import {
+  apiUrl,
+  catalogUrl,
+  bookingUrl
+} from '../../../api/client'
 
 import ProviderOverviewTab from '../components/ProviderOverviewTab'
 import ProviderBusinessProfileTab from '../components/ProviderBusinessProfileTab'
@@ -22,88 +30,235 @@ import ProviderBookingsTab from '../components/ProviderBookingsTab'
 import ProviderNotificationsTab from '../components/ProviderNotificationsTab'
 import ProviderAccountTab from '../components/ProviderAccountTab'
 
-function Toast({ message, title = 'Success', onClose }) {
-  const isError = typeof message === 'string' && (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') || title.toLowerCase().includes('error'))
+
+/* =========================================================
+   Toast
+   ========================================================= */
+
+function Toast({
+  message,
+  title = 'Success',
+  onClose
+}) {
+  const isError =
+    typeof message === 'string' &&
+    (
+      message.toLowerCase().includes('error') ||
+      message.toLowerCase().includes('failed') ||
+      title.toLowerCase().includes('error')
+    )
 
   useEffect(() => {
-    const t = setTimeout(onClose, 4000)
-    return () => clearTimeout(t)
+    const timer = setTimeout(onClose, 4000)
+
+    return () => clearTimeout(timer)
   }, [onClose])
 
   return (
-    <div className={`pd-toast ${isError ? 'pd-toast--error' : 'pd-toast--success'}`} role="alert" aria-live="polite">
+    <div
+      className={`pd-toast ${isError
+          ? 'pd-toast--error'
+          : 'pd-toast--success'
+        }`}
+      role="alert"
+      aria-live="polite"
+    >
       <div className="pd-toast__icon">
-        {isError ? <CancelIcon size={20} /> : <CheckCircleIcon size={20} />}
+        {isError ? (
+          <CancelIcon size={20} />
+        ) : (
+          <CheckCircleIcon size={20} />
+        )}
       </div>
+
       <div className="pd-toast__body">
-        <p className="pd-toast__title">{title}</p>
-        <p className="pd-toast__msg">{message}</p>
+        <p className="pd-toast__title">
+          {title}
+        </p>
+
+        <p className="pd-toast__msg">
+          {message}
+        </p>
       </div>
-      <button className="pd-toast__close" onClick={onClose} aria-label="Close notification"></button>
+
+      <button
+        className="pd-toast__close"
+        onClick={onClose}
+        aria-label="Close notification"
+      />
     </div>
   )
 }
 
+
+/* =========================================================
+   Provider Dashboard
+   ========================================================= */
+
 function ProviderDashboard({ onLogout }) {
-  const [activeTab, setActiveTab] = useState('overview')
-  const [toast, setToast] = useState(null)
-  const [providerInfo, setProviderInfo] = useState(null)
-  const [services, setServices] = useState([])
-  const [userProfile, setUserProfile] = useState(null)
+  const [activeTab, setActiveTab] =
+    useState('overview')
 
-  const [bookings, setBookings] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ceylonquest_provider_bookings')
-      return saved ? JSON.parse(saved) : []
-    } catch {
-      return []
-    }
-  })
+  const [toast, setToast] =
+    useState(null)
 
-  const [notifications, setNotifications] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ceylonquest_provider_notifications')
-      return saved ? JSON.parse(saved) : []
-    } catch {
-      return []
-    }
-  })
+  const [providerInfo, setProviderInfo] =
+    useState(null)
 
-  const token = localStorage.getItem('authToken')
+  const [services, setServices] =
+    useState([])
+
+  const [userProfile, setUserProfile] =
+    useState(null)
+
+
+  /* =======================================================
+     Story 9.1 - Provider Bookings
+     ======================================================= */
+
+  const [bookings, setBookings] =
+    useState([])
+
+  const [bookingsLoading, setBookingsLoading] =
+    useState(false)
+
+  const [bookingsError, setBookingsError] =
+    useState(null)
+
+
+  /* =======================================================
+     Notifications
+     ======================================================= */
+
+  const [notifications, setNotifications] =
+    useState(() => {
+      try {
+        const saved =
+          localStorage.getItem(
+            'ceylonquest_provider_notifications'
+          )
+
+        return saved
+          ? JSON.parse(saved)
+          : []
+      } catch {
+        return []
+      }
+    })
+
+
+  /* =======================================================
+     Authentication
+     ======================================================= */
+
+  const token =
+    localStorage.getItem('authToken')
+
+
+  /* =======================================================
+     Save notifications
+     ======================================================= */
 
   useEffect(() => {
     try {
-      localStorage.setItem('ceylonquest_provider_bookings', JSON.stringify(bookings))
-    } catch {}
-  }, [bookings])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('ceylonquest_provider_notifications', JSON.stringify(notifications))
-    } catch {}
+      localStorage.setItem(
+        'ceylonquest_provider_notifications',
+        JSON.stringify(notifications)
+      )
+    } catch {
+      // Ignore localStorage errors
+    }
   }, [notifications])
 
-  const showToast = useCallback((msg) => setToast(msg), [])
 
-  const fetchProviderInfo = useCallback(async () => {
-    if (!token) return
-    try {
-      const resp = await fetch(catalogUrl('/api/catalog/provider/profile'), {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (resp.ok) {
-        setProviderInfo(await resp.json())
+  /* =======================================================
+     Toast helper
+     ======================================================= */
+
+  const showToast = useCallback(
+    (message) => {
+      setToast(message)
+    },
+    []
+  )
+
+
+  /* =======================================================
+     Logout
+     ======================================================= */
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('authToken')
+    localStorage.removeItem('userRole')
+
+    if (onLogout) {
+      onLogout()
+    }
+  }, [onLogout])
+
+
+  /* =======================================================
+     Provider Profile
+     ======================================================= */
+
+  const fetchProviderInfo =
+    useCallback(async () => {
+      const currentToken =
+        localStorage.getItem('authToken')
+
+      if (!currentToken) {
+        return
       }
-    } catch {}
-  }, [token])
 
-  const serviceTypeLower = (providerInfo?.serviceType || '').toLowerCase()
+      try {
+        const response = await fetch(
+          catalogUrl(
+            '/api/catalog/provider/profile'
+          ),
+          {
+            headers: {
+              Authorization:
+                `Bearer ${currentToken}`
+            }
+          }
+        )
+
+        if (response.status === 401) {
+          handleLogout()
+          return
+        }
+
+        if (response.ok) {
+          const data =
+            await response.json()
+
+          setProviderInfo(data)
+        }
+      } catch (error) {
+        console.error(
+          'Failed to load provider information:',
+          error
+        )
+      }
+    }, [handleLogout])
+
+
+  /* =======================================================
+     Determine Provider Service Type
+     ======================================================= */
+
+  const serviceTypeLower =
+    (
+      providerInfo?.serviceType || ''
+    ).toLowerCase()
+
   const isHotel =
     serviceTypeLower.includes('hotel') ||
     serviceTypeLower.includes('accommodat') ||
     serviceTypeLower.includes('villa') ||
     serviceTypeLower.includes('resort') ||
     serviceTypeLower.includes('room')
+
   const isRestaurant =
     serviceTypeLower.includes('restaurant') ||
     serviceTypeLower.includes('dining') ||
@@ -112,93 +267,417 @@ function ProviderDashboard({ onLogout }) {
     serviceTypeLower.includes('cafe') ||
     serviceTypeLower.includes('catering')
 
-  const catalogEndpoint = isHotel
-    ? '/api/catalog/accommodation-listings'
-    : isRestaurant
-    ? '/api/catalog/restaurant-listings'
-    : '/api/catalog/activity-listings'
 
-  const fetchServices = useCallback(async () => {
-    if (!token || !providerInfo) return
-    try {
-      const resp = await fetch(catalogUrl(catalogEndpoint), {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (resp.ok) {
-        const data = await resp.json()
-        setServices(data)
+  /* =======================================================
+     Provider Catalog Endpoint
+     ======================================================= */
+
+  const catalogEndpoint =
+    isHotel
+      ? '/api/catalog/accommodation-listings'
+      : isRestaurant
+        ? '/api/catalog/restaurant-listings'
+        : '/api/catalog/activity-listings'
+
+
+  /* =======================================================
+     Fetch Provider Services
+     ======================================================= */
+
+  const fetchServices =
+    useCallback(async () => {
+      const currentToken =
+        localStorage.getItem('authToken')
+
+      if (
+        !currentToken ||
+        !providerInfo
+      ) {
+        return
       }
-    } catch (err) {
-      console.error('Failed to load listings', err)
-    }
-  }, [token, catalogEndpoint, providerInfo])
+
+      try {
+        const response = await fetch(
+          catalogUrl(catalogEndpoint),
+          {
+            headers: {
+              Authorization:
+                `Bearer ${currentToken}`
+            }
+          }
+        )
+
+        if (response.status === 401) {
+          handleLogout()
+          return
+        }
+
+        if (response.ok) {
+          const data =
+            await response.json()
+
+          setServices(
+            Array.isArray(data)
+              ? data
+              : []
+          )
+        }
+      } catch (error) {
+        console.error(
+          'Failed to load listings:',
+          error
+        )
+      }
+    }, [
+      catalogEndpoint,
+      providerInfo,
+      handleLogout
+    ])
+
+
+  /* =======================================================
+     Fetch User Profile
+     ======================================================= */
+
+  const fetchUserProfile =
+    useCallback(async () => {
+      const currentToken =
+        localStorage.getItem('authToken')
+
+      if (!currentToken) {
+        return
+      }
+
+      try {
+        const response = await fetch(
+          apiUrl('/api/users/me'),
+          {
+            headers: {
+              Authorization:
+                `Bearer ${currentToken}`
+            }
+          }
+        )
+
+        if (response.status === 401) {
+          handleLogout()
+          return
+        }
+
+        if (response.ok) {
+          const data =
+            await response.json()
+
+          setUserProfile(data)
+        }
+      } catch (error) {
+        console.error(
+          'Failed to load user profile:',
+          error
+        )
+      }
+    }, [handleLogout])
+
+
+  /* =======================================================
+     Story 9.1
+     Fetch Provider Bookings + Restaurant Reservations
+     ======================================================= */
+
+  const fetchProviderBookings =
+    useCallback(async () => {
+      const currentToken =
+        localStorage.getItem('authToken')
+
+      if (!currentToken) {
+        setBookings([])
+        setBookingsError(
+          'Authentication is required.'
+        )
+
+        return
+      }
+
+      setBookingsLoading(true)
+      setBookingsError(null)
+
+      try {
+        const response = await fetch(
+          bookingUrl(
+            '/api/provider-bookings/my'
+          ),
+          {
+            method: 'GET',
+
+            headers: {
+              Authorization:
+                `Bearer ${currentToken}`,
+              Accept: 'application/json'
+            }
+          }
+        )
+
+
+        /* -----------------------------------------------
+           Session expired
+           ----------------------------------------------- */
+
+        if (response.status === 401) {
+          setBookings([])
+
+          setBookingsError(
+            'Your session has expired. Please log in again.'
+          )
+
+          return
+        }
+
+
+        /* -----------------------------------------------
+           User is not a provider
+           ----------------------------------------------- */
+
+        if (response.status === 403) {
+          setBookings([])
+
+          setBookingsError(
+            'You are not authorized to access provider bookings.'
+          )
+
+          return
+        }
+
+
+        /* -----------------------------------------------
+           Other backend error
+           ----------------------------------------------- */
+
+        if (!response.ok) {
+          let errorMessage =
+            'Unable to load customer bookings and reservations.'
+
+          try {
+            const errorData =
+              await response.json()
+
+            if (errorData?.message) {
+              errorMessage =
+                errorData.message
+            }
+          } catch {
+            // Response may not contain JSON
+          }
+
+          throw new Error(errorMessage)
+        }
+
+
+        /* -----------------------------------------------
+           Successful response
+           ----------------------------------------------- */
+
+        const data =
+          await response.json()
+
+        setBookings(
+          Array.isArray(data)
+            ? data
+            : []
+        )
+      } catch (error) {
+        console.error(
+          'Failed to load provider bookings:',
+          error
+        )
+
+        setBookings([])
+
+        setBookingsError(
+          error?.message ||
+          'Unable to load customer bookings and reservations.'
+        )
+      } finally {
+        setBookingsLoading(false)
+      }
+    }, [])
+
+
+  /* =======================================================
+     Initial Requests
+     ======================================================= */
 
   useEffect(() => {
     fetchProviderInfo()
   }, [fetchProviderInfo])
 
-  useEffect(() => {
-    fetchServices()
-  }, [fetchServices])
-
-  const fetchUserProfile = useCallback(async () => {
-    if (!token) return
-    try {
-      const resp = await fetch(apiUrl('/api/users/me'), {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (resp.ok) {
-        setUserProfile(await resp.json())
-      }
-    } catch {}
-  }, [token])
 
   useEffect(() => {
     fetchUserProfile()
   }, [fetchUserProfile])
 
-  const handleUpdateBookingStatus = (bookingId, newStatus) => {
-    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b))
-    showToast(`Booking #${bookingId} marked as ${newStatus}.`)
-  }
 
-  const handleMarkAllNotificationsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
-    showToast('All notifications marked as read.')
-  }
+  /* =======================================================
+     Load services after provider information is available
+     ======================================================= */
 
-  const handleToggleNotificationRead = (notifId) => {
-    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: !n.read } : n))
-  }
+  useEffect(() => {
+    if (providerInfo) {
+      fetchServices()
+    }
+  }, [
+    providerInfo,
+    fetchServices
+  ])
 
-  const handleClearNotifications = () => {
-    setNotifications([])
-    showToast('Notifications cleared.')
-  }
 
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('userRole')
-    onLogout && onLogout()
-  }, [onLogout])
+  /* =======================================================
+     Load provider bookings when Bookings tab opens
+     ======================================================= */
 
-  const unreadNotifCount = notifications.filter(n => !n.read).length
+  useEffect(() => {
+    if (activeTab === 'bookings') {
+      fetchProviderBookings()
+    }
+  }, [
+    activeTab,
+    fetchProviderBookings
+  ])
+
+
+  /* =======================================================
+     Notification Actions
+     ======================================================= */
+
+  const handleMarkAllNotificationsRead =
+    () => {
+      setNotifications(
+        previous =>
+          previous.map(
+            notification => ({
+              ...notification,
+              read: true
+            })
+          )
+      )
+
+      showToast(
+        'All notifications marked as read.'
+      )
+    }
+
+
+  const handleToggleNotificationRead =
+    (notificationId) => {
+      setNotifications(
+        previous =>
+          previous.map(
+            notification =>
+              notification.id ===
+                notificationId
+                ? {
+                  ...notification,
+                  read:
+                    !notification.read
+                }
+                : notification
+          )
+      )
+    }
+
+
+  const handleClearNotifications =
+    () => {
+      setNotifications([])
+
+      showToast(
+        'Notifications cleared.'
+      )
+    }
+
+
+  /* =======================================================
+     Notification Count
+     ======================================================= */
+
+  const unreadNotifCount =
+    notifications.filter(
+      notification =>
+        !notification.read
+    ).length
+
+
+  /* =======================================================
+     Navigation
+     ======================================================= */
 
   const navItems = [
-    { key: 'overview',      icon: <DashboardIcon size={18} />,          label: 'Overview' },
-    { key: 'business',      icon: <StorefrontIcon size={18} />,         label: 'Business Profile' },
+    {
+      key: 'overview',
+      icon:
+        <DashboardIcon size={18} />,
+      label: 'Overview'
+    },
+
+    {
+      key: 'business',
+      icon:
+        <StorefrontIcon size={18} />,
+      label: 'Business Profile'
+    },
+
     {
       key: 'services',
-      icon: <KitesurfingIcon size={18} />,
-      label: isHotel ? 'Rooms & Accommodations'
-           : isRestaurant ? 'Menu & Dining'
-           : 'Activities & Services'
+      icon:
+        <KitesurfingIcon size={18} />,
+
+      label:
+        isHotel
+          ? 'Rooms & Accommodations'
+          : isRestaurant
+            ? 'Menu & Dining'
+            : 'Activities & Services'
     },
-    { key: 'bookings',      icon: <CalendarMonthIcon size={18} />,       label: 'Bookings' },
-    { key: 'reports',       icon: <BarChartIcon size={18} />,            label: 'Inventory Reports' },
-    { key: 'notifications', icon: <NotificationsActiveIcon size={18} />, label: 'Notifications', badge: unreadNotifCount > 0 ? unreadNotifCount : null },
-    { key: 'account',       icon: <PermIdentityIcon size={18} />,        label: 'Account' }
+
+    {
+      key: 'bookings',
+      icon:
+        <CalendarMonthIcon size={18} />,
+      label: 'Bookings'
+    },
+
+    {
+      key: 'reports',
+      icon:
+        <BarChartIcon size={18} />,
+      label: 'Inventory Reports'
+    },
+
+    {
+      key: 'notifications',
+      icon:
+        <NotificationsActiveIcon
+          size={18}
+        />,
+      label: 'Notifications',
+
+      badge:
+        unreadNotifCount > 0
+          ? unreadNotifCount
+          : null
+    },
+
+    {
+      key: 'account',
+      icon:
+        <PermIdentityIcon size={18} />,
+      label: 'Account'
+    }
   ]
+
+
+  /* =======================================================
+     Render
+     ======================================================= */
 
   return (
     <DashboardLayout
@@ -209,7 +688,22 @@ function ProviderDashboard({ onLogout }) {
       userProfile={userProfile}
       onLogout={handleLogout}
     >
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+
+      {/* Toast */}
+
+      {toast && (
+        <Toast
+          message={toast}
+          onClose={() =>
+            setToast(null)
+          }
+        />
+      )}
+
+
+      {/* =================================================
+          Overview
+          ================================================= */}
 
       {activeTab === 'overview' && (
         <ProviderOverviewTab
@@ -217,19 +711,37 @@ function ProviderDashboard({ onLogout }) {
           services={services}
           bookings={bookings}
           notifications={notifications}
-          onNavigate={(tab) => setActiveTab(tab)}
+          onNavigate={
+            tab =>
+              setActiveTab(tab)
+          }
         />
       )}
+
+
+      {/* =================================================
+          Business Profile
+          ================================================= */}
 
       {activeTab === 'business' && (
         <ProviderBusinessProfileTab
           token={token}
           onLogout={handleLogout}
           providerInfo={providerInfo}
-          onUpdateSuccess={(updated) => setProviderInfo(updated)}
+
+          onUpdateSuccess={
+            updated =>
+              setProviderInfo(updated)
+          }
+
           showToast={showToast}
         />
       )}
+
+
+      {/* =================================================
+          Provider Services
+          ================================================= */}
 
       {activeTab === 'services' && (
         <ProviderListingsTab
@@ -238,18 +750,37 @@ function ProviderDashboard({ onLogout }) {
           services={services}
           isHotel={isHotel}
           isRestaurant={isRestaurant}
-          catalogEndpoint={catalogEndpoint}
-          onRefreshServices={fetchServices}
+          catalogEndpoint={
+            catalogEndpoint
+          }
+          onRefreshServices={
+            fetchServices
+          }
           showToast={showToast}
         />
       )}
 
+
+      {/* =================================================
+          Story 9.1
+          Provider Booking Management
+          ================================================= */}
+
       {activeTab === 'bookings' && (
         <ProviderBookingsTab
           bookings={bookings}
-          onUpdateBookingStatus={handleUpdateBookingStatus}
+          loading={bookingsLoading}
+          error={bookingsError}
+          onRetry={
+            fetchProviderBookings
+          }
         />
       )}
+
+
+      {/* =================================================
+          Inventory Reports
+          ================================================= */}
 
       {activeTab === 'reports' && (
         <InventoryReportView
@@ -259,23 +790,49 @@ function ProviderDashboard({ onLogout }) {
         />
       )}
 
-      {activeTab === 'notifications' && (
-        <ProviderNotificationsTab
-          notifications={notifications}
-          onMarkAllRead={handleMarkAllNotificationsRead}
-          onToggleRead={handleToggleNotificationRead}
-          onClearAll={handleClearNotifications}
-        />
-      )}
+
+      {/* =================================================
+          Notifications
+          ================================================= */}
+
+      {activeTab ===
+        'notifications' && (
+          <ProviderNotificationsTab
+            notifications={
+              notifications
+            }
+
+            onMarkAllRead={
+              handleMarkAllNotificationsRead
+            }
+
+            onToggleRead={
+              handleToggleNotificationRead
+            }
+
+            onClearAll={
+              handleClearNotifications
+            }
+          />
+        )}
+
+
+      {/* =================================================
+          Account
+          ================================================= */}
 
       {activeTab === 'account' && (
         <ProviderAccountTab
           token={token}
           onLogout={handleLogout}
           showToast={showToast}
-          onProfileUpdate={setUserProfile}
+
+          onProfileUpdate={
+            setUserProfile
+          }
         />
       )}
+
     </DashboardLayout>
   )
 }

@@ -11,13 +11,19 @@ public class BookingDbContext : DbContext
     {
     }
 
-    // Story 7.1 - Experience bookings
+    // =========================================================
+    // Story 7.1 - Experience Bookings
+    // =========================================================
     public DbSet<Booking> Bookings { get; set; }
 
-    // Story 8.1 - Restaurant reservations
+    // =========================================================
+    // Story 8.1 - Restaurant Reservations
+    // =========================================================
     public DbSet<RestaurantReservation> RestaurantReservations { get; set; }
 
-    // Accommodation bookings
+    // =========================================================
+    // Accommodation Bookings
+    // =========================================================
     public DbSet<AccommodationBooking> AccommodationBookings { get; set; }
 
 
@@ -111,6 +117,14 @@ public class BookingDbContext : DbContext
             entity.Property(a => a.TotalPrice)
                 .HasPrecision(18, 2);
 
+            // Cancellation refund percentage
+            entity.Property(a => a.RefundPercentage)
+                .HasPrecision(18, 2);
+
+            // Cancellation refund amount
+            entity.Property(a => a.RefundAmount)
+                .HasPrecision(18, 2);
+
             // Useful indexes
             entity.HasIndex(a => a.VisitorId);
 
@@ -118,7 +132,7 @@ public class BookingDbContext : DbContext
 
             entity.HasIndex(a => a.Status);
 
-            // Useful for accommodation date searches
+            // Accommodation + Check-in + Check-out
             entity.HasIndex(a => new
             {
                 a.AccommodationId,

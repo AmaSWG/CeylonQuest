@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using BookingService.DTOs;
 
@@ -35,9 +36,8 @@ public class CatalogService : ICatalogService
             .ReadFromJsonAsync<CatalogAvailabilityResponse>();
     }
 
-
     // =========================================================
-    // Story 7.1 - Experience
+    // Experience
     // =========================================================
 
     public async Task<CatalogListingResponse?> GetListingAsync(
@@ -57,9 +57,8 @@ public class CatalogService : ICatalogService
             .ReadFromJsonAsync<CatalogListingResponse>();
     }
 
-
     // =========================================================
-    // Story 8.1 - Restaurant
+    // Restaurant
     // =========================================================
 
     public async Task<CatalogRestaurantResponse?> GetRestaurantAsync(
@@ -85,7 +84,6 @@ public class CatalogService : ICatalogService
         return restaurants.FirstOrDefault(
             restaurant => restaurant.Id == restaurantId);
     }
-
 
     // =========================================================
     // Accommodation
@@ -115,7 +113,6 @@ public class CatalogService : ICatalogService
             accommodation => accommodation.Id == accommodationId);
     }
 
-
     // =========================================================
     // Reserve Capacity
     // =========================================================
@@ -143,12 +140,98 @@ public class CatalogService : ICatalogService
             return true;
         }
 
-        // 409 means requested capacity could not be reserved
         if (response.StatusCode == HttpStatusCode.Conflict)
         {
             return false;
         }
 
         return false;
+    }
+
+    // =========================================================
+    // Provider-owned Activity Listings
+    // =========================================================
+
+    public async Task<List<CatalogProviderListingResponse>>
+        GetMyActivityListingsAsync(string accessToken)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/api/catalog/activity-listings");
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                accessToken);
+
+        var response =
+            await _httpClient.SendAsync(request);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<CatalogProviderListingResponse>();
+        }
+
+        return await response.Content
+                   .ReadFromJsonAsync<List<CatalogProviderListingResponse>>()
+               ?? new List<CatalogProviderListingResponse>();
+    }
+
+    // =========================================================
+    // Provider-owned Restaurant Listings
+    // =========================================================
+
+    public async Task<List<CatalogProviderListingResponse>>
+        GetMyRestaurantListingsAsync(string accessToken)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/api/catalog/restaurant-listings");
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                accessToken);
+
+        var response =
+            await _httpClient.SendAsync(request);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<CatalogProviderListingResponse>();
+        }
+
+        return await response.Content
+                   .ReadFromJsonAsync<List<CatalogProviderListingResponse>>()
+               ?? new List<CatalogProviderListingResponse>();
+    }
+
+    // =========================================================
+    // Provider-owned Accommodation Listings
+    // =========================================================
+
+    public async Task<List<CatalogProviderListingResponse>>
+        GetMyAccommodationListingsAsync(string accessToken)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/api/catalog/accommodation-listings");
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                accessToken);
+
+        var response =
+            await _httpClient.SendAsync(request);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return new List<CatalogProviderListingResponse>();
+        }
+
+        return await response.Content
+                   .ReadFromJsonAsync<List<CatalogProviderListingResponse>>()
+               ?? new List<CatalogProviderListingResponse>();
     }
 }
