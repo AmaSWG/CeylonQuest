@@ -16,6 +16,16 @@ import {
 
 import { catalogUrl, bookingUrl } from '../../../api/client'
 
+const toLocalDateInput = (value = new Date()) => {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(0, 10)
+  }
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const offset = date.getTimezoneOffset() * 60000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10)
+}
+
 export default function VisitorBookingModal({
   item,
   onClose
@@ -24,9 +34,7 @@ export default function VisitorBookingModal({
   // STATE
   // =========================================================
 
-  const [selectedDate, setSelectedDate] = useState(
-    new Date(Date.now() + 86400000).toISOString().split('T')[0]
-  )
+  const [selectedDate, setSelectedDate] = useState('')
 
   // Used only for Accommodation bookings
   const [checkOutDate, setCheckOutDate] = useState('')
@@ -49,6 +57,28 @@ export default function VisitorBookingModal({
   const isRestaurant = item?.type === 'Restaurant'
   const isAccommodation = item?.type === 'Accommodation'
   const isExperience = item?.type === 'Experience'
+
+  const today = toLocalDateInput()
+  const experienceValidFrom = isExperience && item?.validFrom ? toLocalDateInput(item.validFrom) : ''
+  const experienceValidUntil = isExperience && item?.validUntil ? toLocalDateInput(item.validUntil) : ''
+  const minimumBookingDate = experienceValidFrom && experienceValidFrom > today
+    ? experienceValidFrom
+    : today
+  const maximumBookingDate = experienceValidUntil || undefined
+  const isBookingDateValid = Boolean(selectedDate) &&
+    selectedDate >= minimumBookingDate &&
+    (!maximumBookingDate || selectedDate <= maximumBookingDate)
+
+  useEffect(() => {
+    if (!item) return
+    // Keep a reused modal instance inside the listing's current validity range.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedDate((current) =>
+      current >= minimumBookingDate && (!maximumBookingDate || current <= maximumBookingDate)
+        ? current
+        : minimumBookingDate
+    )
+  }, [item, minimumBookingDate, maximumBookingDate])
 
   // =========================================================
   // BASIC LISTING VALUES
@@ -94,7 +124,7 @@ export default function VisitorBookingModal({
   // =========================================================
 
   useEffect(() => {
-    if (!item || !selectedDate) return
+    if (!item || !isBookingDateValid) return
 
     const fetchAvailability = async () => {
       setLoadingAvail(true)
@@ -140,7 +170,7 @@ export default function VisitorBookingModal({
     }
 
     fetchAvailability()
-  }, [item, selectedDate])
+  }, [item, selectedDate, isBookingDateValid])
 
   if (!item) return null
 
@@ -381,6 +411,11 @@ export default function VisitorBookingModal({
             : 'Please select a booking date.'
       )
 
+      return
+    }
+
+    if (!isBookingDateValid) {
+      setSubmitError('Please select a date within the available booking period.')
       return
     }
 
@@ -890,11 +925,8 @@ export default function VisitorBookingModal({
                 type="date"
                 className="vd-form-input"
                 value={selectedDate}
-                min={
-                  new Date()
-                    .toISOString()
-                    .split('T')[0]
-                }
+                min={minimumBookingDate}
+                max={maximumBookingDate}
                 onChange={(e) => {
                   const newDate = e.target.value
 

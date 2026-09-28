@@ -67,7 +67,11 @@ function SuccessToast({ toast, onClose }) {
 
 
 function VisitorDashboard({ onLogout }) {
-  const [activePage, setActivePage] = useState('profile')
+  const [activePage, setActivePage] = useState(() => {
+    const requested = sessionStorage.getItem('visitorActivePage')
+    sessionStorage.removeItem('visitorActivePage')
+    return requested === 'bookings' ? 'bookings' : 'profile'
+  })
 
   const [profile, setProfile] = useState(null)
   const [loadError, setLoadError] = useState(null)

@@ -159,6 +159,7 @@ function App() {
     const goToBookings = () => {
       const role = localStorage.getItem('userRole')
       if (role === 'Visitor') {
+        sessionStorage.setItem('visitorActivePage', 'bookings')
         window.history.pushState({}, '', '/')
         setPage('visitor-dashboard')
       } else {
@@ -183,6 +184,7 @@ function App() {
     const goToBookings = () => {
       const role = localStorage.getItem('userRole')
       if (role === 'Visitor') {
+        sessionStorage.setItem('visitorActivePage', 'bookings')
         window.history.pushState({}, '', '/')
         setPage('visitor-dashboard')
       } else {
