@@ -259,9 +259,17 @@ public class PaymentsController : ControllerBase
         // =====================================================
         // Frontend URLs
         // =====================================================
+var frontendBaseUrl = _configuration["Frontend:BaseUrl"];
 
-        const string frontendBaseUrl =
-            "http://localhost:5173";
+if (string.IsNullOrWhiteSpace(frontendBaseUrl))
+{
+    return StatusCode(
+        StatusCodes.Status500InternalServerError,
+        new { message = "Frontend base URL is not configured." }
+    );
+}
+
+frontendBaseUrl = frontendBaseUrl.TrimEnd('/');
 
         var successUrl =
             $"{frontendBaseUrl}/payment/success" +

@@ -562,19 +562,7 @@ export default function AdminBookingsRevenueReportTab({
               iconColor="green"
             />
 
-            <KpiCard
-              label="Booking Growth"
-              value={pct(
-                report.bookingGrowthPercentage
-              )}
-              iconColor="teal"
-            />
 
-            <KpiCard
-              label="Cancellation Rate"
-              value={pct(report.cancellationRate)}
-              iconColor="red"
-            />
           </div>
 
           {/* ── Highlight Cards ───────────────────────────────────────── */}
