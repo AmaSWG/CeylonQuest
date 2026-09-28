@@ -3939,6 +3939,60 @@ public class AccommodationBookingsControllerTests
     // STORED BOOKING HELPER
     // =========================================================
 
+    [Fact]
+    public async Task Delete_Owner_SoftDeletesAndPreservesRecord()
+    {
+        await using var context = CreateDbContext();
+        var booking = CreateStoredBooking(_visitorId);
+        context.AccommodationBookings.Add(booking);
+        await context.SaveChangesAsync();
+        var controller = CreateController(context, _visitorId);
+
+        var result = await controller.Delete(booking.Id);
+
+        Assert.IsType<NoContentResult>(result);
+        var stored = await context.AccommodationBookings
+            .SingleAsync(a => a.Id == booking.Id);
+        Assert.True(stored.IsDeleted);
+        Assert.NotNull(stored.DeletedAt);
+    }
+
+    [Fact]
+    public async Task Delete_OtherVisitor_ReturnsNotFound()
+    {
+        await using var context = CreateDbContext();
+        var booking = CreateStoredBooking(Guid.NewGuid());
+        context.AccommodationBookings.Add(booking);
+        await context.SaveChangesAsync();
+        var controller = CreateController(context, _visitorId);
+
+        var result = await controller.Delete(booking.Id);
+
+        Assert.IsType<NotFoundObjectResult>(result);
+        Assert.False(booking.IsDeleted);
+    }
+
+    [Fact]
+    public async Task GetMyBookings_ExcludesSoftDeletedBooking()
+    {
+        await using var context = CreateDbContext();
+        var visible = CreateStoredBooking(_visitorId);
+        var deleted = CreateStoredBooking(_visitorId);
+        deleted.IsDeleted = true;
+        deleted.DeletedAt = DateTime.UtcNow;
+        context.AccommodationBookings.AddRange(visible, deleted);
+        await context.SaveChangesAsync();
+        var controller = CreateController(context, _visitorId);
+
+        var result = await controller.GetMyBookings();
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var bookings = Assert.IsAssignableFrom<
+            IEnumerable<AccommodationBookingResponse>>(ok.Value);
+        var returned = Assert.Single(bookings);
+        Assert.Equal(visible.Id, returned.Id);
+    }
+
     private AccommodationBooking CreateStoredBooking(Guid visitorId)
     {
         var checkIn = DateOnly.FromDateTime(DateTime.Now.AddDays(2));

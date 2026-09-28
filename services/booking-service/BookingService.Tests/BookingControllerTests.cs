@@ -2900,6 +2900,183 @@ public class BookingTests
         Assert.IsType<NotFoundObjectResult>(result);
     }
 
+    [Fact]
+    public async Task DeleteBooking_Unauthenticated_ReturnsUnauthorized()
+    {
+        var options = CreateDatabaseOptions();
+        await using var context = new BookingDbContext(options);
+        var controller = new BookingsController(
+            context,
+            CreateCatalogService(),
+            new Mock<IKafkaProducer>().Object);
+        SetUnauthenticatedUser(controller);
+
+        var result = await controller.DeleteBooking(Guid.NewGuid());
+
+        Assert.IsType<UnauthorizedObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task DeleteBooking_Owner_SoftDeletesAndReturnsNoContent()
+    {
+        var options = CreateDatabaseOptions();
+        await using var context = new BookingDbContext(options);
+        var visitorId = Guid.NewGuid();
+        var booking = CreateStoredExperienceBooking(
+            visitorId,
+            DateTime.Now.AddDays(5),
+            PaymentStatus.Unpaid);
+
+        context.Bookings.Add(booking);
+        await context.SaveChangesAsync();
+
+        var controller = new BookingsController(
+            context,
+            CreateCatalogService(),
+            new Mock<IKafkaProducer>().Object);
+        SetAuthenticatedUser(controller, visitorId);
+
+        var result = await controller.DeleteBooking(booking.Id);
+
+        Assert.IsType<NoContentResult>(result);
+
+        var storedBooking = await context.Bookings
+            .SingleAsync(b => b.Id == booking.Id);
+        Assert.True(storedBooking.IsDeleted);
+        Assert.NotNull(storedBooking.DeletedAt);
+    }
+
+    [Fact]
+    public async Task DeleteBooking_OtherVisitor_ReturnsNotFoundAndDoesNotDelete()
+    {
+        var options = CreateDatabaseOptions();
+        await using var context = new BookingDbContext(options);
+        var booking = CreateStoredExperienceBooking(
+            Guid.NewGuid(),
+            DateTime.Now.AddDays(5),
+            PaymentStatus.Unpaid);
+
+        context.Bookings.Add(booking);
+        await context.SaveChangesAsync();
+
+        var controller = new BookingsController(
+            context,
+            CreateCatalogService(),
+            new Mock<IKafkaProducer>().Object);
+        SetAuthenticatedUser(controller, Guid.NewGuid());
+
+        var result = await controller.DeleteBooking(booking.Id);
+
+        Assert.IsType<NotFoundObjectResult>(result);
+        Assert.False(booking.IsDeleted);
+        Assert.Null(booking.DeletedAt);
+    }
+
+    [Fact]
+    public async Task DeleteBooking_NonExistingBooking_ReturnsNotFound()
+    {
+        var options = CreateDatabaseOptions();
+        await using var context = new BookingDbContext(options);
+        var controller = new BookingsController(
+            context,
+            CreateCatalogService(),
+            new Mock<IKafkaProducer>().Object);
+        SetAuthenticatedUser(controller, Guid.NewGuid());
+
+        var result = await controller.DeleteBooking(Guid.NewGuid());
+
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task DeleteBooking_AlreadyDeleted_ReturnsNoContent()
+    {
+        var options = CreateDatabaseOptions();
+        await using var context = new BookingDbContext(options);
+        var visitorId = Guid.NewGuid();
+        var booking = CreateStoredExperienceBooking(
+            visitorId,
+            DateTime.Now.AddDays(5),
+            PaymentStatus.Unpaid);
+        booking.IsDeleted = true;
+        booking.DeletedAt = DateTime.UtcNow.AddMinutes(-1);
+
+        context.Bookings.Add(booking);
+        await context.SaveChangesAsync();
+
+        var controller = new BookingsController(
+            context,
+            CreateCatalogService(),
+            new Mock<IKafkaProducer>().Object);
+        SetAuthenticatedUser(controller, visitorId);
+
+        var result = await controller.DeleteBooking(booking.Id);
+
+        Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task GetMyBookings_ExcludesSoftDeletedBooking()
+    {
+        var options = CreateDatabaseOptions();
+        await using var context = new BookingDbContext(options);
+        var visitorId = Guid.NewGuid();
+        var visibleBooking = CreateStoredExperienceBooking(
+            visitorId,
+            DateTime.Now.AddDays(5),
+            PaymentStatus.Unpaid);
+        var deletedBooking = CreateStoredExperienceBooking(
+            visitorId,
+            DateTime.Now.AddDays(6),
+            PaymentStatus.Paid);
+        deletedBooking.IsDeleted = true;
+        deletedBooking.DeletedAt = DateTime.UtcNow;
+
+        context.Bookings.AddRange(visibleBooking, deletedBooking);
+        await context.SaveChangesAsync();
+
+        var controller = new BookingsController(
+            context,
+            CreateCatalogService(),
+            new Mock<IKafkaProducer>().Object);
+        SetAuthenticatedUser(controller, visitorId);
+
+        var result = await controller.GetMyBookings();
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var bookings = Assert.IsAssignableFrom<IEnumerable<ExperienceBookingResponse>>(
+            okResult.Value);
+        var returnedBooking = Assert.Single(bookings);
+        Assert.Equal(visibleBooking.Id, returnedBooking.Id);
+    }
+
+    [Fact]
+    public async Task GetBookingById_SoftDeletedBooking_ReturnsNotFound()
+    {
+        var options = CreateDatabaseOptions();
+        await using var context = new BookingDbContext(options);
+        var visitorId = Guid.NewGuid();
+        var booking = CreateStoredExperienceBooking(
+            visitorId,
+            DateTime.Now.AddDays(5),
+            PaymentStatus.Unpaid);
+        booking.IsDeleted = true;
+        booking.DeletedAt = DateTime.UtcNow;
+
+        context.Bookings.Add(booking);
+        await context.SaveChangesAsync();
+
+        var controller = new BookingsController(
+            context,
+            CreateCatalogService(),
+            new Mock<IKafkaProducer>().Object);
+        SetAuthenticatedUser(controller, visitorId);
+
+        var result = await controller.GetBookingById(booking.Id);
+
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
     private static Booking CreateStoredExperienceBooking(Guid visitorId, DateTime startDateTime, PaymentStatus paymentStatus)
     {
         return new Booking
