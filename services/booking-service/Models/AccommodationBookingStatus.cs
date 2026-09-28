@@ -4,5 +4,6 @@ public enum AccommodationBookingStatus
 {
     Confirmed,
     Cancelled,
-    Completed
+    Completed,
+    PendingPayment
 }

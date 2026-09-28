@@ -260,7 +260,7 @@ public class AccommodationBookingsController : ControllerBase
                 totalPrice,
 
             Status =
-                AccommodationBookingStatus.Confirmed,
+                AccommodationBookingStatus.PendingPayment,
 
             CancellationReason = null,
 
@@ -282,6 +282,22 @@ public class AccommodationBookingsController : ControllerBase
         _db.AccommodationBookings.Add(booking);
 
         await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync(
+            "booking.created",
+            booking.Id.ToString(),
+            new BookingCreatedEvent
+            {
+                BookingId = booking.Id,
+                VisitorId = booking.VisitorId,
+                ListingId = booking.AccommodationId,
+                ListingType = "Accommodation",
+                BookingDate = booking.CheckInDate.ToString("yyyy-MM-dd"),
+                TimeSlot = slotName,
+                ParticipantCount = 1,
+                TotalAmount = booking.TotalPrice,
+                CreatedAt = booking.CreatedAt
+            });
 
         return CreatedAtAction(
             nameof(GetById),

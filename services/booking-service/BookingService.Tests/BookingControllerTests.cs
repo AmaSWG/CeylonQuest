@@ -2100,6 +2100,8 @@ public class BookingTests
 
                         message.ListingId == listingId &&
 
+                        message.ListingType == "Experience" &&
+
                         message.BookingDate ==
 
                             bookingDate.ToString("yyyy-MM-dd") &&
@@ -2877,6 +2879,7 @@ public class BookingTests
             It.Is<BookingCanceledEvent>(e =>
                 e.BookingId == booking.Id &&
                 e.ListingId == booking.ListingId &&
+                e.ListingType == "Experience" &&
                 e.BookingDate == booking.BookingDate.ToString("yyyy-MM-dd") &&
                 e.TimeSlot == booking.TimeSlot &&
                 e.ParticipantCount == 3),

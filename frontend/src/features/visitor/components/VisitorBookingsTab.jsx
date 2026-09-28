@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { bookingUrl } from '../../../api/client'
 import './VisitorBookingsTab.css'
 
-export default function VisitorBookingsTab({ onSessionExpired }) {
+export default function VisitorBookingsTab({ onSessionExpired, onNavigateToPaymentSuccess }) {
     const [bookings, setBookings] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -18,6 +18,10 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
 
     const [searchTerm, setSearchTerm] = useState('')
     const [statusFilter, setStatusFilter] = useState('all')
+
+    // Payment state
+    const [payingBookingId, setPayingBookingId] = useState(null)
+    const [payNowError, setPayNowError] = useState('')
 
     // =========================================================
     // FETCH BOOKINGS
@@ -188,6 +192,150 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
         }
 
         return 'Booking'
+    }
+
+    // =========================================================
+    // PAYMENT HELPERS
+    // =========================================================
+
+    /**
+     * Map human-readable booking type labels to backend enum values.
+     * Experience Booking  -> Experience
+     * Accommodation Booking -> Accommodation
+     * Restaurant Reservation -> Restaurant
+     */
+    const toApiBookingType = (label) => {
+        const map = {
+            'Experience Booking': 'Experience',
+            'Accommodation Booking': 'Accommodation',
+            'Restaurant Reservation': 'Restaurant',
+            Experience: 'Experience',
+            Accommodation: 'Accommodation',
+            Restaurant: 'Restaurant',
+        }
+        return map[label] || label
+    }
+
+    /**
+     * Returns true if the visitor should be offered a Pay Now / Retry Payment
+     * button for this booking.
+     * The backend remains the authoritative gatekeeper — this only controls
+     * button visibility.
+     */
+    const canPay = (booking) => {
+        const status = String(booking?.status || '').toLowerCase().replace(/[\s_-]/g, '')
+        const payStatus = String(booking?.paymentStatus || '').toLowerCase()
+
+        // Never show Pay Now for terminal statuses
+        if (
+            status === 'confirmed' ||
+            status === 'cancelled' ||
+            status === 'canceled' ||
+            status === 'completed'
+        ) return false
+
+        if (payStatus === 'paid' || payStatus === 'refunded') return false
+
+        // Show Pay Now for PendingPayment with Unpaid or Failed (retry)
+        return status === 'pendingpayment' || status === 'pending'
+    }
+
+    const getPayNowLabel = (booking) => {
+        const payStatus = String(booking?.paymentStatus || '').toLowerCase()
+        if (payStatus === 'failed') return 'Retry Payment'
+        return 'Pay Now'
+    }
+
+    const getPaymentStatusClass = (paymentStatus) => {
+        const s = String(paymentStatus || '').toLowerCase()
+        if (s === 'paid') return 'vb-pay-status vb-pay-status--paid'
+        if (s === 'failed') return 'vb-pay-status vb-pay-status--failed'
+        if (s === 'refunded') return 'vb-pay-status vb-pay-status--refunded'
+        if (s === 'unpaid') return 'vb-pay-status vb-pay-status--unpaid'
+        return 'vb-pay-status vb-pay-status--unpaid'
+    }
+
+    // =========================================================
+    // PAY NOW
+    // =========================================================
+
+    const handlePayNow = async (booking) => {
+        const token = localStorage.getItem('authToken')
+        if (!token) { onSessionExpired?.(); return }
+
+        setPayingBookingId(booking.id)
+        setPayNowError('')
+
+        try {
+            const apiBookingType = toApiBookingType(booking.bookingType)
+
+            const response = await fetch(
+                bookingUrl('/api/Payments/create-checkout-session'),
+                {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        bookingId: booking.id,
+                        bookingType: apiBookingType,
+                    }),
+                }
+            )
+
+            if (response.status === 401) {
+                onSessionExpired?.()
+                return
+            }
+
+            const data = await response.json().catch(() => null)
+
+            if (!response.ok) {
+                // 409 = already paid
+                if (response.status === 409) {
+                    setPayNowError(
+                        data?.message ||
+                        'This booking has already been paid. Please refresh your bookings.'
+                    )
+                } else {
+                    setPayNowError(
+                        data?.message ||
+                        data?.error ||
+                        'Unable to initiate payment. Please try again.'
+                    )
+                }
+                return
+            }
+
+            if (!data?.checkoutUrl) {
+                setPayNowError('No checkout URL was returned from the server. Please try again.')
+                return
+            }
+
+            // Save context for the success/cancel pages
+            try {
+                sessionStorage.setItem('pendingPayment', JSON.stringify({
+                    bookingId: data.bookingId,
+                    bookingType: apiBookingType,
+                    transactionId: data.transactionId,
+                    checkoutSessionId: data.checkoutSessionId,
+                }))
+            } catch {
+                // sessionStorage write failure is non-fatal — proceed to redirect
+            }
+
+            // Redirect to Stripe Checkout
+            window.location.assign(data.checkoutUrl)
+
+        } catch {
+            setPayNowError('Network error. Please check your connection and try again.')
+        } finally {
+            // Only clear loading if we did not redirect
+            setPayingBookingId((current) =>
+                current === booking.id ? null : current
+            )
+        }
     }
 
     // =========================================================
@@ -740,6 +888,29 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                         >
                                                             View Details
                                                         </button>
+
+                                                        {canPay(booking) && (
+                                                            <button
+                                                                type="button"
+                                                                className="vb-pay-btn"
+                                                                disabled={
+                                                                    payingBookingId ===
+                                                                    booking.id
+                                                                }
+                                                                onClick={() =>
+                                                                    handlePayNow(
+                                                                        booking
+                                                                    )
+                                                                }
+                                                            >
+                                                                {payingBookingId ===
+                                                                    booking.id
+                                                                    ? 'Redirecting…'
+                                                                    : getPayNowLabel(
+                                                                        booking
+                                                                    )}
+                                                            </button>
+                                                        )}
 
                                                         {canCancel(
                                                             booking

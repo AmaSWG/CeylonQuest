@@ -17,6 +17,11 @@ public class BookingDbContext : DbContext
     public DbSet<Booking> Bookings { get; set; }
 
     // =========================================================
+    // Simulated Payment Transactions
+    // =========================================================
+    public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
+
+    // =========================================================
     // Story 8.1 - Restaurant Reservations
     // =========================================================
     public DbSet<RestaurantReservation> RestaurantReservations { get; set; }
@@ -35,7 +40,6 @@ public class BookingDbContext : DbContext
         // =========================================================
         // Story 7.1 - Experience Booking
         // =========================================================
-
         modelBuilder.Entity<Booking>(entity =>
         {
             entity.HasKey(b => b.Id);
@@ -61,11 +65,40 @@ public class BookingDbContext : DbContext
 
 
         // =========================================================
+        // Simulated Payment Transaction
+        // =========================================================
+        modelBuilder.Entity<PaymentTransaction>(entity =>
+        {
+            // IMPORTANT:
+            // Existing migration created this table using
+            // the singular name "PaymentTransaction".
+            entity.ToTable("PaymentTransaction");
+
+            entity.HasKey(p => p.Id);
+
+            entity.Property(p => p.Amount)
+                .HasPrecision(18, 2);
+
+            entity.Property(p => p.Status)
+                .HasConversion<string>();
+
+            entity.HasIndex(p => p.BookingId);
+
+            entity.HasIndex(p => p.VisitorId);
+
+            entity.HasIndex(p => p.TransactionReference)
+                .IsUnique();
+
+            entity.Property(p => p.BookingType).HasDefaultValue("Experience");
+        });
+
+
+        // =========================================================
         // Story 8.1 - Restaurant Reservation
         // =========================================================
-
         modelBuilder.Entity<RestaurantReservation>(entity =>
         {
+            entity.Property(r => r.PaymentStatus).HasConversion<string>();
             entity.HasKey(r => r.Id);
 
             // Store ReservationStatus enum as text
@@ -100,9 +133,9 @@ public class BookingDbContext : DbContext
         // =========================================================
         // Accommodation Booking
         // =========================================================
-
         modelBuilder.Entity<AccommodationBooking>(entity =>
         {
+            entity.Property(a => a.PaymentStatus).HasConversion<string>();
             entity.HasKey(a => a.Id);
 
             // Store AccommodationBookingStatus enum as text

@@ -2,8 +2,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BookingService.Models;
 
-public class Booking
+public class Booking : IPayableBooking
 {
+    string IPayableBooking.BookingType => "Experience";
     [Key]
     public Guid Id { get; set; }
 

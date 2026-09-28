@@ -4,6 +4,7 @@ using BookingService.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace booking_service.Migrations
 {
     [DbContext(typeof(BookingDbContext))]
-    partial class BookingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260927130239_AddPaymentTransactions")]
+    partial class AddPaymentTransactions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -57,14 +60,6 @@ namespace booking_service.Migrations
 
                     b.Property<int>("NumberOfNights")
                         .HasColumnType("int");
-
-                    b.Property<string>("PaymentReference")
-                        .HasMaxLength(200)
-                        .HasColumnType("varchar(200)");
-
-                    b.Property<string>("PaymentStatus")
-                        .IsRequired()
-                        .HasColumnType("longtext");
 
                     b.Property<decimal>("PricePerNight")
                         .HasPrecision(18, 2)
@@ -207,13 +202,6 @@ namespace booking_service.Migrations
                     b.Property<Guid>("BookingId")
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("BookingType")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(30)
-                        .HasColumnType("varchar(30)")
-                        .HasDefaultValue("Experience");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -245,7 +233,7 @@ namespace booking_service.Migrations
 
                     b.HasIndex("VisitorId");
 
-                    b.ToTable("PaymentTransaction", (string)null);
+                    b.ToTable("PaymentTransaction");
                 });
 
             modelBuilder.Entity("BookingService.Models.RestaurantReservation", b =>
@@ -266,14 +254,6 @@ namespace booking_service.Migrations
 
                     b.Property<int>("PartySize")
                         .HasColumnType("int");
-
-                    b.Property<string>("PaymentReference")
-                        .HasMaxLength(200)
-                        .HasColumnType("varchar(200)");
-
-                    b.Property<string>("PaymentStatus")
-                        .IsRequired()
-                        .HasColumnType("longtext");
 
                     b.Property<decimal>("PricePerPerson")
                         .HasPrecision(18, 2)
@@ -329,6 +309,17 @@ namespace booking_service.Migrations
                     b.HasIndex("RestaurantId", "ReservationDate", "TimeSlot");
 
                     b.ToTable("RestaurantReservations");
+                });
+
+            modelBuilder.Entity("BookingService.Models.PaymentTransaction", b =>
+                {
+                    b.HasOne("BookingService.Models.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
                 });
 #pragma warning restore 612, 618
         }

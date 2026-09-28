@@ -2,8 +2,25 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BookingService.Models;
 
-public class RestaurantReservation
+public class RestaurantReservation : IPayableBooking
 {
+    string IPayableBooking.BookingType => "Restaurant";
+    Guid IPayableBooking.ListingId => RestaurantId;
+    string IPayableBooking.ListingTitle => RestaurantName;
+    DateOnly IPayableBooking.BookingDate => ReservationDate;
+    int IPayableBooking.ParticipantCount => PartySize;
+    decimal IPayableBooking.UnitPrice => PricePerPerson;
+    decimal IPayableBooking.TotalAmount => TotalPrice;
+    BookingStatus IPayableBooking.Status
+    {
+        get => Enum.Parse<BookingStatus>(Status.ToString());
+        set => Status = Enum.Parse<ReservationStatus>(value.ToString());
+    }
+
+    public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Unpaid;
+
+    [MaxLength(200)]
+    public string? PaymentReference { get; set; }
     [Key]
     public Guid Id { get; set; }
 
@@ -35,7 +52,7 @@ public class RestaurantReservation
 
     [Required]
     public ReservationStatus Status { get; set; } =
-        ReservationStatus.Confirmed;
+        ReservationStatus.PendingPayment;
 
     // =========================================================
     // Cancellation information

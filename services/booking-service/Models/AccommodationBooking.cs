@@ -2,8 +2,26 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BookingService.Models;
 
-public class AccommodationBooking
+public class AccommodationBooking : IPayableBooking
 {
+    string IPayableBooking.BookingType => "Accommodation";
+    Guid IPayableBooking.ListingId => AccommodationId;
+    string IPayableBooking.ListingTitle => AccommodationName;
+    DateOnly IPayableBooking.BookingDate => CheckInDate;
+    string IPayableBooking.TimeSlot => "Stay";
+    int IPayableBooking.ParticipantCount => 1;
+    decimal IPayableBooking.UnitPrice => PricePerNight;
+    decimal IPayableBooking.TotalAmount => TotalPrice;
+    BookingStatus IPayableBooking.Status
+    {
+        get => Enum.Parse<BookingStatus>(Status.ToString());
+        set => Status = Enum.Parse<AccommodationBookingStatus>(value.ToString());
+    }
+
+    public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Unpaid;
+
+    [MaxLength(200)]
+    public string? PaymentReference { get; set; }
     [Key]
     public Guid Id { get; set; }
 
@@ -37,7 +55,7 @@ public class AccommodationBooking
 
     [Required]
     public AccommodationBookingStatus Status { get; set; }
-        = AccommodationBookingStatus.Confirmed;
+        = AccommodationBookingStatus.PendingPayment;
 
     // =========================================================
     // CANCELLATION / REFUND

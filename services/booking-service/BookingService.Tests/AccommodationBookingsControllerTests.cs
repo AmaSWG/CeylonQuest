@@ -1732,7 +1732,7 @@ public class AccommodationBookingsControllerTests
 
         Assert.Equal(
 
-            AccommodationBookingStatus.Confirmed,
+            AccommodationBookingStatus.PendingPayment,
 
             booking.Status);
 
@@ -1868,7 +1868,7 @@ public class AccommodationBookingsControllerTests
 
         Assert.Equal(
 
-            AccommodationBookingStatus.Confirmed,
+            AccommodationBookingStatus.PendingPayment,
 
             response.Status);
 
@@ -1923,6 +1923,22 @@ public class AccommodationBookingsControllerTests
 
 
         await controller.Create(request);
+
+        var saved = Assert.Single(context.AccommodationBookings);
+        _kafkaProducerMock.Verify(x => x.PublishAsync(
+            "booking.created",
+            saved.Id.ToString(),
+            It.Is<BookingService.Events.BookingCreatedEvent>(e =>
+                e.BookingId == saved.Id &&
+                e.VisitorId == saved.VisitorId &&
+                e.ListingId == saved.AccommodationId &&
+                e.ListingType == "Accommodation" &&
+                e.BookingDate == saved.CheckInDate.ToString("yyyy-MM-dd") &&
+                e.TimeSlot == "Stay (Min 2 Nights)" &&
+                e.ParticipantCount == 1 &&
+                e.TotalAmount == saved.TotalPrice &&
+                e.CreatedAt == saved.CreatedAt),
+            It.IsAny<CancellationToken>()), Times.Once);
 
 
 

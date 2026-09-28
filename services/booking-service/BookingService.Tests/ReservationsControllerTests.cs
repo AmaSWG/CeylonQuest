@@ -1406,7 +1406,7 @@ public class ReservationsControllerTests
 
     // TEST 19
 
-    // New reservation status should be Confirmed
+    // New reservation stays pending until payment succeeds
 
     // =========================================================
 
@@ -1414,7 +1414,7 @@ public class ReservationsControllerTests
 
     [Fact]
 
-    public async Task CreateReservation_ValidRequest_StatusIsConfirmed()
+    public async Task CreateReservation_ValidRequest_StatusIsPendingPayment()
 
     {
 
@@ -1450,7 +1450,7 @@ public class ReservationsControllerTests
 
         Assert.Equal(
 
-            ReservationStatus.Confirmed,
+            ReservationStatus.PendingPayment,
 
             reservation.Status);
 
@@ -1550,7 +1550,7 @@ public class ReservationsControllerTests
 
         Assert.Equal(
 
-            ReservationStatus.Confirmed,
+            ReservationStatus.PendingPayment,
 
             response.Status);
 
@@ -1599,6 +1599,22 @@ public class ReservationsControllerTests
 
 
         await controller.CreateReservation(request);
+
+        var saved = Assert.Single(context.RestaurantReservations);
+        _kafkaProducerMock.Verify(x => x.PublishAsync(
+            "booking.created",
+            saved.Id.ToString(),
+            It.Is<BookingService.Events.BookingCreatedEvent>(e =>
+                e.BookingId == saved.Id &&
+                e.VisitorId == saved.VisitorId &&
+                e.ListingId == saved.RestaurantId &&
+                e.ListingType == "Restaurant" &&
+                e.BookingDate == saved.ReservationDate.ToString("yyyy-MM-dd") &&
+                e.TimeSlot == saved.TimeSlot &&
+                e.ParticipantCount == request.PartySize &&
+                e.TotalAmount == saved.TotalPrice &&
+                e.CreatedAt == saved.CreatedAt),
+            It.IsAny<CancellationToken>()), Times.Once);
 
 
 
