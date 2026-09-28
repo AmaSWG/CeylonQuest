@@ -128,6 +128,16 @@ public class PaymentsController : ControllerBase
             });
         }
 
+        if (booking.Status != BookingStatus.PendingPayment)
+        {
+            return Conflict(new { message = "Only pending-payment bookings can be paid." });
+        }
+
+        if (DateTime.UtcNow >= booking.CreatedAt.AddMinutes(15))
+        {
+            return Conflict(new { message = "The 15-minute payment window has expired." });
+        }
+
 
         // Cancelled booking cannot be paid
         if (booking.Status == BookingStatus.Cancelled)
@@ -263,7 +273,8 @@ public class PaymentsController : ControllerBase
         var cancelUrl =
             $"{frontendBaseUrl}/payment/cancel" +
             $"?bookingId={booking.Id}" +
-            $"&transactionId={transaction.Id}";
+            $"&transactionId={transaction.Id}" +
+            $"&bookingType={Uri.EscapeDataString(booking.BookingType)}";
 
 
         // =====================================================
@@ -363,6 +374,8 @@ public class PaymentsController : ControllerBase
 
                 bookingId =
                     booking.Id,
+
+                bookingType = booking.BookingType,
 
                 transactionId =
                     transaction.Id,
@@ -493,8 +506,10 @@ public class PaymentsController : ControllerBase
             });
         }
 
-
         // Idempotency:
+        if (booking.Status != BookingStatus.PendingPayment)
+            return Conflict(new { message = "This booking is no longer pending payment." });
+
         // cancellation may be called more than once.
         if (transaction.Status == PaymentStatus.Failed)
         {
@@ -513,7 +528,11 @@ public class PaymentsController : ControllerBase
                     booking.PaymentStatus.ToString(),
 
                 bookingStatus =
-                    booking.Status.ToString()
+                    booking.Status.ToString(),
+
+                bookingType = booking.BookingType,
+                canRetryPayment = DateTime.UtcNow < booking.CreatedAt.AddMinutes(15),
+                paymentExpiresAt = DateTime.SpecifyKind(booking.CreatedAt.AddMinutes(15), DateTimeKind.Utc)
             });
         }
 
@@ -572,7 +591,11 @@ public class PaymentsController : ControllerBase
                 booking.PaymentStatus.ToString(),
 
             bookingStatus =
-                booking.Status.ToString()
+                booking.Status.ToString(),
+
+            bookingType = booking.BookingType,
+            canRetryPayment = DateTime.UtcNow < booking.CreatedAt.AddMinutes(15),
+            paymentExpiresAt = DateTime.SpecifyKind(booking.CreatedAt.AddMinutes(15), DateTimeKind.Utc)
         });
     }
 
@@ -762,6 +785,14 @@ public class PaymentsController : ControllerBase
         // Webhooks can be delivered multiple times.
         if (transaction.Status == PaymentStatus.Paid ||
             booking.PaymentStatus == PaymentStatus.Paid)
+        {
+            return;
+        }
+
+        // A late webhook from an abandoned checkout must not revive an
+        // already-expired booking or confirm it outside its payment window.
+        if (booking.Status != BookingStatus.PendingPayment ||
+            DateTime.UtcNow >= booking.CreatedAt.AddMinutes(15))
         {
             return;
         }

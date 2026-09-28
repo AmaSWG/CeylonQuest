@@ -536,7 +536,7 @@ public class ReservationsController : ControllerBase
         // 5. Parse reservation start time
         if (!DateTime.TryParseExact(
                 startTimeText,
-                "hh:mm tt",
+                new[] { "hh:mm tt", "h:mm tt", "HH:mm", "H:mm" },
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.None,
                 out var parsedStartTime))
@@ -559,7 +559,7 @@ public class ReservationsController : ControllerBase
 
         // Current reservation date/time represents local time
         var currentDateTime =
-            DateTime.Now;
+            TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Asia/Colombo"));
 
         // 7. Prevent cancellation of past reservation
         if (reservationStartDateTime <=
@@ -581,19 +581,6 @@ public class ReservationsController : ControllerBase
             timeUntilReservation.TotalHours;
 
         // 9. Less than 24 hours = no cancellation
-        if (hoursUntilReservation < 24)
-        {
-            return BadRequest(new
-            {
-                message =
-                    "Restaurant reservations cannot be cancelled less than 24 hours before the reservation.",
-
-                hoursUntilReservation =
-                    Math.Round(
-                        hoursUntilReservation,
-                        2)
-            });
-        }
 
         // 10. Determine refund percentage
         decimal refundPercentage;
@@ -604,13 +591,17 @@ public class ReservationsController : ControllerBase
         }
         else
         {
-            refundPercentage = 50m;
+            refundPercentage = hoursUntilReservation >= 24 ? 50m : 0m;
         }
 
         // 11. Calculate simulated refund
-        var refundAmount =
-            reservation.TotalPrice *
-            (refundPercentage / 100m);
+        decimal refundAmount = 0m;
+        if (reservation.PaymentStatus == PaymentStatus.Paid)
+        {
+            refundAmount =
+                reservation.TotalPrice *
+                (refundPercentage / 100m);
+        }
 
         // 12. Store cancellation information
         reservation.CancellationReason =
@@ -625,10 +616,15 @@ public class ReservationsController : ControllerBase
         reservation.RefundAmount =
             refundAmount;
 
-        // Restaurant currently has no PaymentStatus.
-        // For this story the refund is simulated.
-        reservation.RefundedAt =
-            DateTime.UtcNow;
+        if (reservation.PaymentStatus == PaymentStatus.Paid && refundAmount > 0)
+        {
+            reservation.PaymentStatus = PaymentStatus.Refunded;
+            reservation.RefundedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            reservation.RefundedAt = null;
+        }
 
         // 13. Update reservation status
         reservation.Status =
