@@ -325,7 +325,8 @@
 }
 
 .vb-view-btn,
-.vb-cancel-btn {
+.vb-cancel-btn,
+.vb-delete-btn {
   width: auto;
   padding: 7px 10px;
   border-radius: 5px;
@@ -353,6 +354,16 @@
 
 .vb-cancel-btn:hover {
   background: #fef2f2;
+}
+
+.vb-delete-btn {
+  border: 1px solid #64748b;
+  background: #ffffff;
+  color: #475569;
+}
+
+.vb-delete-btn:hover:not(:disabled) {
+  background: #f1f5f9;
 }
 
 
@@ -407,6 +418,29 @@
   border: none;
   background: transparent;
   color: #065f46;
+  cursor: pointer;
+  font-size: 19px;
+}
+
+.vb-error-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 12px 15px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.vb-error-message button {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: #991b1b;
   cursor: pointer;
   font-size: 19px;
 }
@@ -952,6 +986,7 @@
 
 .vb-close-btn:disabled,
 .vb-cancel-btn:disabled,
+.vb-delete-btn:disabled,
 .vb-confirm-cancel-btn:disabled,
 .vb-modal__close:disabled {
   cursor: not-allowed;

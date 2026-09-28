@@ -14,7 +14,6 @@ import {
   CancelIcon
 } from '../../../components/Icons'
 
-import InventoryReportView from '../../../components/InventoryReportView'
 import DashboardLayout from '../../../components/DashboardLayout'
 
 import {
@@ -27,7 +26,7 @@ import ProviderOverviewTab from '../components/ProviderOverviewTab'
 import ProviderBusinessProfileTab from '../components/ProviderBusinessProfileTab'
 import ProviderListingsTab from '../components/ProviderListingsTab'
 import ProviderBookingsTab from '../components/ProviderBookingsTab'
-import ProviderBookingsRevenueReportTab from '../components/ProviderBookingsRevenueReportTab'
+import ProviderReportsTab from '../components/ProviderReportsTab'
 import ProviderNotificationsTab from '../components/ProviderNotificationsTab'
 import ProviderAccountTab from '../components/ProviderAccountTab'
 
@@ -650,13 +649,7 @@ function ProviderDashboard({ onLogout }) {
       key: 'reports',
       icon:
         <BarChartIcon size={18} />,
-      label: 'Inventory Reports'
-    },
-
-    {
-      key: 'bookings-revenue',
-      icon: <BarChartIcon size={18} />,
-      label: 'Bookings & Revenue'
+      label: 'Reports'
     },
 
     {
@@ -786,19 +779,14 @@ function ProviderDashboard({ onLogout }) {
 
 
       {/* =================================================
-          Inventory Reports
+          Reports
           ================================================= */}
 
       {activeTab === 'reports' && (
-        <InventoryReportView
+        <ProviderReportsTab
           token={token}
           onLogout={handleLogout}
-          isAdmin={false}
         />
-      )}
-
-      {activeTab === 'bookings-revenue' && (
-        <ProviderBookingsRevenueReportTab token={token} onLogout={handleLogout} />
       )}
 
 

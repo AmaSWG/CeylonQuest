@@ -140,7 +140,7 @@ export default function PaymentCancelPage({ onGoToBookings, onSessionExpired }) 
                 )}
 
                 <p style={{ color: '#6b7280', fontSize: 14, margin: '0 0 28px' }}>
-                    You can try again from My Bookings using the <strong>Pay Now</strong> button.
+                    Your booking remains available in My Bookings with a pending payment status.
                 </p>
 
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
