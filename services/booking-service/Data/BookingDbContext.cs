@@ -5,6 +5,30 @@ namespace BookingService.Data;
 
 public class BookingDbContext : DbContext
 {
+    public DbSet<BookingCancellationMessage> BookingCancellationMessages { get; set; }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        foreach (var entry in ChangeTracker.Entries().Where(e => e.State == EntityState.Modified).ToList())
+        {
+            if (entry.Entity is not IPayableBooking booking ||
+                booking.Status != BookingStatus.Cancelled ||
+                entry.Property("Status").OriginalValue?.ToString() == "Cancelled") continue;
+            var evt = new BookingService.Events.BookingCanceledEvent
+            {
+                BookingId = booking.Id, ListingId = booking.ListingId,
+                ListingType = booking.BookingType, BookingDate = booking.BookingDate.ToString("yyyy-MM-dd"),
+                TimeSlot = booking.TimeSlot, ParticipantCount = booking.ParticipantCount,
+                CanceledAt = booking.UpdatedAt, Reason = "Booking cancelled."
+            };
+            BookingCancellationMessages.Add(new BookingCancellationMessage
+            {
+                BookingId = booking.Id, Payload = System.Text.Json.JsonSerializer.Serialize(evt)
+            });
+        }
+        // EF persists the state transition and release message in one transaction.
+        return base.SaveChangesAsync(cancellationToken);
+    }
     public BookingDbContext(
         DbContextOptions<BookingDbContext> options)
         : base(options)
@@ -35,6 +59,17 @@ public class BookingDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<BookingCancellationMessage>().HasKey(m => m.BookingId);
+
+        // State transitions must compare the state originally read, including
+        // when payment and expiry run in different service instances.
+        foreach (var type in new[] { typeof(Booking), typeof(RestaurantReservation), typeof(AccommodationBooking) })
+        {
+            modelBuilder.Entity(type).Property("Status").IsConcurrencyToken();
+            modelBuilder.Entity(type).Property("PaymentStatus").IsConcurrencyToken();
+            modelBuilder.Entity(type).Property<DateTime>("CreatedAt").HasConversion(
+                value => value, value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
+        }
 
 
         // =========================================================

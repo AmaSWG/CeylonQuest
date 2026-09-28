@@ -16,5 +16,6 @@ public interface IPayableBooking
     BookingStatus Status { get; set; }
     PaymentStatus PaymentStatus { get; set; }
     string? PaymentReference { get; set; }
+    DateTime CreatedAt { get; set; }
     DateTime UpdatedAt { get; set; }
 }

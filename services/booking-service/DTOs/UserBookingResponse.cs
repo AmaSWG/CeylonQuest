@@ -55,5 +55,10 @@ public class UserBookingResponse
 
     public DateTime? RefundedAt { get; set; }
 
-    public DateTime CreatedAt { get; set; }
+    private DateTime _createdAt;
+    public DateTime CreatedAt
+    {
+        get => _createdAt;
+        set => _createdAt = DateTime.SpecifyKind(value, DateTimeKind.Utc);
+    }
 }
