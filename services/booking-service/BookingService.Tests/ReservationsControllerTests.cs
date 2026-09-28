@@ -1997,7 +1997,7 @@ public class ReservationsControllerTests
     }
 
     [Fact]
-    public async Task CancelReservation_LessThan24HoursBefore_ReturnsBadRequestAndNoRefund()
+    public async Task CancelReservation_LessThan24HoursBefore_CancelsWithZeroRefund()
     {
         await using var context = CreateDbContext();
         var reservation = CreateStoredReservation(_visitorId, DateTime.Now.AddHours(12));
@@ -2005,14 +2005,17 @@ public class ReservationsControllerTests
         await context.SaveChangesAsync();
         var controller = CreateController(context, _visitorId);
 
-        var result = await controller.CancelReservation(reservation.Id, new CancelRestaurantReservationRequest());
+        var result = await controller.CancelReservation(reservation.Id, new CancelRestaurantReservationRequest { Reason = "Too late" });
 
-        Assert.IsType<BadRequestObjectResult>(result);
+        var okResult = Assert.IsType<OkObjectResult>(result);
         var saved = await context.RestaurantReservations.SingleAsync(x => x.Id == reservation.Id);
-        Assert.Equal(ReservationStatus.Confirmed, saved.Status);
+        Assert.Equal(ReservationStatus.Cancelled, saved.Status);
+        Assert.Equal(PaymentStatus.Paid, saved.PaymentStatus);
+        Assert.Equal(0m, saved.RefundPercentage);
         Assert.Equal(0m, saved.RefundAmount);
-        Assert.Null(saved.CancelledAt);
+        Assert.NotNull(saved.CancelledAt);
         Assert.Null(saved.RefundedAt);
+        _kafkaProducerMock.Verify(x => x.PublishAsync<BookingService.Events.BookingCanceledEvent>("booking.canceled", It.IsAny<string?>(), It.IsAny<BookingService.Events.BookingCanceledEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -2208,6 +2211,7 @@ public class ReservationsControllerTests
             PricePerPerson = 2000m,
             TotalPrice = 4000m,
             Status = ReservationStatus.Confirmed,
+            PaymentStatus = PaymentStatus.Paid,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

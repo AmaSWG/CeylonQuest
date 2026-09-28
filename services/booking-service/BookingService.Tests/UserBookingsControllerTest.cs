@@ -341,12 +341,11 @@ public class UserBookingsControllerTests
 
     // =====================================================
     // TEST 7
-    // Restaurant reservation must not return a misleading
-    // payment status
+    // Restaurant reservation exposes its persisted payment status.
     // =====================================================
 
     [Fact]
-    public async Task GetMyBookings_RestaurantReservation_HasNullPaymentStatus()
+    public async Task GetMyBookings_RestaurantReservation_ReturnsPaymentStatus()
     {
         // Arrange
         var visitorId = Guid.NewGuid();
@@ -382,7 +381,8 @@ public class UserBookingsControllerTests
             "Restaurant Reservation",
             reservation.BookingType);
 
-        Assert.Null(
+        Assert.Equal(
+            "Unpaid",
             reservation.PaymentStatus);
 
         Assert.Equal(

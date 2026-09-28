@@ -2771,101 +2771,36 @@ public class AccommodationBookingsControllerTests
 
 
     [Fact]
-
-    public async Task Cancel_LessThan24HoursBeforeCheckIn_ReturnsBadRequest()
-
+    public async Task Cancel_LessThan24HoursBeforeCheckIn_CancelsWithZeroRefund()
     {
-
         await using var context = CreateDbContext();
-
-
-
         var booking = CreateStoredBooking(_visitorId);
-
-
-
-        booking.CheckInDate =
-
-            DateOnly.FromDateTime(DateTime.Now.AddDays(1));
-
-
-
-        booking.CheckOutDate =
-
-            booking.CheckInDate.AddDays(2);
-
-
-
-        booking.Status =
-
-            AccommodationBookingStatus.Confirmed;
-
-
-
+        booking.CheckInDate = DateOnly.FromDateTime(DateTime.Now.AddDays(1));
+        booking.CheckOutDate = booking.CheckInDate.AddDays(2);
+        booking.Status = AccommodationBookingStatus.Confirmed;
+        booking.PaymentStatus = PaymentStatus.Paid;
         context.AccommodationBookings.Add(booking);
-
         await context.SaveChangesAsync();
 
+        SetupCancellationCatalog();
+        var controller = CreateController(context, _visitorId);
 
+        var request = new CancelAccommodationBookingRequest
+        {
+            Reason = "Late cancellation"
+        };
 
-        var controller =
+        var result = await controller.Cancel(booking.Id, request);
 
-            CreateController(context, _visitorId);
-
-
-
-        var request =
-
-            new CancelAccommodationBookingRequest
-
-            {
-
-                Reason = "Late cancellation"
-
-            };
-
-
-
-        var result =
-
-            await controller.Cancel(
-
-                booking.Id,
-
-                request);
-
-
-
-        Assert.IsType<BadRequestObjectResult>(result);
-
-
-
-        var savedBooking =
-
-            await context.AccommodationBookings
-
-                .SingleAsync(x => x.Id == booking.Id);
-
-
-
-        Assert.Equal(
-
-            AccommodationBookingStatus.Confirmed,
-
-            savedBooking.Status);
-
-
-
-        Assert.Equal(
-
-            0m,
-
-            savedBooking.RefundAmount);
-
-
-
-        Assert.Null(savedBooking.CancelledAt);
-
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var savedBooking = await context.AccommodationBookings.SingleAsync(x => x.Id == booking.Id);
+        Assert.Equal(AccommodationBookingStatus.Cancelled, savedBooking.Status);
+        Assert.Equal(PaymentStatus.Paid, savedBooking.PaymentStatus);
+        Assert.Equal(0m, savedBooking.RefundPercentage);
+        Assert.Equal(0m, savedBooking.RefundAmount);
+        Assert.NotNull(savedBooking.CancelledAt);
+        Assert.Null(savedBooking.RefundedAt);
+        _kafkaProducerMock.Verify(x => x.PublishAsync<BookingService.Events.BookingCanceledEvent>("booking.canceled", It.IsAny<string?>(), It.IsAny<BookingService.Events.BookingCanceledEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
 
@@ -4010,6 +3945,7 @@ public class AccommodationBookingsControllerTests
             PricePerNight = 15000m,
             TotalPrice = 30000m,
             Status = AccommodationBookingStatus.Confirmed,
+            PaymentStatus = PaymentStatus.Paid,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
