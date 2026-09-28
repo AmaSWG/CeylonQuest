@@ -44,7 +44,9 @@ public class UserBookingsController : ControllerBase
         var experienceBookings =
             await _context.Bookings
                 .AsNoTracking()
-                .Where(b => b.VisitorId == visitorId)
+                .Where(b =>
+                    b.VisitorId == visitorId &&
+                    !b.IsDeleted)
                 .Select(b => new UserBookingResponse
                 {
                     Id = b.Id,
@@ -85,7 +87,9 @@ public class UserBookingsController : ControllerBase
         var restaurantReservations =
             await _context.RestaurantReservations
                 .AsNoTracking()
-                .Where(r => r.VisitorId == visitorId)
+                .Where(r =>
+                    r.VisitorId == visitorId &&
+                    !r.IsDeleted)
                 .Select(r => new UserBookingResponse
                 {
                     Id = r.Id,
@@ -129,7 +133,9 @@ public class UserBookingsController : ControllerBase
         var accommodationBookings =
             await _context.AccommodationBookings
                 .AsNoTracking()
-                .Where(a => a.VisitorId == visitorId)
+                .Where(a =>
+                    a.VisitorId == visitorId &&
+                    !a.IsDeleted)
                 .Select(a => new UserBookingResponse
                 {
                     Id = a.Id,
