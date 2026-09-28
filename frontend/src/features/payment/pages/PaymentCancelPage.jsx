@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { bookingUrl } from '../../../api/client'
+import { canRetryPaymentAt } from '../../../api/bookingPayment'
 import './PaymentSuccessPage.css'
 
 export default function PaymentCancelPage({ onGoToBookings, onSessionExpired }) {
     const [phase, setPhase] = useState('processing')
     const [cancelResult, setCancelResult] = useState(null)
     const [errorMessage, setErrorMessage] = useState('')
+    const [retrying, setRetrying] = useState(false)
+    const [now, setNow] = useState(() => Date.now())
+    useEffect(() => {
+        const timer = setInterval(() => setNow(Date.now()), 1000)
+        return () => clearInterval(timer)
+    }, [])
     const hasRun = useRef(false)
 
     useEffect(() => {
@@ -70,6 +77,32 @@ export default function PaymentCancelPage({ onGoToBookings, onSessionExpired }) 
         }
     }
 
+    async function retryPayment() {
+        if (retrying || !canRetryPaymentAt(cancelResult, Date.now())) return
+        const token = localStorage.getItem('authToken')
+        if (!token) { onSessionExpired?.(); return }
+        const params = new URLSearchParams(window.location.search)
+        const bookingId = cancelResult?.bookingId || params.get('bookingId')
+        const bookingType = cancelResult?.bookingType || params.get('bookingType') || 'Experience'
+        if (!bookingId) { setErrorMessage('Booking details are missing. Please retry from My Bookings.'); return }
+        setRetrying(true)
+        setErrorMessage('')
+        try {
+            const response = await fetch(bookingUrl('/api/Payments/create-checkout-session'), {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookingId, bookingType })
+            })
+            const data = await response.json().catch(() => null)
+            if (!response.ok || !data?.checkoutUrl) throw new Error(data?.message || 'Unable to retry payment.')
+            sessionStorage.setItem('pendingPayment', JSON.stringify({ bookingId, bookingType, transactionId: data.transactionId, checkoutSessionId: data.checkoutSessionId }))
+            window.location.assign(data.checkoutUrl)
+        } catch (error) {
+            setErrorMessage(error.message || 'Unable to retry payment.')
+            setRetrying(false)
+        }
+    }
+
     if (phase === 'processing') {
         return (
             <div className="psp-page">
@@ -89,7 +122,7 @@ export default function PaymentCancelPage({ onGoToBookings, onSessionExpired }) 
                     <div className="psp-icon psp-icon--error">⚠️</div>
                     <h1>Cancellation Error</h1>
                     <p>{errorMessage}</p>
-                    <button type="button" className="psp-btn psp-btn--primary" onClick={onGoToBookings}>
+                    <button type="button" className="psp-btn psp-btn--secondary" onClick={onGoToBookings}>
                         Go to My Bookings
                     </button>
                 </div>
@@ -99,18 +132,12 @@ export default function PaymentCancelPage({ onGoToBookings, onSessionExpired }) 
 
     return (
         <div className="psp-page">
-            <div className="psp-card" style={{ borderTop: '4px solid #f59e0b' }}>
-                <div style={{
-                    width: 72, height: 72, borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                    color: '#fff', fontSize: 36, display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', margin: '0 auto 24px',
-                    boxShadow: '0 4px 18px rgba(245,158,11,0.4)',
-                }}>
+            <div className="psp-card psp-card--cancelled">
+                <div className="psp-cancelled-icon">
                     ✕
                 </div>
 
-                <h1 style={{ fontSize: 28, fontWeight: 800, color: '#92400e', margin: '0 0 12px' }}>
+                <h1 className="psp-cancelled-title">
                     Payment Cancelled
                 </h1>
 
@@ -144,10 +171,16 @@ export default function PaymentCancelPage({ onGoToBookings, onSessionExpired }) 
                 </p>
 
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <button type="button" className="psp-btn psp-btn--primary" onClick={onGoToBookings}>
+                    {canRetryPaymentAt(cancelResult, now) && (
+                        <button type="button" className="psp-btn psp-btn--primary" disabled={retrying} onClick={retryPayment}>
+                            {retrying ? 'Starting Payment...' : 'Try Payment Again'}
+                        </button>
+                    )}
+                    <button type="button" className="psp-btn psp-btn--secondary" onClick={onGoToBookings}>
                         ← Back to My Bookings
                     </button>
                 </div>
+                {errorMessage && <p className="psp-action-error">{errorMessage}</p>}
             </div>
         </div>
     )

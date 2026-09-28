@@ -105,9 +105,7 @@ public class UserBookingsController : ControllerBase
 
                     Status = r.Status.ToString(),
 
-                    // Restaurant currently has no separate
-                    // payment status.
-                    PaymentStatus = null,
+                    PaymentStatus = r.PaymentStatus.ToString(),
 
                     UnitPrice = r.PricePerPerson,
                     TotalAmount = r.TotalPrice,
@@ -153,9 +151,7 @@ public class UserBookingsController : ControllerBase
 
                     Status = a.Status.ToString(),
 
-                    // Accommodation currently has no
-                    // separate payment status.
-                    PaymentStatus = null,
+                    PaymentStatus = a.PaymentStatus.ToString(),
 
                     UnitPrice = a.PricePerNight,
                     TotalAmount = a.TotalPrice,

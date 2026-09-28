@@ -26,13 +26,13 @@
 }
 
 /* Verifying */
-.psp-card--verifying { border-top: 4px solid #6366f1; }
+.psp-card--verifying { border-top: 4px solid #168AAD; }
 
 .psp-spinner {
   width: 52px;
   height: 52px;
   border: 5px solid #e0e7ff;
-  border-top-color: #6366f1;
+  border-top-color: #168AAD;
   border-radius: 50%;
   animation: psp-spin 0.9s linear infinite;
   margin: 0 auto 28px;
@@ -42,7 +42,7 @@
   to { transform: rotate(360deg); }
 }
 
-.psp-card--verifying h1 { color: #3730a3; font-size: 24px; margin: 0 0 14px; }
+.psp-card--verifying h1 { color: #123b5d; font-size: 24px; margin: 0 0 14px; }
 .psp-card--verifying p  { color: #6b7280; font-size: 15px; margin: 0 0 8px; }
 .psp-hint { color: #9ca3af !important; font-size: 13px !important; }
 
@@ -179,16 +179,25 @@
 }
 
 .psp-btn--primary {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  background: #168AAD;
   color: #fff;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 4px 14px rgba(22, 138, 173, 0.35);
 }
 
 .psp-btn--primary:hover {
-  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.45);
+  background: #123b5d;
+  box-shadow: 0 6px 18px rgba(22, 138, 173, 0.45);
   transform: translateY(-1px);
 }
+
+.psp-card--cancelled { border-top: 4px solid #168AAD; }
+.psp-cancelled-icon {
+  width: 72px; height: 72px; border-radius: 50%; background: #168AAD; color: #fff;
+  font-size: 36px; display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 24px; box-shadow: 0 4px 18px rgba(22, 138, 173, .35);
+}
+.psp-cancelled-title { font-size: 28px; font-weight: 800; color: #123b5d; margin: 0 0 12px; }
+.psp-action-error { color: #b91c1c; margin-top: 16px; }
 
 .psp-btn--secondary {
   background: #f3f4f6;

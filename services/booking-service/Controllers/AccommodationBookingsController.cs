@@ -66,7 +66,7 @@ public class AccommodationBookingsController : ControllerBase
             });
         }
 
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Asia/Colombo")));
 
         if (request.CheckInDate < today)
         {
@@ -516,7 +516,7 @@ public class AccommodationBookingsController : ControllerBase
             booking.CheckInDate.ToDateTime(
                 TimeOnly.MinValue);
 
-        var now = DateTime.Now;
+        var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Asia/Colombo"));
 
         var hoursUntilCheckIn =
             (checkInDateTime - now).TotalHours;
@@ -538,15 +538,6 @@ public class AccommodationBookingsController : ControllerBase
         // 7. Less than 24 hours = not eligible
         // -----------------------------------------------------
 
-        if (hoursUntilCheckIn < 24)
-        {
-            return BadRequest(new
-            {
-                message =
-                    "Accommodation bookings cannot be cancelled " +
-                    "less than 24 hours before check-in."
-            });
-        }
 
         // -----------------------------------------------------
         // 8. Calculate refund
@@ -563,14 +554,18 @@ public class AccommodationBookingsController : ControllerBase
         }
         else
         {
-            refundPercentage = 50m;
+            refundPercentage = hoursUntilCheckIn >= 24 ? 50m : 0m;
         }
 
-        var refundAmount =
-            Math.Round(
-                booking.TotalPrice *
-                (refundPercentage / 100m),
-                2);
+        decimal refundAmount = 0m;
+        if (booking.PaymentStatus == PaymentStatus.Paid)
+        {
+            refundAmount =
+                Math.Round(
+                    booking.TotalPrice *
+                    (refundPercentage / 100m),
+                    2);
+        }
 
         // -----------------------------------------------------
         // 9. Get accommodation so we can reconstruct the exact
@@ -619,11 +614,15 @@ public class AccommodationBookingsController : ControllerBase
         booking.RefundAmount =
             refundAmount;
 
-        // Simulated refund
-        booking.RefundedAt =
-            refundAmount > 0
-                ? cancelledAt
-                : null;
+        if (booking.PaymentStatus == PaymentStatus.Paid && refundAmount > 0)
+        {
+            booking.PaymentStatus = PaymentStatus.Refunded;
+            booking.RefundedAt = cancelledAt;
+        }
+        else
+        {
+            booking.RefundedAt = null;
+        }
 
         booking.UpdatedAt =
             cancelledAt;

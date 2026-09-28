@@ -74,7 +74,7 @@ public class BookingCanceledConsumer : KafkaConsumerBase
 
         if (DateOnly.TryParse(evt.BookingDate, out var date))
         {
-            await availabilityService.RestoreCapacityAsync(evt.ListingId, date, evt.TimeSlot, evt.ParticipantCount);
+            await availabilityService.RestoreBookingCapacityAsync(evt);
             _logger.LogInformation("Successfully restored capacity for Listing {ListingId}", evt.ListingId);
         }
     }

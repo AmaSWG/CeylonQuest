@@ -16,10 +16,12 @@ public class CatalogDbContext : DbContext
 	public DbSet<ProviderApplication> ProviderApplications { get; set; }
 	public DbSet<Provider> Providers { get; set; }
 	public DbSet<AvailabilitySlot> AvailabilitySlots { get; set; }
+    public DbSet<BookingCapacityRelease> BookingCapacityReleases { get; set; }
 	
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<BookingCapacityRelease>().HasKey(r => r.BookingId);
 
         modelBuilder.Entity<ActivityListing>()
             .Property(l => l.Price)

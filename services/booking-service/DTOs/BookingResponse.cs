@@ -13,6 +13,10 @@ public class CatalogListingResponse
 
     public int MaxParticipants { get; set; }
 
+    public DateTime? ValidFrom { get; set; }
+
+    public DateTime? ValidUntil { get; set; }
+
     // Restaurant fields
     public string Name { get; set; } = string.Empty;
 

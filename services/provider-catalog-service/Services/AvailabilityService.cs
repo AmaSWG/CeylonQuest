@@ -18,6 +18,33 @@ public class AvailabilityService
         _db = db;
     }
 
+    public async Task RestoreBookingCapacityAsync(ProviderCatalogService.Events.BookingCanceledEvent evt)
+    {
+        if (evt.BookingId == Guid.Empty || !DateOnly.TryParse(evt.BookingDate, out var date))
+            throw new InvalidOperationException("Cancellation requires a booking ID and date.");
+        await using var transaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync() : null;
+        if (await _db.BookingCapacityReleases.AnyAsync(r => r.BookingId == evt.BookingId)) return;
+        _db.BookingCapacityReleases.Add(new BookingCapacityRelease { BookingId = evt.BookingId, ReleasedAt = DateTime.UtcNow });
+        // The unique key serializes concurrent deliveries of the same booking.
+        await _db.SaveChangesAsync();
+        var slots = _db.AvailabilitySlots.Where(s => s.ListingId == evt.ListingId && s.Date == date);
+        // Legacy accommodation events may use "Stay"; there is only one unit slot per date.
+        slots = evt.ListingType == "Accommodation"
+            ? slots : slots.Where(s => s.TimeSlot == evt.TimeSlot);
+        if (_db.Database.IsRelational())
+            await slots.ExecuteUpdateAsync(setters => setters
+                .SetProperty(s => s.RemainingCapacity, s => Math.Min(s.TotalCapacity, s.RemainingCapacity + evt.ParticipantCount))
+                .SetProperty(s => s.UpdatedAt, DateTime.UtcNow));
+        else
+        {
+            foreach (var slot in await slots.ToListAsync())
+                slot.RemainingCapacity = Math.Min(slot.TotalCapacity, slot.RemainingCapacity + evt.ParticipantCount);
+            await _db.SaveChangesAsync();
+        }
+        if (transaction != null) await transaction.CommitAsync();
+    }
+
     /// <summary>
     /// Retrieves availability for an activity, restaurant,
     /// or accommodation on a selected date.

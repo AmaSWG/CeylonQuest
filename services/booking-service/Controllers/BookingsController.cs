@@ -111,6 +111,23 @@ public class BookingsController : ControllerBase
             });
         }
 
+        var validFrom = listing.ValidFrom.HasValue
+            ? DateOnly.FromDateTime(listing.ValidFrom.Value)
+            : (DateOnly?)null;
+        var validUntil = listing.ValidUntil.HasValue
+            ? DateOnly.FromDateTime(listing.ValidUntil.Value)
+            : (DateOnly?)null;
+
+        if (validFrom.HasValue && request.BookingDate < validFrom.Value)
+        {
+            return BadRequest(new { message = $"Booking date cannot be before {validFrom:yyyy-MM-dd}." });
+        }
+
+        if (validUntil.HasValue && request.BookingDate > validUntil.Value)
+        {
+            return BadRequest(new { message = $"Booking date cannot be after {validUntil:yyyy-MM-dd}." });
+        }
+
         // 8. Check participant count against maximum
         if (request.ParticipantCount > listing.MaxParticipants)
         {
@@ -550,7 +567,7 @@ public class BookingsController : ControllerBase
         // 7. Parse booking start time
         if (!DateTime.TryParseExact(
                 startTimeText,
-                "hh:mm tt",
+                new[] { "hh:mm tt", "h:mm tt", "HH:mm", "H:mm" },
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.None,
                 out var parsedStartTime))
@@ -573,7 +590,7 @@ public class BookingsController : ControllerBase
 
         // Current booking date/time represents local experience time
         var currentDateTime =
-            DateTime.Now;
+            TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Asia/Colombo"));
 
         // 9. Reject past booking
         if (bookingStartDateTime <=
@@ -595,19 +612,6 @@ public class BookingsController : ControllerBase
             timeUntilBooking.TotalHours;
 
         // 11. Reject cancellation under 24 hours
-        if (hoursUntilBooking < 24)
-        {
-            return BadRequest(new
-            {
-                message =
-                    "Bookings cannot be cancelled less than 24 hours before the experience.",
-
-                hoursUntilBooking =
-                    Math.Round(
-                        hoursUntilBooking,
-                        2)
-            });
-        }
 
         // 12. Determine refund percentage
         decimal refundPercentage;
@@ -618,7 +622,7 @@ public class BookingsController : ControllerBase
         }
         else
         {
-            refundPercentage = 50m;
+            refundPercentage = hoursUntilBooking >= 24 ? 50m : 0m;
         }
 
         // 13. Calculate actual refund

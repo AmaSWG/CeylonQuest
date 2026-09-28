@@ -1,4 +1,4 @@
-﻿using BookingService.Controllers;
+using BookingService.Controllers;
 
 using BookingService.Data;
 
@@ -2742,7 +2742,7 @@ public class BookingTests
     }
 
     [Fact]
-    public async Task CancelBooking_LessThan24HoursBefore_ReturnsBadRequestAndDoesNotCancel()
+    public async Task CancelBooking_LessThan24HoursBefore_CancelsWithZeroRefund()
     {
         var options = CreateDatabaseOptions();
         await using var context = new BookingDbContext(options);
@@ -2756,11 +2756,14 @@ public class BookingTests
 
         var result = await controller.CancelBooking(booking.Id, new CancelBookingRequest { Reason = "Too late" });
 
-        Assert.IsType<BadRequestObjectResult>(result);
+        var okResult = Assert.IsType<OkObjectResult>(result);
         var saved = await context.Bookings.SingleAsync(x => x.Id == booking.Id);
-        Assert.NotEqual(BookingStatus.Cancelled, saved.Status);
+        Assert.Equal(BookingStatus.Cancelled, saved.Status);
+        Assert.Equal(PaymentStatus.Paid, saved.PaymentStatus);
+        Assert.Equal(0m, saved.RefundPercentage);
         Assert.Equal(0m, saved.RefundAmount);
-        kafka.Verify(x => x.PublishAsync<BookingCanceledEvent>("booking.canceled", It.IsAny<string?>(), It.IsAny<BookingCanceledEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Null(saved.RefundedAt);
+        kafka.Verify(x => x.PublishAsync<BookingCanceledEvent>("booking.canceled", It.IsAny<string?>(), It.IsAny<BookingCanceledEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

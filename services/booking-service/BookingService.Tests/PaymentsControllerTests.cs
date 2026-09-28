@@ -166,6 +166,25 @@ public class PaymentsControllerTests
         Assert.Equal("Experience", Assert.Single(fixture.Db.PaymentTransactions).BookingType);
     }
 
+    [Fact]
+    public async Task Checkout_RejectsBookingOutsidePaymentWindow()
+    {
+        using var fixture = new Fixture("Experience");
+        fixture.Booking.CreatedAt = DateTime.UtcNow.AddMinutes(-16);
+        Assert.IsType<ConflictObjectResult>(await fixture.Controller.CreateCheckoutSession(fixture.Request));
+        Assert.Empty(fixture.Db.PaymentTransactions);
+    }
+
+    [Fact]
+    public async Task Retry_CreatesPaymentAttemptWithoutCreatingAnotherBooking()
+    {
+        using var fixture = new Fixture("Experience");
+        await fixture.Create();
+        await fixture.Create();
+        Assert.Equal(2, fixture.Db.PaymentTransactions.Count());
+        Assert.Single(fixture.Db.Bookings);
+    }
+
     private sealed class Fixture : IDisposable
     {
         public BookingDbContext Db { get; } = new(new DbContextOptionsBuilder<BookingDbContext>()

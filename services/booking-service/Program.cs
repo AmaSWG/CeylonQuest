@@ -194,6 +194,9 @@ builder.Services.AddScoped<
     IAdminBookingsRevenueReportService,
     AdminBookingsRevenueReportService>();
 
+builder.Services.AddScoped<PendingPaymentExpirationService>();
+builder.Services.AddHostedService<PendingPaymentExpirationWorker>();
+
 builder.Services.AddHttpClient<
     ICatalogService,
     CatalogService>(client =>
