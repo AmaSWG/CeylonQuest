@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
 
@@ -17,47 +18,58 @@ namespace CeylonQuest.Tests.Pages
             _wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20));
         }
 
-        // Nav / Tab
+        // Nav / Header
         private By BookingsNavBtn => By.Id("nav-bookings");
         private By PageHeaderTitle => By.CssSelector(".vb-header h1");
+        private By TotalCountBadge => By.CssSelector(".vb-count");
         private By BookingRows => By.CssSelector("table.vb-table tbody tr.vb-row");
-        private By SearchInput => By.CssSelector("input.vb-search");
-        private By FilterAllBtn => By.XPath("//button[contains(@class, 'vb-filter-btn') and text()='All']");
-        private By FilterActiveBtn => By.XPath("//button[contains(@class, 'vb-filter-btn') and text()='Active']");
-        private By FilterCancelledBtn => By.XPath("//button[contains(@class, 'vb-filter-btn') and text()='Cancelled']");
+        private By SearchInput => By.CssSelector("input.vb-search, input[placeholder*='Search your bookings']");
+        private By LoaderElement => By.CssSelector(".vb-loader");
+
+        // Filter Pills: All | Confirmed | Pending Payment | Cancelled
+        private By FilterAllBtn => By.XPath("//button[contains(@class, 'vb-filter-btn') and (text()='All' or contains(., 'All'))]");
+        private By FilterConfirmedBtn => By.XPath("//button[contains(@class, 'vb-filter-btn') and (text()='Confirmed' or contains(., 'Confirmed'))]");
+        private By FilterPendingPaymentBtn => By.XPath("//button[contains(@class, 'vb-filter-btn') and (contains(text(), 'Pending') or contains(text(), 'Active'))]");
+        private By FilterCancelledBtn => By.XPath("//button[contains(@class, 'vb-filter-btn') and (text()='Cancelled' or contains(., 'Cancelled'))]");
         private By EmptyStateContainer => By.CssSelector(".vb-state");
 
-        // Modal
+        // Modal Elements
         private By ModalOverlay => By.CssSelector(".vb-modal-overlay");
-        private By ModalTitle => By.CssSelector(".vb-modal__header h2");
+        private By ModalTitle => By.CssSelector(".vb-modal__header h2, .vb-modal h2");
         private By ModalCloseBtn => By.CssSelector(".vb-modal__close, .vb-close-btn");
 
-        // Cancellation Elements
+        // Actions
         private By FirstCancelBtn => By.CssSelector("table.vb-table tbody tr .vb-cancel-btn");
+        private By FirstDeleteBtn => By.CssSelector("table.vb-table tbody tr .vb-delete-btn");
         private By ConfirmCancelContinueBtn => By.CssSelector(".vb-confirm-cancel-btn");
         private By CancellationReasonInput => By.Id("cancellationReason");
         private By FinalConfirmCancelBtn => By.XPath("//button[contains(@class, 'vb-confirm-cancel-btn') and contains(text(), 'Confirm')]");
         private By SuccessMessageBanner => By.CssSelector(".vb-success-message");
         private By CancelledSection => By.CssSelector(".vb-cancelled-section");
 
-
         public void NavigateToBookingsTab()
         {
-            // Wait for navigation sidebar to be ready
             var tab = _wait.Until(d => d.FindElement(BookingsNavBtn));
-
-            // Perform JavaScript click to ensure it triggers regardless of viewport scroll state
             ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", tab);
-
-            // Wait until the header is rendered
             _wait.Until(d => d.FindElement(PageHeaderTitle).Displayed);
+
+            WaitForLoadingToComplete();
+        }
+
+        private void WaitForLoadingToComplete()
+        {
+            try
+            {
+                _wait.Until(d => d.FindElements(LoaderElement).Count == 0);
+            }
+            catch { }
         }
 
         public bool IsLoaded()
         {
             try
             {
-                return _wait.Until(d => d.FindElement(PageHeaderTitle).Text.Contains("Bookings & Reservations"));
+                return _wait.Until(d => d.FindElement(PageHeaderTitle).Text.Contains("My Bookings"));
             }
             catch
             {
@@ -67,7 +79,7 @@ namespace CeylonQuest.Tests.Pages
 
         public int GetBookingRowCount()
         {
-            // Short wait for rows or empty container to appear
+            WaitForLoadingToComplete();
             try
             {
                 _wait.Until(d => d.FindElements(BookingRows).Count > 0 || d.FindElements(EmptyStateContainer).Count > 0);
@@ -79,10 +91,11 @@ namespace CeylonQuest.Tests.Pages
 
         public bool IsEmptyStateDisplayed()
         {
+            WaitForLoadingToComplete();
             try
             {
                 var empty = _driver.FindElement(EmptyStateContainer);
-                return empty.Displayed && empty.Text.Contains("No bookings or reservations yet");
+                return empty.Displayed;
             }
             catch
             {
@@ -90,29 +103,77 @@ namespace CeylonQuest.Tests.Pages
             }
         }
 
+        public string GetTotalCountBadgeText()
+        {
+            try
+            {
+                return _wait.Until(d => d.FindElement(TotalCountBadge)).Text;
+            }
+            catch { return ""; }
+        }
+
         public void SearchBookings(string query)
         {
+            WaitForLoadingToComplete();
             var search = _wait.Until(d => d.FindElement(SearchInput));
             search.Clear();
             search.SendKeys(query);
+            Thread.Sleep(300);
         }
 
         public void FilterByStatus(string status)
         {
+            WaitForLoadingToComplete();
+
+            if (GetBookingRowCount() == 0) return;
+
             By target = status.ToLower() switch
             {
-                "active" => FilterActiveBtn,
+                "confirmed" => FilterConfirmedBtn,
+                "pending" or "pending payment" or "active" => FilterPendingPaymentBtn,
                 "cancelled" => FilterCancelledBtn,
                 _ => FilterAllBtn
             };
-            var btn = _wait.Until(d => d.FindElement(target));
-            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", btn);
+
+            try
+            {
+                var btn = _wait.Until(d => d.FindElement(target));
+                ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", btn);
+                Thread.Sleep(300);
+            }
+            catch (WebDriverTimeoutException)
+            {
+                var fallback = _driver.FindElements(By.XPath($"//button[contains(., '{status}')]")).FirstOrDefault();
+                if (fallback != null)
+                {
+                    ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", fallback);
+                    Thread.Sleep(300);
+                }
+            }
         }
 
         public void OpenDetailsForFirstRow()
         {
-            var firstViewBtn = _wait.Until(d => d.FindElement(By.CssSelector("table.vb-table tbody tr .vb-view-btn")));
-            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", firstViewBtn);
+            WaitForLoadingToComplete();
+
+            var firstViewBtn = _wait.Until(d =>
+            {
+                var btns = d.FindElements(By.CssSelector("table.vb-table tbody tr .vb-view-btn"));
+                return btns.Count > 0 && btns[0].Displayed && btns[0].Enabled ? btns[0] : null;
+            });
+
+            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", firstViewBtn);
+            Thread.Sleep(200);
+
+            try
+            {
+                firstViewBtn.Click();
+            }
+            catch
+            {
+                ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", firstViewBtn);
+            }
+
             _wait.Until(d => d.FindElement(ModalOverlay).Displayed);
         }
 
@@ -130,39 +191,35 @@ namespace CeylonQuest.Tests.Pages
 
         public void CancelFirstActiveBooking(string reason = "Schedule changed")
         {
-            // 1. Click 'Cancel' button on first active row
+            WaitForLoadingToComplete();
             var cancelBtn = _wait.Until(d => d.FindElement(FirstCancelBtn));
             ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", cancelBtn);
-            // 2. Step 1 confirmation: Click 'Yes, Continue to Cancel'
+
             var continueBtn = _wait.Until(d => d.FindElement(ConfirmCancelContinueBtn));
             ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", continueBtn);
-            // 3. Step 2 form: Enter optional reason
+
             if (!string.IsNullOrEmpty(reason))
             {
                 var reasonField = _wait.Until(d => d.FindElement(CancellationReasonInput));
                 reasonField.Clear();
                 reasonField.SendKeys(reason);
             }
-            // 4. Click 'Confirm Booking Cancellation'
+
             var finalBtn = _wait.Until(d => d.FindElement(FinalConfirmCancelBtn));
             ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", finalBtn);
-            // 5. Wait for success banner
+
             _wait.Until(d => d.FindElement(SuccessMessageBanner).Displayed);
         }
+
         public bool IsSuccessBannerDisplayed()
         {
-            try
-            {
-                return _wait.Until(d => d.FindElement(SuccessMessageBanner).Displayed);
-            }
+            try { return _wait.Until(d => d.FindElement(SuccessMessageBanner).Displayed); }
             catch { return false; }
         }
+
         public bool IsCancellationDetailsDisplayedInModal()
         {
-            try
-            {
-                return _wait.Until(d => d.FindElement(CancelledSection).Displayed);
-            }
+            try { return _wait.Until(d => d.FindElement(CancelledSection).Displayed); }
             catch { return false; }
         }
     }

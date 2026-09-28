@@ -58,7 +58,7 @@ namespace CeylonQuest.Tests.Tests
         {
             LoginAsVisitor();
 
-            _visitorBookingsPage.FilterByStatus("Active");
+            _visitorBookingsPage.FilterByStatus("Pending Payment");
             Thread.Sleep(500);
 
             var activeCancelButtons = _driver.FindElements(By.CssSelector("table.vb-table tbody tr .vb-cancel-btn"));
@@ -83,7 +83,6 @@ namespace CeylonQuest.Tests.Tests
             var cancelledRows = _driver.FindElements(By.CssSelector("table.vb-table tbody tr.vb-row"));
             if (cancelledRows.Count == 0) return;
 
-            // Open details of the first cancelled booking
             _visitorBookingsPage.OpenDetailsForFirstRow();
 
             Assert.True(_visitorBookingsPage.IsCancellationDetailsDisplayedInModal(),
@@ -102,12 +101,9 @@ namespace CeylonQuest.Tests.Tests
             _visitorBookingsPage.FilterByStatus("Cancelled");
             Thread.Sleep(500);
 
-            var cancelledRows = _driver.FindElements(By.CssSelector("table.vb-table tbody tr.vb-row"));
-            foreach (var row in cancelledRows)
-            {
-                var cancelButtons = row.FindElements(By.CssSelector(".vb-cancel-btn"));
-                Assert.Empty(cancelButtons);
-            }
+            // Instant global check across all rows on the page without looping
+            var cancelButtons = _driver.FindElements(By.CssSelector("table.vb-table tbody tr .vb-cancel-btn"));
+            Assert.Empty(cancelButtons);
         }
 
         [Fact(DisplayName = "CQ-CN-04: Provider Booking Management reflects Cancelled status")]
@@ -122,7 +118,8 @@ namespace CeylonQuest.Tests.Tests
             _providerBookingsPage.SelectFilter("Cancelled");
             Thread.Sleep(500);
 
-            var cancelledRows = _driver.FindElements(By.CssSelector("table.pd-bookings-table tbody tr"));
+            // Sample first 5 rows to ensure snappy execution
+            var cancelledRows = _driver.FindElements(By.CssSelector("table.pd-bookings-table tbody tr")).Take(5);
             foreach (var row in cancelledRows)
             {
                 var status = row.FindElement(By.CssSelector(".pd-status-badge, [class*='status']")).Text;

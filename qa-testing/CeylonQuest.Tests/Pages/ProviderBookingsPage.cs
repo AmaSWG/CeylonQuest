@@ -13,22 +13,22 @@ namespace CeylonQuest.Tests.Pages
         public ProviderBookingsPage(IWebDriver driver)
         {
             _driver = driver;
-            _wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+            _wait = new WebDriverWait(driver, TimeSpan.FromSeconds(15));
         }
 
-        private By BookingsNavTab => By.XPath("//button[contains(text(), 'Bookings') or contains(text(), 'Booking Management')]");
-        private By PageHeaderTitle => By.CssSelector(".pd-page-header h1");
-        private By SearchInput => By.CssSelector(".pd-bookings-search input");
-        private By FilterButtons => By.CssSelector(".pd-bookings-filter");
-        private By TableRows => By.CssSelector("table.pd-bookings-table tbody tr");
-        private By EmptyContainer => By.CssSelector(".pd-bookings-empty");
+        // Navigation & Headers
+        private By BookingsNavTab => By.XPath("//button[contains(., 'Bookings') or contains(., 'Booking Management')]");
+        private By PageHeaderTitle => By.XPath("//h1[contains(text(), 'Booking Management')]");
+        private By SearchInput => By.CssSelector("input[placeholder*='Search by service'], .pd-bookings-search input");
+        private By TableRows => By.CssSelector("table.pd-bookings-table tbody tr, table tbody tr");
+        private By EmptyContainer => By.CssSelector(".pd-bookings-empty, .vb-state");
 
         public void NavigateToBookingsTab()
         {
             try
             {
                 var tab = _wait.Until(d => d.FindElement(BookingsNavTab));
-                tab.Click();
+                ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", tab);
             }
             catch
             {
@@ -51,7 +51,25 @@ namespace CeylonQuest.Tests.Pages
 
         public int GetRowCount()
         {
+            try
+            {
+                _wait.Until(d => d.FindElements(TableRows).Count > 0 || d.FindElements(EmptyContainer).Count > 0);
+            }
+            catch { }
             return _driver.FindElements(TableRows).Count;
+        }
+
+        public bool IsEmptyStateDisplayed()
+        {
+            try
+            {
+                var empty = _driver.FindElement(EmptyContainer);
+                return empty.Displayed;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public void Search(string query)
@@ -63,20 +81,14 @@ namespace CeylonQuest.Tests.Pages
 
         public void SelectFilter(string filterName)
         {
-            var btn = _wait.Until(d => d.FindElement(By.XPath($"//button[contains(@class, 'pd-bookings-filter') and contains(text(), '{filterName}')]")));
-            btn.Click();
+            var btn = _wait.Until(d => d.FindElement(By.XPath($"//button[contains(., '{filterName}')]")));
+            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", btn);
         }
 
-        public bool IsEmptyStateDisplayed()
+        public void ClickViewDetailsOnFirstRow()
         {
-            try
-            {
-                return _driver.FindElement(EmptyContainer).Displayed;
-            }
-            catch
-            {
-                return false;
-            }
+            var btn = _wait.Until(d => d.FindElement(By.XPath("//button[contains(text(), 'View Details')]")));
+            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", btn);
         }
     }
 }

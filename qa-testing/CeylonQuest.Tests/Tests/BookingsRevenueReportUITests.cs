@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using CeylonQuest.Tests.Configuration;
 using CeylonQuest.Tests.Pages;
+using OpenQA.Selenium.Support.UI;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using Xunit;
@@ -50,7 +51,14 @@ namespace CeylonQuest.Tests.Tests
             LoginAsProvider();
             Assert.True(_reportPage.IsLoaded(), "Bookings & Revenue Report page failed to load.");
 
-            var kpis = _driver.FindElements(By.CssSelector(".pbr-summary h2")).Select(e => e.Text).ToList();
+            var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(15));
+            var kpis = wait.Until(d =>
+            {
+                var elements = d.FindElements(By.CssSelector(".pbr-summary h2"));
+                var texts = elements.Select(e => e.Text).ToList();
+                return texts.Contains("Total Bookings") ? texts : null;
+            });
+
             Assert.Contains("Total Bookings", kpis);
             Assert.Contains("Total Revenue", kpis);
         }
