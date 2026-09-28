@@ -330,7 +330,8 @@ public class AccommodationBookingsController : ControllerBase
                 .AsNoTracking()
                 .FirstOrDefaultAsync(a =>
                     a.Id == id &&
-                    a.VisitorId == visitorId);
+                    a.VisitorId == visitorId &&
+                    !a.IsDeleted);
 
         if (booking == null)
         {
@@ -367,7 +368,8 @@ public class AccommodationBookingsController : ControllerBase
             await _db.AccommodationBookings
                 .AsNoTracking()
                 .Where(a =>
-                    a.VisitorId == visitorId)
+                    a.VisitorId == visitorId &&
+                    !a.IsDeleted)
                 .OrderByDescending(a =>
                     a.CreatedAt)
                 .ToListAsync();
@@ -378,6 +380,54 @@ public class AccommodationBookingsController : ControllerBase
                 .ToList();
 
         return Ok(response);
+    }
+
+    // =========================================================
+    // DELETE ACCOMMODATION BOOKING
+    // DELETE /api/AccommodationBookings/{id}
+    // =========================================================
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var visitorIdRaw =
+            User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+            User.FindFirstValue("sub");
+
+        if (!Guid.TryParse(visitorIdRaw, out var visitorId))
+        {
+            return Unauthorized(new
+            {
+                message = "Visitor identity could not be verified."
+            });
+        }
+
+        var booking =
+            await _db.AccommodationBookings
+                .FirstOrDefaultAsync(a =>
+                    a.Id == id &&
+                    a.VisitorId == visitorId);
+
+        if (booking == null)
+        {
+            return NotFound(new
+            {
+                message = "Accommodation booking not found."
+            });
+        }
+
+        if (booking.IsDeleted)
+        {
+            return NoContent();
+        }
+
+        booking.IsDeleted = true;
+        booking.DeletedAt = DateTime.UtcNow;
+        booking.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        return NoContent();
     }
 
     // =========================================================
@@ -414,7 +464,8 @@ public class AccommodationBookingsController : ControllerBase
             await _db.AccommodationBookings
                 .FirstOrDefaultAsync(a =>
                     a.Id == id &&
-                    a.VisitorId == visitorId);
+                    a.VisitorId == visitorId &&
+                    !a.IsDeleted);
 
         if (booking == null)
         {

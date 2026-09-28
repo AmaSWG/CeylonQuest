@@ -290,12 +290,16 @@ export default function AdminBookingsRevenueReportTab({
   const change = event => {
     const { name, value } = event.target
 
-    setFilters(current => ({
-      ...current,
+    const next = {
+      ...filters,
       [name]: value,
-    }))
-
-    setValidationError('')
+    }
+    setFilters(next)
+    setValidationError(
+      next.startDate && next.endDate && next.endDate < next.startDate
+        ? 'End date cannot be earlier than start date.'
+        : ''
+    )
   }
 
   const apply = event => {
@@ -307,7 +311,7 @@ export default function AdminBookingsRevenueReportTab({
       filters.startDate > filters.endDate
     ) {
       setValidationError(
-        'Start Date must be on or before End Date.'
+        'End date cannot be earlier than start date.'
       )
       return
     }
@@ -383,6 +387,7 @@ export default function AdminBookingsRevenueReportTab({
               className="cq-report-input"
               type="date"
               name="endDate"
+              min={filters.startDate || undefined}
               value={filters.endDate}
               onChange={change}
             />

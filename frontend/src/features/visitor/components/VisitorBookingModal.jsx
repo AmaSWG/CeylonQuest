@@ -18,8 +18,7 @@ import { catalogUrl, bookingUrl } from '../../../api/client'
 
 export default function VisitorBookingModal({
   item,
-  onClose,
-  onBookingSuccess
+  onClose
 }) {
   // =========================================================
   // STATE
@@ -41,6 +40,7 @@ export default function VisitorBookingModal({
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
+  const [pendingCheckout, setPendingCheckout] = useState(null)
 
   // =========================================================
   // LISTING TYPE
@@ -330,7 +330,42 @@ export default function VisitorBookingModal({
   // CONFIRM BOOKING
   // =========================================================
 
+  const startCheckout = async (bookingId, bookingType, token) => {
+    const response = await fetch(
+      bookingUrl('/api/Payments/create-checkout-session'),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ bookingId, bookingType })
+      }
+    )
+
+    const data = await response.json().catch(() => null)
+
+    if (!response.ok || !data?.checkoutUrl) {
+      throw new Error('CHECKOUT_FAILED')
+    }
+
+    try {
+      sessionStorage.setItem('pendingPayment', JSON.stringify({
+        bookingId,
+        bookingType,
+        transactionId: data.transactionId,
+        checkoutSessionId: data.checkoutSessionId
+      }))
+    } catch {
+      // Storage failure is non-fatal; continue to Stripe Checkout.
+    }
+
+    window.location.assign(data.checkoutUrl)
+  }
+
   const handleConfirmBooking = async () => {
+    if (submitting) return
+
     setSubmitError(null)
 
     // ---------------------------------------------------------
@@ -475,6 +510,24 @@ export default function VisitorBookingModal({
       return
     }
 
+    if (pendingCheckout) {
+      setSubmitting(true)
+      try {
+        await startCheckout(
+          pendingCheckout.bookingId,
+          pendingCheckout.bookingType,
+          token
+        )
+      } catch {
+        setSubmitError(
+          "Your booking was created, but we couldn't start the payment. Please try again."
+        )
+      } finally {
+        setSubmitting(false)
+      }
+      return
+    }
+
     // =========================================================
     // PAYLOADS
     // =========================================================
@@ -520,6 +573,7 @@ export default function VisitorBookingModal({
         : bookingPayload
 
     setSubmitting(true)
+    let bookingCreated = false
 
     try {
       const response = await fetch(
@@ -542,114 +596,23 @@ export default function VisitorBookingModal({
 
       if (response.ok) {
         const result = await response.json()
+        bookingCreated = true
+        const bookingId = result?.id
+        const bookingType = isRestaurant
+          ? 'Restaurant'
+          : isAccommodation
+            ? 'Accommodation'
+            : 'Experience'
 
-        // -----------------------------------------------------
-        // Restaurant success
-        // -----------------------------------------------------
-
-        if (isRestaurant) {
-          if (onBookingSuccess) {
-            const confirmedPrice =
-              Number(
-                result.pricePerPerson ??
-                restaurantPricePerPerson
-              )
-
-            const confirmedTotal =
-              Number(
-                result.totalPrice ??
-                restaurantTotal
-              )
-
-            onBookingSuccess(
-              `Table reserved successfully at ${result.restaurantName || item.title
-              } ` +
-              `for ${result.reservationDate || selectedDate
-              } ` +
-              `at ${result.timeSlot || selectedTimeSlot
-              }. ` +
-              `Party size: ${result.partySize ||
-              normalizedGuestCount
-              }. ` +
-              `Price per person: LKR ${confirmedPrice.toLocaleString()}. ` +
-              `Total: LKR ${confirmedTotal.toLocaleString()}. ` +
-              `Status: ${result.status || 'Confirmed'
-              }.`
-            )
-          } else {
-            onClose()
-          }
-
-          return
-        }
-
-        // -----------------------------------------------------
-        // Accommodation success
-        // -----------------------------------------------------
-
-        if (isAccommodation) {
-          if (onBookingSuccess) {
-            const confirmedPricePerNight =
-              Number(
-                result.pricePerNight ??
-                itemPrice
-              )
-
-            const confirmedTotal =
-              Number(
-                result.totalPrice ??
-                estimatedTotal
-              )
-
-            const confirmedNights =
-              Number(
-                result.numberOfNights ??
-                accommodationNights
-              )
-
-            onBookingSuccess(
-              `Accommodation booked successfully at ${result.accommodationName || item.title
-              }. ` +
-              `Check-in: ${result.checkInDate || selectedDate
-              }. ` +
-              `Check-out: ${result.checkOutDate || checkOutDate
-              }. ` +
-              `${confirmedNights} ${confirmedNights === 1
-                ? 'night'
-                : 'nights'
-              }. ` +
-              `Guests: ${result.guestCount ||
-              normalizedGuestCount
-              }. ` +
-              `LKR ${confirmedPricePerNight.toLocaleString()} per night. ` +
-              `Total: LKR ${confirmedTotal.toLocaleString()}. ` +
-              `Status: ${result.status || 'Confirmed'
-              }.`
-            )
-          } else {
-            onClose()
-          }
-
-          return
-        }
-
-        // -----------------------------------------------------
-        // Experience success
-        // -----------------------------------------------------
-
-        if (onBookingSuccess) {
-          onBookingSuccess(
-            `Booking created for ${item.title} on ${selectedDate} ` +
-            `at ${selectedTimeSlot}. ` +
-            `Total: LKR ${Number(
-              result.totalAmount
-            ).toLocaleString()}. ` +
-            'Status: Pending Payment.'
+        if (!bookingId) {
+          setSubmitError(
+            "Your booking was created, but we couldn't start the payment. Please try again."
           )
-        } else {
-          onClose()
+          return
         }
 
+        setPendingCheckout({ bookingId, bookingType })
+        await startCheckout(bookingId, bookingType, token)
         return
       }
 
@@ -697,11 +660,13 @@ export default function VisitorBookingModal({
       }
     } catch {
       setSubmitError(
-        isRestaurant
-          ? 'Network error while creating the reservation. Please check your connection.'
-          : isAccommodation
-            ? 'Network error while creating the accommodation booking. Please check your connection.'
-            : 'Network error while creating the booking. Please check your connection.'
+        bookingCreated
+          ? "Your booking was created, but we couldn't start the payment. Please try again."
+          : isRestaurant
+            ? 'Network error while creating the reservation. Please check your connection.'
+            : isAccommodation
+              ? 'Network error while creating the accommodation booking. Please check your connection.'
+              : 'Network error while creating the booking. Please check your connection.'
       )
     } finally {
       setSubmitting(false)
@@ -1296,7 +1261,9 @@ export default function VisitorBookingModal({
                   : isAccommodation
                     ? 'Booking Stay…'
                     : 'Creating Booking…'
-                : isRestaurant
+                : pendingCheckout
+                  ? 'Try Payment Again'
+                  : isRestaurant
                   ? 'Reserve Table'
                   : isAccommodation
                     ? 'Book Stay'

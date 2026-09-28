@@ -294,7 +294,8 @@ public class BookingsController : ControllerBase
                 .AsNoTracking()
                 .FirstOrDefaultAsync(b =>
                     b.Id == id &&
-                    b.VisitorId == visitorId);
+                    b.VisitorId == visitorId &&
+                    !b.IsDeleted);
 
         if (booking == null)
         {
@@ -329,7 +330,8 @@ public class BookingsController : ControllerBase
             await _context.Bookings
                 .AsNoTracking()
                 .Where(b =>
-                    b.VisitorId == visitorId)
+                    b.VisitorId == visitorId &&
+                    !b.IsDeleted)
                 .OrderByDescending(b =>
                     b.BookingDate)
                 .ThenByDescending(b =>
@@ -395,6 +397,54 @@ public class BookingsController : ControllerBase
     }
 
     // =========================================================
+    // DELETE: /api/bookings/{id}
+    // Archives a booking without removing its historical data.
+    // This is intentionally separate from booking cancellation.
+    // =========================================================
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteBooking(Guid id)
+    {
+        var visitorIdValue =
+            User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(visitorIdValue) ||
+            !Guid.TryParse(visitorIdValue, out var visitorId))
+        {
+            return Unauthorized(new
+            {
+                message = "Invalid visitor authentication."
+            });
+        }
+
+        var booking =
+            await _context.Bookings
+                .FirstOrDefaultAsync(b =>
+                    b.Id == id &&
+                    b.VisitorId == visitorId);
+
+        if (booking == null)
+        {
+            return NotFound(new
+            {
+                message = "Booking not found."
+            });
+        }
+
+        if (booking.IsDeleted)
+        {
+            return NoContent();
+        }
+
+        booking.IsDeleted = true;
+        booking.DeletedAt = DateTime.UtcNow;
+        booking.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    // =========================================================
     // PUT: /api/bookings/{id}/cancel
     // =========================================================
     [HttpPut("{id:guid}/cancel")]
@@ -421,7 +471,8 @@ public class BookingsController : ControllerBase
             await _context.Bookings
                 .FirstOrDefaultAsync(b =>
                     b.Id == id &&
-                    b.VisitorId == visitorId);
+                    b.VisitorId == visitorId &&
+                    !b.IsDeleted);
 
         if (booking == null)
         {

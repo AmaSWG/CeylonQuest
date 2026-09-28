@@ -85,7 +85,7 @@ export default function PaymentSuccessPage({ onGoToBookings, onSessionExpired })
                     const data = await response.json()
                     const payStatus = String(data.paymentStatus || '').toLowerCase()
                     const bookStatus = String(data.bookingStatus || '').toLowerCase()
-                    if (payStatus === 'paid' || bookStatus === 'confirmed') {
+                    if (payStatus === 'paid' && bookStatus === 'confirmed') {
                         try { sessionStorage.removeItem('pendingPayment') } catch { /* ignore */ }
                         setPaymentDetails(data)
                         setPhase('success')

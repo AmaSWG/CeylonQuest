@@ -342,7 +342,8 @@ public class ReservationsController : ControllerBase
             await _context.RestaurantReservations
                 .AsNoTracking()
                 .Where(r =>
-                    r.VisitorId == visitorId)
+                    r.VisitorId == visitorId &&
+                    !r.IsDeleted)
                 .OrderByDescending(r =>
                     r.ReservationDate)
                 .ThenByDescending(r =>
@@ -406,6 +407,52 @@ public class ReservationsController : ControllerBase
     }
 
     // =========================================================
+    // DELETE: /api/reservations/{id}
+    // =========================================================
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteReservation(Guid id)
+    {
+        var visitorIdValue =
+            User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(visitorIdValue) ||
+            !Guid.TryParse(visitorIdValue, out var visitorId))
+        {
+            return Unauthorized(new
+            {
+                message = "Invalid visitor authentication."
+            });
+        }
+
+        var reservation =
+            await _context.RestaurantReservations
+                .FirstOrDefaultAsync(r =>
+                    r.Id == id &&
+                    r.VisitorId == visitorId);
+
+        if (reservation == null)
+        {
+            return NotFound(new
+            {
+                message = "Restaurant reservation not found."
+            });
+        }
+
+        if (reservation.IsDeleted)
+        {
+            return NoContent();
+        }
+
+        reservation.IsDeleted = true;
+        reservation.DeletedAt = DateTime.UtcNow;
+        reservation.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    // =========================================================
     // PUT: /api/reservations/{id}/cancel
     // =========================================================
     [HttpPut("{id:guid}/cancel")]
@@ -432,7 +479,8 @@ public class ReservationsController : ControllerBase
             await _context.RestaurantReservations
                 .FirstOrDefaultAsync(r =>
                     r.Id == id &&
-                    r.VisitorId == visitorId);
+                    r.VisitorId == visitorId &&
+                    !r.IsDeleted);
 
         if (reservation == null)
         {

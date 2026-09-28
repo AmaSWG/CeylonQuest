@@ -98,7 +98,7 @@ export default function ProviderBookingsRevenueReportTab({ token, onLogout }) {
   function applyFilters(event) {
     event.preventDefault()
     if (filters.startDate && filters.endDate && filters.startDate > filters.endDate) {
-      setValidationError('Start Date must be on or before End Date.')
+      setValidationError('End date cannot be earlier than start date.')
       return
     }
     setValidationError('')
@@ -112,8 +112,14 @@ export default function ProviderBookingsRevenueReportTab({ token, onLogout }) {
   }
 
   const changeFilter = (event) => {
-    setFilters(current => ({ ...current, [event.target.name]: event.target.value }))
-    setValidationError('')
+    const { name, value } = event.target
+    const next = { ...filters, [name]: value }
+    setFilters(next)
+    setValidationError(
+      next.startDate && next.endDate && next.endDate < next.startDate
+        ? 'End date cannot be earlier than start date.'
+        : ''
+    )
   }
 
   return (
@@ -132,7 +138,7 @@ export default function ProviderBookingsRevenueReportTab({ token, onLogout }) {
         </div>
         <div className="pbr-field">
           <label htmlFor="pbr-end">End Date</label>
-          <input id="pbr-end" type="date" name="endDate" value={filters.endDate} onChange={changeFilter} />
+          <input id="pbr-end" type="date" name="endDate" min={filters.startDate || undefined} value={filters.endDate} onChange={changeFilter} />
         </div>
         <div className="pbr-field">
           <label htmlFor="pbr-status">Booking Status</label>

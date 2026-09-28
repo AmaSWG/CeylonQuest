@@ -2132,6 +2132,68 @@ public class ReservationsControllerTests
         _kafkaProducerMock.Verify(x => x.PublishAsync<BookingService.Events.BookingCanceledEvent>("booking.canceled", It.IsAny<string?>(), It.IsAny<BookingService.Events.BookingCanceledEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task DeleteReservation_Owner_SoftDeletesAndPreservesRecord()
+    {
+        await using var context = CreateDbContext();
+        var reservation = CreateStoredReservation(
+            _visitorId,
+            DateTime.Now.AddDays(5));
+        context.RestaurantReservations.Add(reservation);
+        await context.SaveChangesAsync();
+        var controller = CreateController(context, _visitorId);
+
+        var result = await controller.DeleteReservation(reservation.Id);
+
+        Assert.IsType<NoContentResult>(result);
+        var stored = await context.RestaurantReservations
+            .SingleAsync(r => r.Id == reservation.Id);
+        Assert.True(stored.IsDeleted);
+        Assert.NotNull(stored.DeletedAt);
+    }
+
+    [Fact]
+    public async Task DeleteReservation_OtherVisitor_ReturnsNotFound()
+    {
+        await using var context = CreateDbContext();
+        var reservation = CreateStoredReservation(
+            Guid.NewGuid(),
+            DateTime.Now.AddDays(5));
+        context.RestaurantReservations.Add(reservation);
+        await context.SaveChangesAsync();
+        var controller = CreateController(context, _visitorId);
+
+        var result = await controller.DeleteReservation(reservation.Id);
+
+        Assert.IsType<NotFoundObjectResult>(result);
+        Assert.False(reservation.IsDeleted);
+    }
+
+    [Fact]
+    public async Task GetMyReservations_ExcludesSoftDeletedReservation()
+    {
+        await using var context = CreateDbContext();
+        var visible = CreateStoredReservation(
+            _visitorId,
+            DateTime.Now.AddDays(5));
+        var deleted = CreateStoredReservation(
+            _visitorId,
+            DateTime.Now.AddDays(6));
+        deleted.IsDeleted = true;
+        deleted.DeletedAt = DateTime.UtcNow;
+        context.RestaurantReservations.AddRange(visible, deleted);
+        await context.SaveChangesAsync();
+        var controller = CreateController(context, _visitorId);
+
+        var result = await controller.GetMyReservations();
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var reservations = Assert.IsAssignableFrom<
+            IEnumerable<RestaurantReservationListResponse>>(ok.Value);
+        var returned = Assert.Single(reservations);
+        Assert.Equal(visible.Id, returned.Id);
+    }
+
     private RestaurantReservation CreateStoredReservation(Guid visitorId, DateTime startDateTime)
     {
         return new RestaurantReservation
