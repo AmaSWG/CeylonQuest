@@ -30,6 +30,11 @@ public class PaymentTransaction
 
     public DateTime? ProcessedAt { get; set; }
 
+    [MaxLength(255)]
+    public string? CheckoutSessionId { get; set; }
+    public DateTime? CheckoutDeadline { get; set; }
+    public DateTime? CheckoutClosedAt { get; set; }
+
     // BookingId identifies an entity in the table selected by BookingType.
     [Required]
     [MaxLength(30)]

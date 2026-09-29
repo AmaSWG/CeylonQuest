@@ -38,6 +38,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\booking-service.csproj" />
+    <ProjectReference Include="..\..\provider-catalog-service\ProviderCatalogService.csproj" />
   </ItemGroup>
 
 </Project>

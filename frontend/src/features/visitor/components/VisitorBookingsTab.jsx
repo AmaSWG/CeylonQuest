@@ -31,7 +31,7 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
     // FETCH BOOKINGS
     // =========================================================
 
-    const fetchBookings = useCallback(async () => {
+    const fetchBookings = useCallback(async (background = false) => {
         const token = localStorage.getItem('authToken')
 
         if (!token) {
@@ -39,7 +39,7 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
             return
         }
 
-        setLoading(true)
+        if (!background) setLoading(true)
         setError(null)
 
         try {
@@ -74,7 +74,11 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
 
             const data = await response.json()
 
-            setBookings(Array.isArray(data) ? data : [])
+            const updatedBookings = Array.isArray(data) ? data : []
+            setBookings(updatedBookings)
+            setSelectedBooking(current => current
+                ? updatedBookings.find(b => b.id === current.id && b.bookingType === current.bookingType) || null
+                : null)
         } catch {
             setError(
                 'Network error. Please check your connection and try again.'
@@ -86,11 +90,18 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
 
     useEffect(() => {
         fetchBookings()
+        const refresh = () => fetchBookings(true)
+        const timer = setInterval(refresh, 5000)
+        window.addEventListener('focus', refresh)
+        return () => {
+            clearInterval(timer)
+            window.removeEventListener('focus', refresh)
+        }
     }, [fetchBookings])
 
     useEffect(() => {
         const initial = setTimeout(() => setNow(Date.now()), 0)
-        const timer = setInterval(() => setNow(Date.now()), 30000)
+        const timer = setInterval(() => setNow(Date.now()), 1000)
         return () => {
             clearTimeout(initial)
             clearInterval(timer)
@@ -230,12 +241,17 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
     }
 
     const canDelete = (booking) => {
-        return isCancelled(booking) || isCompleted(booking)
+        return isCompleted(booking)
     }
 
     const canRetryPayment = (booking) => canRetryPaymentAt(booking, now)
 
     const retryPayment = async (booking) => {
+        if (!canRetryPaymentAt(booking, Date.now())) {
+            setPaymentError('Payment window has expired. Please refresh your bookings.')
+            await fetchBookings(true)
+            return
+        }
         const token = localStorage.getItem('authToken')
         if (!token) { onSessionExpired?.(); return }
         setRetryingBookingId(booking.id)
@@ -254,6 +270,7 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
         } catch (error) {
             setPaymentError(error.message || 'Unable to retry payment.')
             setRetryingBookingId(null)
+            await fetchBookings(true)
         }
     }
 

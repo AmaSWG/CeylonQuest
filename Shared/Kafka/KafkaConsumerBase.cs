@@ -43,6 +43,7 @@ public abstract class KafkaConsumerBase : BackgroundService
             BootstrapServers = bootstrapServers,
             GroupId = GroupId,
             AutoOffsetReset = AutoOffsetReset.Earliest,
+            EnableAutoCommit = false,
         };
 
         // Parse SecurityProtocol robustly without breaking enum name formats (e.g. "SaslSsl", "SASL_SSL")
@@ -110,6 +111,8 @@ public abstract class KafkaConsumerBase : BackgroundService
                             result.Message.Key,
                             result.Message.Value,
                             stoppingToken);
+                        // Never acknowledge a capacity release before its database transaction commits.
+                        consumer.Commit(result);
                     }
                     catch (ConsumeException ex)
                     {

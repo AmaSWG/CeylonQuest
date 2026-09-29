@@ -20,15 +20,18 @@ public class ReservationsController : ControllerBase
     private readonly BookingDbContext _context;
     private readonly ICatalogService _catalogService;
     private readonly IKafkaProducer _kafkaProducer;
+    private readonly TimeProvider _timeProvider;
 
     public ReservationsController(
         BookingDbContext context,
         ICatalogService catalogService,
-        IKafkaProducer kafkaProducer)
+        IKafkaProducer kafkaProducer,
+        TimeProvider? timeProvider = null)
     {
         _context = context;
         _catalogService = catalogService;
         _kafkaProducer = kafkaProducer;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     // =========================================================
@@ -62,7 +65,8 @@ public class ReservationsController : ControllerBase
 
         // 3. Validate date
         if (request.ReservationDate <
-            DateOnly.FromDateTime(DateTime.UtcNow))
+            DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(
+                _timeProvider.GetUtcNow(), TimeZoneInfo.FindSystemTimeZoneById("Asia/Colombo")).DateTime))
         {
             return BadRequest(new
             {
@@ -78,6 +82,11 @@ public class ReservationsController : ControllerBase
                 message = "A reservation time is required."
             });
         }
+
+        var timeError = RestaurantReservationTime.Validate(
+            request.ReservationDate, request.TimeSlot, _timeProvider.GetUtcNow());
+        if (timeError != null)
+            return BadRequest(new { message = timeError });
 
         // 5. Validate party size
         if (request.PartySize <= 0)
@@ -202,6 +211,11 @@ public class ReservationsController : ControllerBase
             pricePerPerson * request.PartySize;
 
         // 16. Reserve capacity
+        timeError = RestaurantReservationTime.Validate(
+            request.ReservationDate, request.TimeSlot, _timeProvider.GetUtcNow());
+        if (timeError != null)
+            return BadRequest(new { message = timeError });
+
         var capacityReserved =
             await _catalogService.ReserveCapacityAsync(
                 request.RestaurantId,

@@ -701,12 +701,41 @@
 
   justify-content: flex-start;
 
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 
   gap: 7px;
 
-  white-space: normal;
+  white-space: nowrap;
 
+}
+
+.vb-table th:last-child,
+.vb-table td:last-child {
+  width: 280px;
+}
+
+.vb-table-actions > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 10px;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .vb-table-actions {
+    flex-wrap: wrap;
+  }
+
+  .vb-table th:last-child,
+  .vb-table td:last-child {
+    width: 190px;
+  }
 }
 
 
