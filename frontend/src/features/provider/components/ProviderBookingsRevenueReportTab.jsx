@@ -92,7 +92,13 @@ export default function ProviderBookingsRevenueReportTab({ token, onLogout }) {
       }
     }
     loadReport()
-    return () => controller.abort()
+    const timer = setInterval(loadReport, 5000)
+    window.addEventListener('focus', loadReport)
+    return () => {
+      controller.abort()
+      clearInterval(timer)
+      window.removeEventListener('focus', loadReport)
+    }
   }, [request, token, onLogout])
 
   function applyFilters(event) {

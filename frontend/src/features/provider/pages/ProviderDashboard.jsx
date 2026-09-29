@@ -385,7 +385,7 @@ function ProviderDashboard({ onLogout }) {
      ======================================================= */
 
   const fetchProviderBookings =
-    useCallback(async () => {
+    useCallback(async (background = false) => {
       const currentToken =
         localStorage.getItem('authToken')
 
@@ -398,7 +398,7 @@ function ProviderDashboard({ onLogout }) {
         return
       }
 
-      setBookingsLoading(true)
+      if (!background) setBookingsLoading(true)
       setBookingsError(null)
 
       try {
@@ -537,6 +537,13 @@ function ProviderDashboard({ onLogout }) {
   useEffect(() => {
     if (activeTab === 'bookings') {
       fetchProviderBookings()
+      const refresh = () => fetchProviderBookings(true)
+      const timer = setInterval(refresh, 5000)
+      window.addEventListener('focus', refresh)
+      return () => {
+        clearInterval(timer)
+        window.removeEventListener('focus', refresh)
+      }
     }
   }, [
     activeTab,

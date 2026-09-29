@@ -171,7 +171,11 @@ export default function ProviderBookingsTab({
 }) {
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
-  const [selectedBooking, setSelectedBooking] = useState(null)
+  const [selectedBookingSnapshot, setSelectedBooking] = useState(null)
+  const selectedBooking = selectedBookingSnapshot
+    ? bookings.find(booking => booking.id === selectedBookingSnapshot.id &&
+      booking.bookingType === selectedBookingSnapshot.bookingType) || null
+    : null
 
 
   /* =========================================================

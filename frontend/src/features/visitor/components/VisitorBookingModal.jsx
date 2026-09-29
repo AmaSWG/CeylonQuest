@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import './VisitorBookingModal.css'
 import ExperienceAvailabilityDetails from './ExperienceAvailabilityDetails'
 
@@ -15,6 +15,7 @@ import {
 } from '../../../components/Icons'
 
 import { catalogUrl, bookingUrl } from '../../../api/client'
+import { restaurantTimeError, sriLankaDate } from '../../../api/restaurantReservationTime'
 
 const toLocalDateInput = (value = new Date()) => {
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
@@ -49,6 +50,12 @@ export default function VisitorBookingModal({
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [pendingCheckout, setPendingCheckout] = useState(null)
+  const [now, setNow] = useState(Date.now)
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   // =========================================================
   // LISTING TYPE
@@ -58,7 +65,7 @@ export default function VisitorBookingModal({
   const isAccommodation = item?.type === 'Accommodation'
   const isExperience = item?.type === 'Experience'
 
-  const today = toLocalDateInput()
+  const today = isRestaurant ? sriLankaDate(now) : toLocalDateInput()
   const experienceValidFrom = isExperience && item?.validFrom ? toLocalDateInput(item.validFrom) : ''
   const experienceValidUntil = isExperience && item?.validUntil ? toLocalDateInput(item.validUntil) : ''
   const minimumBookingDate = experienceValidFrom && experienceValidFrom > today
@@ -154,7 +161,8 @@ export default function VisitorBookingModal({
         const firstAvailableSlot = data.slots?.find(
           (slot) =>
             !slot.isFullyBooked &&
-            slot.remainingCapacity > 0
+            slot.remainingCapacity > 0 &&
+            (!isRestaurant || !restaurantTimeError(selectedDate, slot.timeSlot))
         )
 
         setSelectedTimeSlot(
@@ -170,7 +178,7 @@ export default function VisitorBookingModal({
     }
 
     fetchAvailability()
-  }, [item, selectedDate, isBookingDateValid])
+  }, [item, selectedDate, isBookingDateValid, isRestaurant])
 
   if (!item) return null
 
@@ -201,6 +209,9 @@ export default function VisitorBookingModal({
 
   const selectedSlotRemaining =
     selectedSlot?.remainingCapacity ?? 0
+  const selectedTimeError = isRestaurant
+    ? restaurantTimeError(selectedDate, selectedTimeSlot, now)
+    : null
 
   /*
    * IMPORTANT:
@@ -411,6 +422,12 @@ export default function VisitorBookingModal({
             : 'Please select a booking date.'
       )
 
+      return
+    }
+
+    const timeError = isRestaurant && restaurantTimeError(selectedDate, selectedTimeSlot)
+    if (timeError) {
+      setSubmitError(timeError)
       return
     }
 
@@ -1015,11 +1032,12 @@ export default function VisitorBookingModal({
                     value={slot.timeSlot}
                     disabled={
                       slot.isFullyBooked ||
-                      slot.remainingCapacity <= 0
+                      slot.remainingCapacity <= 0 ||
+                      (isRestaurant && !!restaurantTimeError(selectedDate, slot.timeSlot, now))
                     }
                   >
                     {isRestaurant
-                      ? slot.timeSlot
+                      ? `${slot.timeSlot}${restaurantTimeError(selectedDate, slot.timeSlot, now) ? ' (Unavailable)' : ''}`
                       : isAccommodation
                         ? `${slot.timeSlot} — ${slot.remainingCapacity > 0
                           ? 'Available'
@@ -1129,6 +1147,7 @@ export default function VisitorBookingModal({
               !availError &&
               !isNotOperating &&
               !isSoldOut &&
+              !selectedTimeError &&
               availability && (
                 <div className="vd-avail-success">
 
@@ -1155,7 +1174,7 @@ export default function VisitorBookingModal({
           </div>
 
           {/* VALIDATION ERROR */}
-          {submitError && (
+          {(selectedTimeError || submitError) && (
             <div
               className="vd-avail-error"
               style={{
@@ -1167,7 +1186,7 @@ export default function VisitorBookingModal({
             >
               <DangerIcon size={16} />
               {' '}
-              {submitError}
+              {selectedTimeError || submitError}
             </div>
           )}
 
@@ -1264,6 +1283,7 @@ export default function VisitorBookingModal({
               className="vd-btn-book"
               disabled={
                 loadingAvail ||
+                !!selectedTimeError ||
                 !availability ||
                 !!availError ||
                 isSoldOut ||

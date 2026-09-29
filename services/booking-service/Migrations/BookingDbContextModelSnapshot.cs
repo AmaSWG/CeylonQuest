@@ -236,6 +236,10 @@ namespace booking_service.Migrations
                     b.Property<DateTime?>("ProcessedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("CheckoutSessionId").HasMaxLength(255).HasColumnType("varchar(255)");
+                    b.Property<DateTime?>("CheckoutDeadline").HasColumnType("datetime(6)");
+                    b.Property<DateTime?>("CheckoutClosedAt").HasColumnType("datetime(6)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("longtext");

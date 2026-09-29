@@ -29,6 +29,8 @@ public class PendingPaymentExpirationServiceTests
         Assert.Equal(BookingStatus.PendingPayment, recent.Status);
         Assert.Equal(BookingStatus.Confirmed, paid.Status);
         Assert.Equal(0, await service.ExpireAsync(now));
+        await service.PublishPendingCancellationsAsync();
+        await service.PublishPendingCancellationsAsync();
         kafka.Verify(k => k.PublishAsync("booking.canceled", old.Id.ToString(),
             It.Is<BookingCanceledEvent>(e => e.ParticipantCount == old.ParticipantCount),
             It.IsAny<CancellationToken>()), Times.Once);
@@ -49,6 +51,7 @@ public class PendingPaymentExpirationServiceTests
         var kafka = new Mock<IKafkaProducer>();
 
         await new PendingPaymentExpirationService(db, kafka.Object).ExpireAsync(now);
+        await new PendingPaymentExpirationService(db, kafka.Object).PublishPendingCancellationsAsync();
 
         kafka.Verify(k => k.PublishAsync("booking.canceled", booking.Id.ToString(),
             It.Is<BookingCanceledEvent>(e => e.ListingType == type && e.ParticipantCount == expectedCapacity),

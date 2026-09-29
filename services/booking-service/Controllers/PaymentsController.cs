@@ -2,6 +2,7 @@ using BookingService.Data;
 using BookingService.DTOs;
 using BookingService.Events;
 using BookingService.Models;
+using BookingService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -128,6 +129,17 @@ public class PaymentsController : ControllerBase
             });
         }
 
+        if (await ExpireIfOverdue(booking))
+            return Conflict(new { message = "Payment window has expired. This booking has been cancelled." });
+
+        if (booking is RestaurantReservation reservation)
+        {
+            var timeError = RestaurantReservationTime.Validate(
+                reservation.ReservationDate, reservation.TimeSlot, DateTimeOffset.UtcNow);
+            if (timeError != null)
+                return BadRequest(new { message = timeError });
+        }
+
         if (booking.Status != BookingStatus.PendingPayment)
         {
             return Conflict(new { message = "Only pending-payment bookings can be paid." });
@@ -223,6 +235,7 @@ public class PaymentsController : ControllerBase
             TransactionReference = transactionReference,
             Status = PaymentStatus.Unpaid,
             CreatedAt = now,
+            CheckoutDeadline = booking.CreatedAt + PendingPaymentExpirationService.PaymentWindow,
             ProcessedAt = null
         };
 
@@ -375,6 +388,17 @@ frontendBaseUrl = frontendBaseUrl.TrimEnd('/');
             var session =
                 await _checkoutService.CreateAsync(options);
 
+            transaction.CheckoutSessionId = session.Id;
+            await _context.SaveChangesAsync();
+            await _context.Entry(booking).ReloadAsync();
+            if (await ExpireIfOverdue(booking) || booking.Status != BookingStatus.PendingPayment)
+            {
+                await _checkoutService.ExpireAsync(session.Id);
+                transaction.CheckoutClosedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                return Conflict(new { message = "Payment window has expired. This booking has been cancelled." });
+            }
+
             return Ok(new
             {
                 message =
@@ -406,7 +430,13 @@ frontendBaseUrl = frontendBaseUrl.TrimEnd('/');
         }
         catch (StripeException ex)
         {
-            // Stripe failed before checkout could start
+            // Stripe creation/cleanup may finish after another request changes the booking.
+            // Reload before applying failure state; never reopen a terminal booking.
+            await _context.Entry(booking).ReloadAsync();
+            if (await ExpireIfOverdue(booking) || booking.Status != BookingStatus.PendingPayment ||
+                booking.PaymentStatus == PaymentStatus.Paid)
+                return Conflict(new { message = "This booking is no longer available for payment." });
+
             transaction.Status =
                 PaymentStatus.Failed;
 
@@ -515,6 +545,9 @@ frontendBaseUrl = frontendBaseUrl.TrimEnd('/');
         }
 
         // Idempotency:
+        if (await ExpireIfOverdue(booking))
+            return Conflict(new { message = "Payment window has expired. This booking has been cancelled." });
+
         if (booking.Status != BookingStatus.PendingPayment)
             return Conflict(new { message = "This booking is no longer pending payment." });
 
@@ -799,6 +832,7 @@ frontendBaseUrl = frontendBaseUrl.TrimEnd('/');
 
         // A late webhook from an abandoned checkout must not revive an
         // already-expired booking or confirm it outside its payment window.
+        if (await ExpireIfOverdue(booking)) return;
         if (booking.Status != BookingStatus.PendingPayment ||
             DateTime.UtcNow >= booking.CreatedAt.AddMinutes(15))
         {
@@ -1008,6 +1042,7 @@ frontendBaseUrl = frontendBaseUrl.TrimEnd('/');
 
 
         // Never overwrite paid booking
+        if (await ExpireIfOverdue(booking) || booking.Status != BookingStatus.PendingPayment) return;
         if (booking.PaymentStatus ==
             PaymentStatus.Paid)
         {
@@ -1103,6 +1138,7 @@ frontendBaseUrl = frontendBaseUrl.TrimEnd('/');
 
 
         // Never overwrite paid booking
+        if (await ExpireIfOverdue(booking) || booking.Status != BookingStatus.PendingPayment) return;
         if (booking.PaymentStatus ==
             PaymentStatus.Paid)
         {
@@ -1208,6 +1244,21 @@ frontendBaseUrl = frontendBaseUrl.TrimEnd('/');
 
     private static bool IsSupportedType(string? bookingType) =>
         bookingType is "Experience" or "Accommodation" or "Restaurant";
+
+    private async Task<bool> ExpireIfOverdue(IPayableBooking booking)
+    {
+        if (!PendingPaymentExpirationService.MarkExpired(booking, DateTime.UtcNow)) return false;
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // A worker or webhook won the transition. Discard this attempt and reject checkout.
+            _context.ChangeTracker.Clear();
+        }
+        return true;
+    }
 
     private async Task<IPayableBooking?> FindBooking(Guid id, string bookingType, Guid visitorId)
     {

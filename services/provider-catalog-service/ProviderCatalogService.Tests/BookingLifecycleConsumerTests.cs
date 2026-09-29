@@ -38,6 +38,11 @@ public class BookingLifecycleConsumerTests
         using (var scope = provider.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+            if (listingType == "Experience") db.ActivityListings.Add(new ActivityListing
+            { Id = listingId, MaxParticipants = total, TimeSlots = JsonSerializer.Serialize(new[] { timeSlot }) });
+            else if (listingType == "Restaurant") db.RestaurantListings.Add(new RestaurantListing
+            { Id = listingId, SeatingCapacity = total, TimeSlots = timeSlot });
+            else db.AccommodationListings.Add(new AccommodationListing { Id = listingId, MinStayNights = 2 });
             db.AvailabilitySlots.Add(new AvailabilitySlot
             {
                 ListingId = listingId,
@@ -73,6 +78,8 @@ public class BookingLifecycleConsumerTests
         }
 
         var canceled = new TestCanceledConsumer(provider.GetRequiredService<IServiceScopeFactory>());
+        // Kafka is at-least-once: redelivery must not add capacity again.
+        for (var delivery = 0; delivery < 2; delivery++)
         await canceled.Handle(JsonSerializer.Serialize(new BookingCanceledEvent
         {
             BookingId = bookingId,
@@ -87,6 +94,11 @@ public class BookingLifecycleConsumerTests
         {
             var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
             Assert.Equal(total, (await db.AvailabilitySlots.SingleAsync()).RemainingCapacity);
+            Assert.Single(db.BookingCapacityReleases);
+            var availability = await scope.ServiceProvider.GetRequiredService<AvailabilityService>()
+                .GetAvailabilityForDateAsync(listingId, date);
+            Assert.NotNull(availability);
+            Assert.Equal(total, Assert.Single(availability.Slots).RemainingCapacity);
         }
     }
 
