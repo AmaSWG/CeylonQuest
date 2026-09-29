@@ -5,7 +5,6 @@ import {
   DocumentScannerIcon,
   GroupIcon,
   WorkIcon,
-  CalendarMonthIcon,
   BarChartIcon,
   NotificationsActiveIcon,
   PermIdentityIcon,
@@ -19,7 +18,6 @@ import AdminOverviewTab from '../components/AdminOverviewTab'
 import AdminProviderApplicationsTab from '../components/AdminProviderApplicationsTab'
 import AdminUserManagementTab from '../components/AdminUserManagementTab'
 import AdminProviderManagementTab from '../components/AdminProviderManagementTab'
-import AdminBookingsOverviewTab from '../components/AdminBookingsOverviewTab'
 import AdminReportsTab from '../components/AdminReportsTab'
 import AdminNotificationsTab from '../components/AdminNotificationsTab'
 import AdminAccountTab from '../components/AdminAccountTab'
@@ -189,7 +187,6 @@ function AdminDashboard({ onLogout }) {
     { key: 'applications',  icon: <DocumentScannerIcon size={18} />,    label: 'Provider Applications', badge: pendingAppsCount > 0 ? pendingAppsCount : null },
     { key: 'users',         icon: <GroupIcon size={18} />,              label: 'User Management' },
     { key: 'providers',     icon: <WorkIcon size={18} />,               label: 'Provider Management' },
-    { key: 'bookings',      icon: <CalendarMonthIcon size={18} />,       label: 'Bookings' },
     { key: 'reports',       icon: <BarChartIcon size={18} />,            label: 'Reports & Analytics' },
     { key: 'notifications', icon: <NotificationsActiveIcon size={18} />, label: 'Notifications', badge: unreadNotifCount > 0 ? unreadNotifCount : null },
     { key: 'account',       icon: <PermIdentityIcon size={18} />,        label: 'Account' },
@@ -244,12 +241,6 @@ function AdminDashboard({ onLogout }) {
           applications={applications}
           onRefresh={fetchUsers}
           showToast={showToast}
-        />
-      )}
-
-      {activeTab === 'bookings' && (
-        <AdminBookingsOverviewTab
-          bookings={bookings}
         />
       )}
 

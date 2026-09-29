@@ -22,6 +22,10 @@ import VisitorDashboard from './features/visitor/pages/VisitorDashboard'
 // Admin Feature
 import AdminDashboard from './features/admin/pages/AdminDashboard'
 
+// Payment Feature
+import PaymentSuccessPage from './features/payment/pages/PaymentSuccessPage'
+import PaymentCancelPage from './features/payment/pages/PaymentCancelPage'
+
 function App() {
   const storedRole = localStorage.getItem('userRole')
   const hasToken   = Boolean(localStorage.getItem('authToken'))
@@ -35,6 +39,12 @@ function App() {
     }
     if (path.includes('forgot-password') || params.get('page') === 'forgot-password') {
       return 'forgot-password'
+    }
+    if (path === '/payment/success' || path.startsWith('/payment/success')) {
+      return 'payment-success'
+    }
+    if (path === '/payment/cancel' || path.startsWith('/payment/cancel')) {
+      return 'payment-cancel'
     }
     if (path.includes('provider-activate') || path.includes('provider-activation') || params.get('page') === 'provider-activate') {
       return 'provider-activate'
@@ -136,6 +146,56 @@ function App() {
           }
           setPage('login')
         }}
+      />
+    )
+  }
+
+  if (page === 'payment-success') {
+    const handleSessionExpiredOnPayment = () => {
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('userRole')
+      setPage('login')
+    }
+    const goToBookings = () => {
+      const role = localStorage.getItem('userRole')
+      if (role === 'Visitor') {
+        sessionStorage.setItem('visitorActivePage', 'bookings')
+        window.history.pushState({}, '', '/')
+        setPage('visitor-dashboard')
+      } else {
+        window.history.pushState({}, '', '/')
+        setPage('login')
+      }
+    }
+    return (
+      <PaymentSuccessPage
+        onGoToBookings={goToBookings}
+        onSessionExpired={handleSessionExpiredOnPayment}
+      />
+    )
+  }
+
+  if (page === 'payment-cancel') {
+    const handleSessionExpiredOnCancel = () => {
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('userRole')
+      setPage('login')
+    }
+    const goToBookings = () => {
+      const role = localStorage.getItem('userRole')
+      if (role === 'Visitor') {
+        sessionStorage.setItem('visitorActivePage', 'bookings')
+        window.history.pushState({}, '', '/')
+        setPage('visitor-dashboard')
+      } else {
+        window.history.pushState({}, '', '/')
+        setPage('login')
+      }
+    }
+    return (
+      <PaymentCancelPage
+        onGoToBookings={goToBookings}
+        onSessionExpired={handleSessionExpiredOnCancel}
       />
     )
   }

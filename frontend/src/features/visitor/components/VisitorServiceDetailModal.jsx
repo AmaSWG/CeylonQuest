@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import './VisitorServiceDetailModal.css'
+import ExperienceAvailabilityDetails from './ExperienceAvailabilityDetails'
 import {
   CloseIcon,
   GroupIcon,
@@ -137,6 +138,7 @@ export default function VisitorServiceDetailModal({ item, onClose, onOpenBooking
                   </span>
                   <span className="vd-detail-row__val">{item.duration || 'Flexible'}</span>
                 </div>
+                <ExperienceAvailabilityDetails item={item} />
                 <div className="vd-detail-row">
                   <span className="vd-detail-row__label">
                     <GroupIcon size={16} /> Group Size:

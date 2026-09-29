@@ -5,6 +5,7 @@ import {
   ManageSearchIcon
 } from '../../../components/Icons'
 import InventoryReportView from '../../../components/InventoryReportView'
+import AdminBookingsRevenueReportTab from './AdminBookingsRevenueReportTab'
 import { apiUrl } from '../../../api/client'
 
 function initials(first, last) {
@@ -46,6 +47,7 @@ function RegistrationReportsSection({ token, onLogout }) {
   const [report, setReport] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [dateValidationError, setDateValidationError] = useState('')
 
   const buildQuery = (f) => {
     const params = new URLSearchParams()
@@ -85,6 +87,11 @@ function RegistrationReportsSection({ token, onLogout }) {
 
   const handleApply = (e) => {
     e.preventDefault()
+    if (filters.dateFrom && filters.dateTo && filters.dateTo < filters.dateFrom) {
+      setDateValidationError('End date cannot be earlier than start date.')
+      return
+    }
+    setDateValidationError('')
     setAppliedFilters(filters)
     fetchReport(filters)
   }
@@ -92,7 +99,18 @@ function RegistrationReportsSection({ token, onLogout }) {
   const handleClear = () => {
     setFilters(emptyFilters)
     setAppliedFilters({})
+    setDateValidationError('')
     fetchReport({})
+  }
+
+  const changeDateFilter = (name, value) => {
+    const next = { ...filters, [name]: value }
+    setFilters(next)
+    setDateValidationError(
+      next.dateFrom && next.dateTo && next.dateTo < next.dateFrom
+        ? 'End date cannot be earlier than start date.'
+        : ''
+    )
   }
 
   const r = report?.registrations
@@ -120,7 +138,7 @@ function RegistrationReportsSection({ token, onLogout }) {
             type="date"
             className="ad-report__filter-input"
             value={filters.dateFrom}
-            onChange={e => setFilters(f => ({ ...f, dateFrom: e.target.value }))}
+            onChange={e => changeDateFilter('dateFrom', e.target.value)}
           />
         </div>
         <div className="ad-report__filter-row">
@@ -129,8 +147,9 @@ function RegistrationReportsSection({ token, onLogout }) {
             id="ad-report-dateTo"
             type="date"
             className="ad-report__filter-input"
+            min={filters.dateFrom || undefined}
             value={filters.dateTo}
-            onChange={e => setFilters(f => ({ ...f, dateTo: e.target.value }))}
+            onChange={e => changeDateFilter('dateTo', e.target.value)}
           />
         </div>
         <div className="ad-report__filter-row">
@@ -165,6 +184,11 @@ function RegistrationReportsSection({ token, onLogout }) {
           <button type="submit" className="ad-report__apply-btn" id="ad-report-apply-btn">Apply Filters</button>
           <button type="button" className="ad-report__clear-btn" id="ad-report-clear-btn" onClick={handleClear}>Clear</button>
         </div>
+        {dateValidationError && (
+          <div className="ad-report__error" role="alert">
+            {dateValidationError}
+          </div>
+        )}
       </form>
 
       {/* ── Active filter badges ── */}
@@ -393,12 +417,21 @@ export default function ReportsTab({ token, onLogout }) {
         >
           <ManageSearchIcon size={16} /> Identity & Registrations Report
         </button>
+        <button
+          type="button"
+          className={`cq-report-subtab-btn ${reportSubTab === 'bookings' ? 'active' : ''}`}
+          onClick={() => setReportSubTab('bookings')}
+        >
+          <BarChartIcon size={16} /> Bookings &amp; Revenue Report
+        </button>
       </div>
 
       {reportSubTab === 'inventory' ? (
         <InventoryReportView token={token} onLogout={onLogout} isAdmin={true} />
-      ) : (
+      ) : reportSubTab === 'registrations' ? (
         <RegistrationReportsSection token={token} onLogout={onLogout} />
+      ) : (
+        <AdminBookingsRevenueReportTab token={token} onLogout={onLogout} />
       )}
     </div>
   )

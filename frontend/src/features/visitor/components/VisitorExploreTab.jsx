@@ -90,19 +90,19 @@ function ServiceCardImages({ item }) {
 }
 
 export default function VisitorExploreTab({ showToast }) {
-  const [searchTerm, setSearchTerm]       = useState('')
-  const [serviceType, setServiceType]     = useState('all')
-  const [category, setCategory]           = useState('all')
-  const [location, setLocation]           = useState('all')
-  const [priceRange, setPriceRange]       = useState('all')
-  const [sortBy, setSortBy]               = useState('newest')
-  const [viewMode, setViewMode]           = useState('grid')
-  const [currentPage, setCurrentPage]     = useState(1)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [serviceType, setServiceType] = useState('all')
+  const [category, setCategory] = useState('all')
+  const [location, setLocation] = useState('all')
+  const [priceRange, setPriceRange] = useState('all')
+  const [sortBy, setSortBy] = useState('newest')
+  const [viewMode, setViewMode] = useState('grid')
+  const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 9
 
-  const [services, setServices]           = useState([])
-  const [loading, setLoading]             = useState(true)
-  const [loadError, setLoadError]         = useState(null)
+  const [services, setServices] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [selectedBooking, setSelectedBooking] = useState(null)
 
@@ -142,9 +142,9 @@ export default function VisitorExploreTab({ showToast }) {
 
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase()
-      const titleMatch    = s.title?.toLowerCase().includes(q)
-      const descMatch     = s.description?.toLowerCase().includes(q)
-      const locMatch      = s.location?.toLowerCase().includes(q)
+      const titleMatch = s.title?.toLowerCase().includes(q)
+      const descMatch = s.description?.toLowerCase().includes(q)
+      const locMatch = s.location?.toLowerCase().includes(q)
       const providerMatch = s.providerBusinessName?.toLowerCase().includes(q)
       if (!titleMatch && !descMatch && !locMatch && !providerMatch) return false
     }
@@ -158,8 +158,8 @@ export default function VisitorExploreTab({ showToast }) {
     return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
   })
 
-  const totalPages  = Math.max(1, Math.ceil(sorted.length / itemsPerPage))
-  const paginated   = sorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const totalPages = Math.max(1, Math.ceil(sorted.length / itemsPerPage))
+  const paginated = sorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handleFilterChange = (setter) => (e) => {
     setter(e.target.value)
@@ -364,7 +364,7 @@ export default function VisitorExploreTab({ showToast }) {
           onBookingSuccess={(msg) => {
             setSelectedBooking(null)
             if (showToast) {
-              showToast(msg, 'Booking Confirmed')
+              showToast(msg, 'Booking Created')
             }
           }}
         />

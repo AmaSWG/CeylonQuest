@@ -24,6 +24,8 @@ public class RestaurantListing
 
     public string OpeningHours { get; set; } = string.Empty;
 
+    public string TimeSlots { get; set; } = string.Empty;
+
     public string SetMenuDetails { get; set; } = string.Empty;
 
     public string DietaryOptions { get; set; } = "Standard";

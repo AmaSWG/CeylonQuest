@@ -23,7 +23,7 @@ public class ActivityListingsController : ControllerBase
     /// <summary>
     /// Maps an activity listing entity to the response DTO returned by the API
     /// </summary>
-     private static ActivityListingResponse ToDto(ActivityListing a) => new()
+    private static ActivityListingResponse ToDto(ActivityListing a) => new()
     {
         Id = a.Id,
         Title = a.Title,
@@ -42,20 +42,25 @@ public class ActivityListingsController : ControllerBase
         Images = a.Images
     };
 
-    
     /// <summary>
     /// Creates a new activity listing for the currently authenticated approved provider
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateActivityListingRequest request)
+    public async Task<IActionResult> Create(
+        [FromBody] CreateActivityListingRequest request)
     {
         if (!ModelState.IsValid)
             return ValidationProblem(ModelState);
 
-        var (provider, errorMessage) = await GetApprovedProviderAsync();
+        var (provider, errorMessage) =
+            await GetApprovedProviderAsync();
+
         if (provider is null)
         {
-            return StatusCode(403, new { message = errorMessage });
+            return StatusCode(403, new
+            {
+                message = errorMessage
+            });
         }
 
         var listing = new ActivityListing
@@ -67,7 +72,12 @@ public class ActivityListingsController : ControllerBase
             Price = request.Price,
             Unit = request.Unit.Trim(),
             Location = request.Location.Trim(),
-            MaxParticipants = request.MaxParticipants > 0 ? request.MaxParticipants : 1,
+
+            MaxParticipants =
+                request.MaxParticipants > 0
+                    ? request.MaxParticipants
+                    : 1,
+
             IsActive = request.IsActive,
             CreatedAt = DateTime.UtcNow,
             Duration = request.Duration?.Trim(),
@@ -79,21 +89,29 @@ public class ActivityListingsController : ControllerBase
         };
 
         _db.ActivityListings.Add(listing);
+
         await _db.SaveChangesAsync();
 
-        return Created($"/api/catalog/activity-listings/{listing.Id}", ToDto(listing));
+        return Created(
+            $"/api/catalog/activity-listings/{listing.Id}",
+            ToDto(listing));
     }
 
     /// <summary>
     /// Retrieves all activity listings belonging to the currently authenticated approved provider
-    /// </summary
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetMyListings()
     {
-        var (provider, errorMessage) = await GetApprovedProviderAsync();
+        var (provider, errorMessage) =
+            await GetApprovedProviderAsync();
+
         if (provider is null)
         {
-            return StatusCode(403, new { message = errorMessage });
+            return StatusCode(403, new
+            {
+                message = errorMessage
+            });
         }
 
         var listings = await _db.ActivityListings
@@ -124,16 +142,21 @@ public class ActivityListingsController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieves a specific activity listing after verifying that it belongs to the
-    /// currently authenticated provider
+    /// Retrieves a specific activity listing after verifying that it belongs
+    /// to the currently authenticated provider
     /// </summary>
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var (provider, errorMessage) = await GetApprovedProviderAsync();
+        var (provider, errorMessage) =
+            await GetApprovedProviderAsync();
+
         if (provider is null)
         {
-            return StatusCode(403, new { message = errorMessage });
+            return StatusCode(403, new
+            {
+                message = errorMessage
+            });
         }
 
         var listing = await _db.ActivityListings
@@ -141,52 +164,95 @@ public class ActivityListingsController : ControllerBase
             .FirstOrDefaultAsync(l => l.Id == id);
 
         if (listing is null)
-            return NotFound(new { message = "Activity listing not found." });
+        {
+            return NotFound(new
+            {
+                message = "Activity listing not found."
+            });
+        }
 
         // Providers can only access their own listings
         if (listing.ProviderId != provider.Id)
-            return StatusCode(403, new { message = "You do not have permission to view this listing." });
+        {
+            return StatusCode(403, new
+            {
+                message =
+                    "You do not have permission to view this listing."
+            });
+        }
 
         return Ok(ToDto(listing));
     }
 
-
     /// <summary>
-    /// Updates an existing activity listing after verifying that the currently
+    /// Updates an existing activity listing after verifying that the
     /// authenticated provider owns the listing
     /// </summary>
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateActivityListingRequest request)
+    public async Task<IActionResult> Update(
+        Guid id,
+        [FromBody] UpdateActivityListingRequest request)
     {
         if (!ModelState.IsValid)
             return ValidationProblem(ModelState);
 
-        var (provider, errorMessage) = await GetApprovedProviderAsync();
+        var (provider, errorMessage) =
+            await GetApprovedProviderAsync();
+
         if (provider is null)
         {
-            return StatusCode(403, new { message = errorMessage });
+            return StatusCode(403, new
+            {
+                message = errorMessage
+            });
         }
 
-        var listing = await _db.ActivityListings.FirstOrDefaultAsync(l => l.Id == id);
-        if (listing is null)
-            return NotFound(new { message = "Activity listing not found." });
+        var listing = await _db.ActivityListings
+            .FirstOrDefaultAsync(l => l.Id == id);
 
-        // Ownership is checked before allowing the listing to be modified
+        if (listing is null)
+        {
+            return NotFound(new
+            {
+                message = "Activity listing not found."
+            });
+        }
+
+        // Ownership check
         if (listing.ProviderId != provider.Id)
-            return StatusCode(403, new { message = "You can only update your own listings." });
+        {
+            return StatusCode(403, new
+            {
+                message =
+                    "You can only update your own listings."
+            });
+        }
 
         listing.Title = request.Title.Trim();
         listing.Description = request.Description.Trim();
         listing.Price = request.Price;
         listing.Unit = request.Unit.Trim();
         listing.Location = request.Location.Trim();
-        listing.MaxParticipants = request.MaxParticipants > 0 ? request.MaxParticipants : 1;
+
+        listing.MaxParticipants =
+            request.MaxParticipants > 0
+                ? request.MaxParticipants
+                : 1;
+
         listing.IsActive = request.IsActive;
-        listing.Duration = request.Duration?.Trim() ?? listing.Duration;
-        listing.AvailableDays = !string.IsNullOrWhiteSpace(request.AvailableDays)
-            ? request.AvailableDays.Trim()
-            : listing.AvailableDays;
-        listing.TimeSlots = request.TimeSlots ?? "[]";
+
+        listing.Duration =
+            request.Duration?.Trim()
+            ?? listing.Duration;
+
+        listing.AvailableDays =
+            !string.IsNullOrWhiteSpace(request.AvailableDays)
+                ? request.AvailableDays.Trim()
+                : listing.AvailableDays;
+
+        listing.TimeSlots =
+            request.TimeSlots ?? "[]";
+
         listing.ValidFrom = request.ValidFrom;
         listing.ValidUntil = request.ValidUntil;
         listing.Images = request.Images;
@@ -196,63 +262,96 @@ public class ActivityListingsController : ControllerBase
         return Ok(ToDto(listing));
     }
 
-	/// <summary>
-	/// Deletes an activity listing after verifying that the currently authenticated
-	/// provider owns the listing
-	/// </summary>
+    /// <summary>
+    /// Deletes an activity listing after verifying that the authenticated
+    /// provider owns the listing
+    /// </summary>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var (provider, errorMessage) = await GetApprovedProviderAsync();
+        var (provider, errorMessage) =
+            await GetApprovedProviderAsync();
+
         if (provider is null)
         {
-            return StatusCode(403, new { message = errorMessage });
+            return StatusCode(403, new
+            {
+                message = errorMessage
+            });
         }
 
-        var listing = await _db.ActivityListings.FirstOrDefaultAsync(l => l.Id == id);
-        if (listing is null)
-            return NotFound(new { message = "Activity listing not found." });
+        var listing = await _db.ActivityListings
+            .FirstOrDefaultAsync(l => l.Id == id);
 
-        // Ownership is checked before the listing can be deleted
+        if (listing is null)
+        {
+            return NotFound(new
+            {
+                message = "Activity listing not found."
+            });
+        }
+
         if (listing.ProviderId != provider.Id)
-            return StatusCode(403, new { message = "You can only delete your own listings." });
+        {
+            return StatusCode(403, new
+            {
+                message =
+                    "You can only delete your own listings."
+            });
+        }
 
         _db.ActivityListings.Remove(listing);
+
         await _db.SaveChangesAsync();
 
-        return NoContent(); // 204
+        return NoContent();
     }
 
     /// <summary>
-    /// Identifies the authenticated provider and verifies that the provider is approved
-    /// before allowing activity listing management
+    /// Identifies the authenticated provider and verifies that the provider
+    /// is approved before allowing activity listing management
     /// </summary>
-    private async Task<(Provider? provider, string? errorMessage)> GetApprovedProviderAsync()
+    private async Task<(Provider? provider, string? errorMessage)>
+        GetApprovedProviderAsync()
     {
         var identityUserId = GetIdentityUserId();
-        var email = User.FindFirstValue(ClaimTypes.Email) 
-                 ?? User.FindFirstValue("email");
 
-        // A user must have an identifiable claim to be matched with a provider
-        if (identityUserId is null && string.IsNullOrWhiteSpace(email))
+        var email =
+            User.FindFirstValue(ClaimTypes.Email)
+            ?? User.FindFirstValue("email");
+
+        if (identityUserId is null &&
+            string.IsNullOrWhiteSpace(email))
         {
-            return (null, "User identity could not be verified from token.");
+            return (
+                null,
+                "User identity could not be verified from token."
+            );
         }
 
-        // Match either by linked IdentityUserId or by verified email
-        var provider = await _db.Providers.FirstOrDefaultAsync(p =>
-            (identityUserId.HasValue && p.IdentityUserId == identityUserId.Value) ||
-            (!string.IsNullOrEmpty(email) && p.Email.ToLower() == email.ToLower()));
+        var provider = await _db.Providers
+            .FirstOrDefaultAsync(p =>
+                (identityUserId.HasValue &&
+                 p.IdentityUserId == identityUserId.Value)
+                ||
+                (!string.IsNullOrEmpty(email) &&
+                 p.Email.ToLower() == email.ToLower()));
 
         if (provider is null)
         {
-            return (null, "Only approved providers can manage experience listings. Your application may still be pending or was rejected.");
+            return (
+                null,
+                "Only approved providers can manage experience listings. " +
+                "Your application may still be pending or was rejected."
+            );
         }
 
-        // Link the provider to the identity user if it has not been stored yet
-        if (provider.IdentityUserId == null && identityUserId.HasValue)
+        if (provider.IdentityUserId == null &&
+            identityUserId.HasValue)
         {
-            provider.IdentityUserId = identityUserId.Value;
+            provider.IdentityUserId =
+                identityUserId.Value;
+
             await _db.SaveChangesAsync();
         }
 
@@ -260,19 +359,21 @@ public class ActivityListingsController : ControllerBase
     }
 
     /// <summary>
-    /// Extracts the authenticated user's identity ID from the available token claims
+    /// Extracts the authenticated user's identity ID from token claims
     /// </summary>
     private Guid? GetIdentityUserId()
     {
-        var raw = User.FindFirstValue(ClaimTypes.NameIdentifier)
-               ?? User.FindFirstValue("sub");
+        var raw =
+            User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
 
-        return Guid.TryParse(raw, out var id) ? id : null;
+        return Guid.TryParse(raw, out var id)
+            ? id
+            : null;
     }
 
     /// <summary>
-    /// Retrieves active activity listings for public discovery, with optional
-    /// filtering by search term, location, and maximum price
+    /// Retrieves active activity listings for public discovery
     /// </summary>
     [AllowAnonymous]
     [HttpGet("public")]
@@ -281,30 +382,36 @@ public class ActivityListingsController : ControllerBase
         [FromQuery] string? location,
         [FromQuery] decimal? maxPrice)
     {
-        // Only active listings are included in public results
         var query = _db.ActivityListings
             .Include(l => l.Provider)
             .AsNoTracking()
             .Where(l => l.IsActive);
 
-        // Search across the activity title and description
+        // Search by title or description
         if (!string.IsNullOrWhiteSpace(search))
         {
             var q = search.Trim().ToLower();
-            query = query.Where(l => l.Title.ToLower().Contains(q) || l.Description.ToLower().Contains(q));
+
+            query = query.Where(l =>
+                l.Title.ToLower().Contains(q)
+                ||
+                l.Description.ToLower().Contains(q));
         }
 
-        // Filter activities by location when provided
+        // Filter by location
         if (!string.IsNullOrWhiteSpace(location))
         {
             var loc = location.Trim().ToLower();
-            query = query.Where(l => l.Location.ToLower().Contains(loc));
+
+            query = query.Where(l =>
+                l.Location.ToLower().Contains(loc));
         }
 
-        // Return activities within the visitor's maximum price
+        // Filter by maximum price
         if (maxPrice.HasValue && maxPrice > 0)
         {
-            query = query.Where(l => l.Price <= maxPrice.Value);
+            query = query.Where(l =>
+                l.Price <= maxPrice.Value);
         }
 
         var listings = await query
@@ -324,11 +431,37 @@ public class ActivityListingsController : ControllerBase
                 l.TimeSlots,
                 l.ValidFrom,
                 l.ValidUntil,
-                ProviderBusinessName = l.Provider.BusinessName,
-                ProviderEmail = l.Provider.Email
+                ProviderBusinessName =
+                    l.Provider.BusinessName,
+                ProviderEmail =
+                    l.Provider.Email
             })
             .ToListAsync();
 
         return Ok(listings);
+    }
+
+    /// <summary>
+    /// Retrieves one active activity listing for public/booking use
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("public/{id:guid}")]
+    public async Task<IActionResult> GetPublicListingById(Guid id)
+    {
+        var listing = await _db.ActivityListings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(l =>
+                l.Id == id &&
+                l.IsActive);
+
+        if (listing is null)
+        {
+            return NotFound(new
+            {
+                message = "Activity listing not found."
+            });
+        }
+
+        return Ok(ToDto(listing));
     }
 }

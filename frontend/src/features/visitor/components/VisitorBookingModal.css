@@ -168,3 +168,8 @@
   max-width: 440px;
   margin: 0 0 12px;
 }
+
+.vd-btn-book:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -29,4 +29,10 @@ export function catalogUrl(path) {
   return `${CATALOG_BASE}${path}`
 }
 
-export { API_BASE, CATALOG_BASE }
+const BOOKING_BASE = (import.meta.env.VITE_BOOKING_API_BASE_URL || '').replace(/\/$/, '')
+
+export function bookingUrl(path) {
+  return `${BOOKING_BASE}${path}`
+}
+
+export { API_BASE, CATALOG_BASE, BOOKING_BASE }

@@ -28,7 +28,7 @@ public class ImagesController : ControllerBase
     /// Uploads a service/listing image to Azure Blob Storage
     /// </summary>
     [HttpPost("upload")]
-    public async Task<IActionResult> UploadImage([FromForm] IFormFile file)
+    public async Task<IActionResult> UploadImage(IFormFile file)
     {
         if (file == null || file.Length == 0)
             return BadRequest(new { message = "No image file was provided." });
