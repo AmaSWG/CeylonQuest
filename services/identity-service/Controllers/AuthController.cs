@@ -14,6 +14,9 @@ public class AuthController : ControllerBase
     private readonly AuthService _authService;
     private readonly ProviderActivationService _providerActivationService;
     private readonly PasswordResetService _passwordResetService;
+	
+	public record ResendOtpRequest(string Email);
+	public record VerifyOtpRequest(string Email, string Otp);
 
     public AuthController(
         RegistrationService registrationService,
@@ -146,4 +149,40 @@ public class AuthController : ControllerBase
             note = "In production, tokens are sent via email only and never exposed in API responses."
         });
     }
+	
+	[HttpPost("provider/resend-otp")]
+	public async Task<IActionResult> ResendProviderOtp([FromBody] ResendOtpRequest request)
+	{
+		if (string.IsNullOrWhiteSpace(request.Email))
+			return BadRequest(new { message = "Email address is required." });
+		try
+		{
+			await _providerActivationService.ResendOtpAsync(request.Email);
+			return Ok(new { message = "A new OTP activation code has been sent to your email." });
+		}
+		catch (InvalidOperationException ex)
+		{
+			return BadRequest(new { message = ex.Message });
+		}
+	}
+	
+	[HttpPost("provider/verify-otp")]
+	public async Task<IActionResult> VerifyProviderOtp([FromBody] VerifyOtpRequest request)
+	{
+		if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Otp))
+			return BadRequest(new { message = "Email and OTP code are required." });
+		try
+		{
+			await _providerActivationService.VerifyOtpAsync(request.Email, request.Otp);
+			return Ok(new { message = "OTP verified successfully." });
+		}
+		catch (ExpiredOtpException ex)
+		{
+			return BadRequest(new { message = ex.Message });
+		}
+		catch (InvalidOtpException ex)
+		{
+			return Unauthorized(new { message = ex.Message });
+		}
+	}
 }

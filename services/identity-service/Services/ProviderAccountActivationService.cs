@@ -10,15 +10,18 @@ public class ProviderAccountActivationService
 {
     private readonly ApplicationDbContext _db;
     private readonly OtpService _otpService;
+	private readonly IEmailService _emailService;
     private readonly ILogger<ProviderAccountActivationService> _logger;
 
     public ProviderAccountActivationService(
         ApplicationDbContext db,
+		IEmailService emailService,
         OtpService otpService,
         ILogger<ProviderAccountActivationService> logger)
     {
         _db = db;
         _otpService = otpService;
+		 _emailService = emailService;
         _logger = logger;
     }
 
@@ -55,5 +58,14 @@ public class ProviderAccountActivationService
         user.IsActive = false;
 
         await _db.SaveChangesAsync(cancellationToken);
+		
+		await _emailService.SendProviderOtpEmailAsync(
+			user.Email,
+			approved.BusinessName,
+			user.OtpCode,
+			cancellationToken
+		);
     }
+	
 }
+

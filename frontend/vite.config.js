@@ -1,19 +1,76 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+
   server: {
     proxy: {
+      // Provider Catalog Service
+      '/api/catalog': {
+        target: 'http://localhost:5141',
+        changeOrigin: true,
+        secure: false,
+      },
+
+      // Booking Service - Unified visitor bookings/reservations
+      '/api/user-bookings': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
+      '/api/provider-bookings': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
+      // Booking Service - Admin bookings and revenue report.
+      // Keep this more specific route before the generic Identity /api proxy.
+      '/api/admin/reports/bookings-revenue': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
+      // Booking Service - Payments
+      '/api/Payments': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
+      // Booking Service - Experience bookings
+      '/api/Bookings': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
+      // Booking Service - Accommodation bookings
+      '/api/AccommodationBookings': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
+      // Booking Service - Restaurant reservations
+      '/api/Reservations': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
+      // Identity Service
+      // Keep this AFTER the more specific service routes.
       '/api': {
-        // DEV SHORTCUT: proxying directly to the Identity Service,
-        // bypassing the API Gateway (localhost:5000).
-        // Switch back to 'http://localhost:5000' when testing with the gateway.
         target: 'http://localhost:5278',
         changeOrigin: true,
         secure: false,
       },
+
+      // Uploaded files
       '/uploads': {
         target: 'http://localhost:5278',
         changeOrigin: true,
@@ -22,4 +79,3 @@ export default defineConfig({
     },
   },
 })
-

@@ -1,3 +1,14 @@
 #root {
   min-height: 100vh;
 }
+
+/* Report View helpers */
+.pd-mb-16 { margin-bottom: 16px !important; }
+.cq-report-header-title { display: flex; align-items: center; gap: 10px; }
+.cq-my-30 { margin: 30px 0 !important; }
+.cq-mb-20 { margin-bottom: 20px !important; }
+.cq-td-primary-600 { font-weight: 600; color: #123b5d; }
+.cq-td-primary-700 { font-weight: 700; color: #123b5d; }
+.cq-text-green-strong { color: #16a34a; font-weight: 700; }
+.cq-m-0 { margin: 0 !important; }
+.cq-mt-12 { margin-top: 12px !important; }

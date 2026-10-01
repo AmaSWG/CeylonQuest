@@ -1,5 +1,5 @@
 import React from 'react'
-import '../styles/ConfirmModal.css'
+import './ConfirmModal.css'
 import { DeleteSweepIcon } from './Icons'
 
 export default function ConfirmModal({
