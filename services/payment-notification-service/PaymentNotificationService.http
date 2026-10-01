@@ -1,0 +1,18 @@
+@baseUrl = http://localhost:5185
+@token = REPLACE_WITH_ACCESS_TOKEN
+@notificationId = REPLACE_WITH_NOTIFICATION_ID
+
+GET {{baseUrl}}/api/notifications?page=1&pageSize=20
+Authorization: Bearer {{token}}
+
+###
+GET {{baseUrl}}/api/notifications/unread-count
+Authorization: Bearer {{token}}
+
+###
+PATCH {{baseUrl}}/api/notifications/{{notificationId}}/read
+Authorization: Bearer {{token}}
+
+###
+PATCH {{baseUrl}}/api/notifications/read-all
+Authorization: Bearer {{token}}
