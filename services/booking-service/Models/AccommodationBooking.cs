@@ -31,6 +31,8 @@ public class AccommodationBooking : IPayableBooking
     [Required]
     public Guid AccommodationId { get; set; }
 
+    public Guid? ProviderUserId { get; set; }
+
     [Required]
     [MaxLength(200)]
     public string AccommodationName { get; set; } = string.Empty;

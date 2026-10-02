@@ -26,6 +26,7 @@ public class ActivityListingsController : ControllerBase
     private static ActivityListingResponse ToDto(ActivityListing a) => new()
     {
         Id = a.Id,
+        ProviderUserId = a.Provider?.IdentityUserId,
         Title = a.Title,
         Description = a.Description,
         Price = a.Price,
@@ -449,6 +450,7 @@ public class ActivityListingsController : ControllerBase
     public async Task<IActionResult> GetPublicListingById(Guid id)
     {
         var listing = await _db.ActivityListings
+            .Include(l => l.Provider)
             .AsNoTracking()
             .FirstOrDefaultAsync(l =>
                 l.Id == id &&

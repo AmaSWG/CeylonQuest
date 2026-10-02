@@ -237,6 +237,7 @@ public class AccommodationBookingsControllerTests
         return new CatalogAccommodationResponse
 
         {
+            ProviderUserId = Guid.NewGuid(),
 
             Id = _accommodationId,
 

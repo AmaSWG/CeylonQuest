@@ -4,6 +4,8 @@ public class CatalogListingResponse
 {
     public Guid Id { get; set; }
 
+    public Guid? ProviderUserId { get; set; }
+
     // Experience fields
     public string Title { get; set; } = string.Empty;
 

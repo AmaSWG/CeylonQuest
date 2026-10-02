@@ -30,6 +30,8 @@ public class RestaurantReservation : IPayableBooking
     [Required]
     public Guid RestaurantId { get; set; }
 
+    public Guid? ProviderUserId { get; set; }
+
     [Required]
     [MaxLength(200)]
     public string RestaurantName { get; set; } = string.Empty;

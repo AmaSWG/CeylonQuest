@@ -211,6 +211,7 @@ public class ReservationsControllerTests
         return new CatalogRestaurantResponse
 
         {
+            ProviderUserId = Guid.NewGuid(),
 
             Id = _restaurantId,
 

@@ -8,6 +8,8 @@ public class AccommodationListingResponse
 
     public Guid ProviderId { get; set; }
 
+    public Guid? ProviderUserId { get; set; }
+
     public string ProviderBusinessName { get; set; } = string.Empty;
 
     public string RoomType { get; set; } = string.Empty;

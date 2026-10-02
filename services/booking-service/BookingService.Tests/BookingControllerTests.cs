@@ -725,6 +725,7 @@ public class BookingTests
         var listing = new CatalogListingResponse
 
         {
+            ProviderUserId = Guid.NewGuid(),
 
             Id = listingId,
 
@@ -869,6 +870,7 @@ public class BookingTests
         var listing = new CatalogListingResponse
 
         {
+            ProviderUserId = Guid.NewGuid(),
 
             Id = listingId,
 
@@ -2409,6 +2411,7 @@ public class BookingTests
         return new CatalogListingResponse
 
         {
+            ProviderUserId = Guid.NewGuid(),
 
             Id = listingId,
 

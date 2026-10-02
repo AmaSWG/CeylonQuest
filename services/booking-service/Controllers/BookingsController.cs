@@ -102,6 +102,12 @@ public class BookingsController : ControllerBase
         }
 
         // 7. Check whether listing is active
+        // A booking must carry the provider's identity ID for notification delivery.
+        if (listing.ProviderUserId is null || listing.ProviderUserId == Guid.Empty)
+        {
+            return StatusCode(503, new { message = "The listing provider account is not linked. Please try again after it is configured." });
+        }
+
         if (!listing.IsActive)
         {
             return BadRequest(new
@@ -232,6 +238,7 @@ public class BookingsController : ControllerBase
             Id = Guid.NewGuid(),
             VisitorId = visitorId,
             ListingId = request.ListingId,
+            ProviderUserId = listing.ProviderUserId,
             ListingTitle = listing.Title,
             ListingType = "Experience",
             BookingDate = request.BookingDate,
@@ -254,6 +261,7 @@ public class BookingsController : ControllerBase
         var bookingCreatedEvent =
             new BookingCreatedEvent
             {
+                ProviderUserId = booking.ProviderUserId,
                 BookingId = booking.Id,
                 VisitorId = booking.VisitorId,
                 ListingId = booking.ListingId,
@@ -675,6 +683,8 @@ public class BookingsController : ControllerBase
         var bookingCanceledEvent =
             new BookingCanceledEvent
             {
+                ProviderUserId = booking.ProviderUserId,
+                VisitorId = booking.VisitorId,
                 BookingId =
                     booking.Id,
 

@@ -105,6 +105,12 @@ public class AccommodationBookingsController : ControllerBase
             });
         }
 
+        // A booking must carry the provider's identity ID for notification delivery.
+        if (accommodation.ProviderUserId is null || accommodation.ProviderUserId == Guid.Empty)
+        {
+            return StatusCode(503, new { message = "The listing provider account is not linked. Please try again after it is configured." });
+        }
+
         if (!accommodation.IsActive)
         {
             return BadRequest(new
@@ -238,6 +244,9 @@ public class AccommodationBookingsController : ControllerBase
             AccommodationId =
                 accommodation.Id,
 
+            ProviderUserId =
+                accommodation.ProviderUserId,
+
             AccommodationName =
                 accommodation.RoomType,
 
@@ -288,6 +297,7 @@ public class AccommodationBookingsController : ControllerBase
             booking.Id.ToString(),
             new BookingCreatedEvent
             {
+                ProviderUserId = booking.ProviderUserId,
                 BookingId = booking.Id,
                 VisitorId = booking.VisitorId,
                 ListingId = booking.AccommodationId,
@@ -647,6 +657,8 @@ public class AccommodationBookingsController : ControllerBase
         var canceledEvent =
             new BookingCanceledEvent
             {
+                ProviderUserId = booking.ProviderUserId,
+                VisitorId = booking.VisitorId,
                 BookingId =
                     booking.Id,
 
