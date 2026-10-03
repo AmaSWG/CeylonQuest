@@ -184,7 +184,11 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddKafka(builder.Configuration);
 
-builder.Services.AddScoped<IRecipientResolver, RecipientResolver>();
+builder.Services.AddHttpClient<IRecipientResolver, RecipientResolver>(client =>
+{
+    client.BaseAddress = new Uri(
+        builder.Configuration["Services:ProviderCatalog"] ?? "http://localhost:5141");
+});
 builder.Services.AddScoped<NotificationEventProcessor>();
 builder.Services.AddScoped<NotificationHandler>();
 builder.Services.AddHostedService<NotificationEventConsumer>();

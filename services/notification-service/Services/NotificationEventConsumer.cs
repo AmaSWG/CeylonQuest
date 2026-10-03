@@ -50,6 +50,12 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
                         await using var scope = scopes.CreateAsyncScope();
                         await scope.ServiceProvider.GetRequiredService<NotificationEventProcessor>()
                             .ProcessAsync(record.Topic, payload, ct);
+                        
+                        logger.LogInformation(
+                        "Successfully processed notification event: Topic={Topic}, Partition={Partition}, Offset={Offset}",
+                        record.Topic,
+                        record.Partition.Value,
+                        record.Offset.Value);
                     }
                     catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
                     catch (Exception ex)
@@ -61,6 +67,11 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
                         // record on this partition and commit past the failed record.
                         throw;
                     }
+                    logger.LogInformation(
+                    "Received notification event: Topic={Topic}, Key={Key}, Payload={Payload}",
+                    record.Topic,
+                    record.Message.Key,
+                    payload);
                     consumer.Commit(record);
                 }
             }
