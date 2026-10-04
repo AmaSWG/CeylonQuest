@@ -1,3 +1,5 @@
+import useNotifications from '../../../hooks/notification'
+import NotificationPanel from '../../../components/NotificationPanel'
 import { useState, useEffect, useCallback } from 'react'
 
 import './ProviderDashboard.css'
@@ -27,7 +29,6 @@ import ProviderBusinessProfileTab from '../components/ProviderBusinessProfileTab
 import ProviderListingsTab from '../components/ProviderListingsTab'
 import ProviderBookingsTab from '../components/ProviderBookingsTab'
 import ProviderReportsTab from '../components/ProviderReportsTab'
-import ProviderNotificationsTab from '../components/ProviderNotificationsTab'
 import ProviderAccountTab from '../components/ProviderAccountTab'
 
 
@@ -130,23 +131,6 @@ function ProviderDashboard({ onLogout }) {
      Notifications
      ======================================================= */
 
-  const [notifications, setNotifications] =
-    useState(() => {
-      try {
-        const saved =
-          localStorage.getItem(
-            'ceylonquest_provider_notifications'
-          )
-
-        return saved
-          ? JSON.parse(saved)
-          : []
-      } catch {
-        return []
-      }
-    })
-
-
   /* =======================================================
      Authentication
      ======================================================= */
@@ -155,21 +139,8 @@ function ProviderDashboard({ onLogout }) {
     localStorage.getItem('authToken')
 
 
-  /* =======================================================
-     Save notifications
-     ======================================================= */
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        'ceylonquest_provider_notifications',
-        JSON.stringify(notifications)
-      )
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, [notifications])
-
+  const notificationState = useNotifications(token, activeTab === 'notifications')
+  const notifications = notificationState.items
 
   /* =======================================================
      Toast helper
@@ -555,63 +526,7 @@ function ProviderDashboard({ onLogout }) {
      Notification Actions
      ======================================================= */
 
-  const handleMarkAllNotificationsRead =
-    () => {
-      setNotifications(
-        previous =>
-          previous.map(
-            notification => ({
-              ...notification,
-              read: true
-            })
-          )
-      )
-
-      showToast(
-        'All notifications marked as read.'
-      )
-    }
-
-
-  const handleToggleNotificationRead =
-    (notificationId) => {
-      setNotifications(
-        previous =>
-          previous.map(
-            notification =>
-              notification.id ===
-                notificationId
-                ? {
-                  ...notification,
-                  read:
-                    !notification.read
-                }
-                : notification
-          )
-      )
-    }
-
-
-  const handleClearNotifications =
-    () => {
-      setNotifications([])
-
-      showToast(
-        'Notifications cleared.'
-      )
-    }
-
-
-  /* =======================================================
-     Notification Count
-     ======================================================= */
-
-  const unreadNotifCount =
-    notifications.filter(
-      notification =>
-        !notification.read
-    ).length
-
+  const unreadNotifCount = notificationState.unreadCount
 
   /* =======================================================
      Navigation
@@ -688,6 +603,8 @@ function ProviderDashboard({ onLogout }) {
 
   return (
     <DashboardLayout
+      notificationCount={unreadNotifCount}
+      onOpenNotifications={() => setActiveTab('notifications')}
       roleBadge="Provider Portal"
       navItems={navItems}
       activeTab={activeTab}
@@ -803,23 +720,7 @@ function ProviderDashboard({ onLogout }) {
 
       {activeTab ===
         'notifications' && (
-          <ProviderNotificationsTab
-            notifications={
-              notifications
-            }
-
-            onMarkAllRead={
-              handleMarkAllNotificationsRead
-            }
-
-            onToggleRead={
-              handleToggleNotificationRead
-            }
-
-            onClearAll={
-              handleClearNotifications
-            }
-          />
+          <NotificationPanel state={notificationState} />
         )}
 
 

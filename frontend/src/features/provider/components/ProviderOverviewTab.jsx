@@ -209,7 +209,7 @@ export default function OverviewTab({ providerInfo, services = [], bookings = []
                       <div className="pd-notif-title">{n.title}</div>
                       <div className="pd-notif-desc">{n.message || n.desc}</div>
                     </div>
-                    <span className="pd-notif-time">{n.time || formatDate(n.createdAt)}</span>
+                    <span className="pd-notif-time">{n.time || formatDate(n.createdAtUtc)}</span>
                   </div>
                 ))}
               </div>
