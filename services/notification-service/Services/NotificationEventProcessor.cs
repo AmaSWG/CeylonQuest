@@ -32,12 +32,15 @@ public class NotificationEventProcessor(NotificationDbContext db, IRecipientReso
             case "booking.created":
                 var created = Parse<BookingCreatedEvent>(payload);
                 return EventKey(topic, created.EventId, created.BookingId.ToString());
+            
             case "payment.completed":
                 var paid = Parse<PaymentCompletedEvent>(payload);
                 return EventKey(topic, paid.EventId, paid.PaymentId.ToString());
+            
             case "booking.canceled":
                 var canceled = Parse<BookingCanceledEvent>(payload);
                 return EventKey(topic, canceled.EventId, $"{canceled.BookingId}:{canceled.CanceledAt:O}");
+            
             case "review.submitted":
                 var review = Parse<ReviewSubmittedEvent>(payload);
                 return EventKey(topic, review.EventId, review.ReviewId.ToString());
@@ -66,19 +69,24 @@ public class NotificationEventProcessor(NotificationDbContext db, IRecipientReso
         switch (topic)
         {
             case "booking.created":
+
                 var created = Parse<BookingCreatedEvent>(payload);
+
                 Require(created.BookingId != Guid.Empty && created.VisitorId != Guid.Empty &&
                     created.ListingId != Guid.Empty && created.CreatedAt != default &&
                     !string.IsNullOrWhiteSpace(created.BookingDate), "Invalid booking.created event.");
                 booking = created.BookingId; listing = created.ListingId; occurred = created.CreatedAt;
+                
                 var provider = await resolver.ProviderAsync(created.ListingId, created.ProviderUserId, ct);
                 recipients = [created.VisitorId, provider];
                 title = "Booking created";
-                message = $"Booking {booking} for {created.ListingType} {listing} on {created.BookingDate} " +
-                    $"at {created.TimeSlot}, for {created.ParticipantCount} participant(s), was created.";
+                message = $"Your booking for {created.ListingType} at {created.ProviderBusinessName} has been successfully created for {created.BookingDate} " +
+                    $"from {created.TimeSlot}, for {created.ParticipantCount} participant(s).";
                 contextToAdd = new() { BookingId = booking, VisitorId = created.VisitorId, ProviderUserId = provider };
                 break;
+
             case "payment.completed":
+
                 var paid = Parse<PaymentCompletedEvent>(payload);
                 Require(paid.PaymentId != Guid.Empty && paid.BookingId != Guid.Empty &&
                     paid.VisitorId != Guid.Empty && paid.Amount >= 0 && paid.CompletedAt != default,
@@ -86,26 +94,34 @@ public class NotificationEventProcessor(NotificationDbContext db, IRecipientReso
                 booking = paid.BookingId; payment = paid.PaymentId; amount = paid.Amount;
                 currency = paid.Currency; occurred = paid.CompletedAt; recipients = [paid.VisitorId];
                 title = "Payment completed";
-                message = $"Payment {payment} of {paid.Amount.ToString("0.00", CultureInfo.InvariantCulture)} " +
-                    $"{currency} for booking {booking} was completed. Reference: {paid.TransactionReference}.";
+                message = $"Your payment of {paid.Amount.ToString("0.00", CultureInfo.InvariantCulture)} " +
+                    $"{currency} has been successfully completed. " + 
+                    $"Transaction Reference: {paid.TransactionReference}.";
                 break;
+
             case "booking.canceled":
+
                 var canceled = Parse<BookingCanceledEvent>(payload);
                 Require(canceled.BookingId != Guid.Empty && canceled.ListingId != Guid.Empty &&
                     canceled.CanceledAt != default && (canceled.RefundAmount is null or >= 0),
                     "Invalid booking.canceled event.");
+
                 booking = canceled.BookingId; listing = canceled.ListingId; occurred = canceled.CanceledAt;
                 var users = await resolver.BookingAsync(booking, canceled.ListingId,
                     canceled.VisitorId, canceled.ProviderUserId, ct);
                 recipients = [users.VisitorId, users.ProviderUserId];
                 refund = canceled.RefundAmount; refundStatus = canceled.RefundStatus; currency = canceled.Currency;
                 title = "Booking canceled";
-                message = $"Booking {booking} for {canceled.ListingType} {listing} on {canceled.BookingDate} " +
-                    $"at {canceled.TimeSlot} was canceled. Reason: {canceled.Reason ?? "Not supplied"}.";
+                message = $"Your {canceled.ListingType} booking for {canceled.BookingDate} " +
+                    $"from {canceled.TimeSlot} has been successfully canceled.\n " +
+                    $"Reason: {canceled.Reason ?? "Not supplied"}.";
                 if (refund.HasValue || refundStatus != null)
-                    message += $" Refund: {refund?.ToString("0.00", CultureInfo.InvariantCulture)} {currency}; status: {refundStatus ?? "Not supplied"}.";
+                    message += $" \nRefund amount: {refund?.ToString("0.00", CultureInfo.InvariantCulture)} {currency}; " +
+                        $"Refund status: {refundStatus ?? "Not supplied"}.";
                 break;
+
             case "review.submitted":
+
                 var submitted = Parse<ReviewSubmittedEvent>(payload);
                 Require(submitted.ReviewId != Guid.Empty && submitted.BookingId != Guid.Empty &&
                     submitted.ListingId != Guid.Empty && submitted.Rating is >= 1 and <= 5 &&
@@ -114,7 +130,8 @@ public class NotificationEventProcessor(NotificationDbContext db, IRecipientReso
                 occurred = submitted.SubmittedAt; rating = submitted.Rating;
                 recipients = [await resolver.ProviderAsync(submitted.ListingId, submitted.ProviderUserId, ct)];
                 title = "New review";
-                message = $"Review {review} for listing {listing}, booking {booking}: {rating}/5 stars. {submitted.ReviewText}";
+                message = $"You received a new review with a rating of {rating}/5 stars.\n" +
+                    $"Review: {submitted.ReviewText}";
                 break;
             default: throw new JsonException($"Unsupported topic {topic}.");
         }

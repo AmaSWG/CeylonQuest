@@ -7,7 +7,9 @@ using NotificationHandler = NotificationService.Services.NotificationService;
 namespace NotificationService.Controllers;
 
 //api/notifications
-[ApiController, Authorize, Route("api/notifications")]
+[ApiController]
+[Authorize] 
+[Route("api/notifications")]
 public class NotificationController(NotificationHandler service) : ControllerBase
 {
     private Guid? UserId => Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier)

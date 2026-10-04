@@ -5,7 +5,11 @@ namespace NotificationService.Events;
 public class BookingCreatedEvent
 {
     public Guid? EventId { get; set; }
+    
     public Guid? ProviderUserId { get; set; }
+
+    public string ProviderBusinessName { get; set; } = string.Empty;
+
     public Guid BookingId { get; set; }
 
     public Guid VisitorId { get; set; }

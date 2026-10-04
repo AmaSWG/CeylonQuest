@@ -6,6 +6,8 @@ public class CatalogListingResponse
 
     public Guid? ProviderUserId { get; set; }
 
+    public string ProviderBusinessName { get; set; } = string.Empty;
+
     // Experience fields
     public string Title { get; set; } = string.Empty;
 

@@ -27,6 +27,7 @@ public class ActivityListingsController : ControllerBase
     {
         Id = a.Id,
         ProviderUserId = a.Provider?.IdentityUserId,
+        ProviderBusinessName = a.Provider?.BusinessName ?? string.Empty,
         Title = a.Title,
         Description = a.Description,
         Price = a.Price,

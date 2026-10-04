@@ -9,6 +9,7 @@ public class BookingCanceledEvent
     public Guid ListingId { get; set; }
 
     public Guid? ProviderUserId { get; set; }
+    
 
     public Guid? VisitorId { get; set; }
 

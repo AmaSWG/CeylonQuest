@@ -10,6 +10,8 @@ public class BookingCreatedEvent
 
     public Guid? ProviderUserId { get; set; }
 
+    public string ProviderBusinessName { get; set; } = string.Empty;
+
     public string ListingType { get; set; } = string.Empty;
 
     public string BookingDate { get; set; } = string.Empty;

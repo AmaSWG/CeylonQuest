@@ -293,6 +293,7 @@ public class ReservationsController : ControllerBase
             new BookingCreatedEvent
             {
                 ProviderUserId = reservation.ProviderUserId,
+                ProviderBusinessName = restaurant.ProviderBusinessName,
                 BookingId = reservation.Id,
                 VisitorId = reservation.VisitorId,
                 ListingId = reservation.RestaurantId,

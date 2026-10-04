@@ -262,6 +262,7 @@ public class BookingsController : ControllerBase
             new BookingCreatedEvent
             {
                 ProviderUserId = booking.ProviderUserId,
+                ProviderBusinessName = listing.ProviderBusinessName,
                 BookingId = booking.Id,
                 VisitorId = booking.VisitorId,
                 ListingId = booking.ListingId,
