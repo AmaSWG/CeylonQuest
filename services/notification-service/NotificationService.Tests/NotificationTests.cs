@@ -18,6 +18,40 @@ namespace NotificationService.Tests;
 
 public class NotificationTests
 {
+    [Fact]
+    public async Task BookingCreated_WithProviderBusinessName_SavesNamedNotificationsForBothRecipients()
+    {
+        // Arrange: supply the event as booking-service would send it over Kafka.
+        await using var db = Database();
+        var visitor = Guid.NewGuid();
+        var provider = Guid.NewGuid();
+        var created = new BookingCreatedEvent
+        {
+            BookingId = Guid.NewGuid(), VisitorId = visitor, ProviderUserId = provider,
+            ListingId = Guid.NewGuid(), ListingType = "Accommodation",
+            ProviderBusinessName = "Ella Mountain Retreat", BookingDate = "2026-10-10",
+            TimeSlot = "Stay (Min 2 Nights)", ParticipantCount = 1, CreatedAt = DateTime.UtcNow
+        };
+        var processor = new NotificationEventProcessor(db,
+            new RecipientResolver(db, new ConfigurationBuilder().Build()));
+
+        // Act: process the event using the notification service's real processor.
+        await processor.ProcessAsync("booking.created", JsonSerializer.Serialize(created), default);
+
+        // Assert: both recipients receive the named, unread booking notification.
+        var notifications = await db.Notifications.ToListAsync();
+        Assert.Equal(2, notifications.Count);
+        Assert.Equal(new[] { visitor, provider }.Order(), notifications.Select(n => n.RecipientUserId).Order());
+        Assert.All(notifications, notification =>
+        {
+            Assert.Contains("at Ella Mountain Retreat", notification.Message);
+            Assert.Contains("2026-10-10", notification.Message);
+            Assert.Equal("booking.created", notification.EventType);
+            Assert.Equal(created.BookingId, notification.BookingId);
+            Assert.False(notification.IsRead);
+        });
+    }
+
     // Mapping tests only: MySQL integration must separately verify transactions and uniqueness.
     private static NotificationDbContext Database() => new(new DbContextOptionsBuilder<NotificationDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString())
