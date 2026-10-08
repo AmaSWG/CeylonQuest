@@ -28,6 +28,8 @@ public class RestaurantListingsController : ControllerBase
         RestaurantListing r,
         string businessName = "") => new()
     {
+        AverageRating = r.AverageRating,
+        ReviewCount = r.ReviewCount,
         Id = r.Id,
         ProviderId = r.ProviderId,
         ProviderBusinessName =

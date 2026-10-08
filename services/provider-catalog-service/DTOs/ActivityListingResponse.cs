@@ -2,6 +2,9 @@ namespace ProviderCatalogService.DTOs;
 
 public class ActivityListingResponse
 {
+    public decimal AverageRating { get; set; }
+    public int ReviewCount { get; set; }
+    public Guid ProviderId { get; set; }
     public Guid Id { get; set; }
 
     public string Title { get; set; } = string.Empty;

@@ -125,6 +125,8 @@ public class SearchController : ControllerBase
             var expList = await expQuery.ToListAsync();
             var experiences = expList.Select(a => new SearchResultItemDto
             {
+                AverageRating = a.AverageRating,
+                ReviewCount = a.ReviewCount,
                 Id = a.Id,
                 Type = "Experience",
                 Title = a.Title,
@@ -187,6 +189,8 @@ public class SearchController : ControllerBase
             var restList = await restQuery.ToListAsync();
             var restaurants = restList.Select(r => new SearchResultItemDto
             {
+                AverageRating = r.AverageRating,
+                ReviewCount = r.ReviewCount,
                 Id = r.Id,
                 Type = "Restaurant",
                 Title = r.Name,
@@ -248,6 +252,8 @@ public class SearchController : ControllerBase
             var accList = await accQuery.ToListAsync();
             var accommodations = accList.Select(a => new SearchResultItemDto
             {
+                AverageRating = a.AverageRating,
+                ReviewCount = a.ReviewCount,
                 Id = a.Id,
                 Type = "Accommodation",
                 Title = a.RoomType,

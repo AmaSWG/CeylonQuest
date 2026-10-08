@@ -17,10 +17,26 @@ public class CatalogDbContext : DbContext
 	public DbSet<Provider> Providers { get; set; }
 	public DbSet<AvailabilitySlot> AvailabilitySlots { get; set; }
     public DbSet<BookingCapacityRelease> BookingCapacityReleases { get; set; }
+    public DbSet<ReviewRatingContribution> ReviewRatingContributions { get; set; }
 	
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<ReviewRatingContribution>(entity =>
+        {
+            entity.HasKey(r => r.ReviewId);
+            entity.HasIndex(r => r.EventId).IsUnique();
+            entity.Property(r => r.BookingType).HasMaxLength(20).IsRequired();
+            entity.HasIndex(r => new { r.ListingId, r.BookingType });
+            entity.ToTable("ReviewRatingContributions", table =>
+                table.HasCheckConstraint("CK_ReviewRatingContributions_Rating", "`Rating` BETWEEN 1 AND 5"));
+        });
+        foreach (var type in new[] { typeof(ActivityListing), typeof(RestaurantListing), typeof(AccommodationListing) })
+        {
+            modelBuilder.Entity(type).Property<decimal>(nameof(IListingRating.AverageRating)).HasPrecision(3, 2).HasDefaultValue(0m);
+            modelBuilder.Entity(type).Property<long>(nameof(IListingRating.RatingSum)).HasDefaultValue(0L).IsConcurrencyToken();
+            modelBuilder.Entity(type).Property<int>(nameof(IListingRating.ReviewCount)).HasDefaultValue(0).IsConcurrencyToken();
+        }
         modelBuilder.Entity<BookingCapacityRelease>().HasKey(r => r.BookingId);
 
         modelBuilder.Entity<ActivityListing>()

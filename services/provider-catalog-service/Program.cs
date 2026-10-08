@@ -141,6 +141,8 @@ builder.Services.AddScoped<AvailabilityService>();
 builder.Services.AddHostedService<BookingCreatedConsumer>();
 builder.Services.AddHostedService<BookingCanceledConsumer>();
 builder.Services.AddHostedService<BookingUpdatedConsumer>();
+builder.Services.AddScoped<ReviewRatingProjectionService>();
+builder.Services.AddHostedService<ReviewSubmittedConsumer>();
 
 builder.Services.AddScoped<InventoryReportService>();
 
