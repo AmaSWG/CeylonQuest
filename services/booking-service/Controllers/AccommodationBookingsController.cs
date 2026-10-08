@@ -19,15 +19,18 @@ public class AccommodationBookingsController : ControllerBase
     private readonly BookingDbContext _db;
     private readonly ICatalogService _catalogService;
     private readonly IKafkaProducer _kafkaProducer;
+    private readonly IConfiguration? _configuration;
 
     public AccommodationBookingsController(
         BookingDbContext db,
         ICatalogService catalogService,
-        IKafkaProducer kafkaProducer)
+        IKafkaProducer kafkaProducer,
+        IConfiguration? configuration = null)
     {
         _db = db;
         _catalogService = catalogService;
         _kafkaProducer = kafkaProducer;
+        _configuration = configuration;
     }
 
     // =========================================================
@@ -231,6 +234,9 @@ public class AccommodationBookingsController : ControllerBase
         // 10. Create booking
         var booking = new AccommodationBooking
         {
+            ProviderId = accommodation.ProviderId == Guid.Empty ? null : accommodation.ProviderId,
+            ScheduledEndAtUtc = ReviewSchedule.CheckoutEnd(request.CheckOutDate,
+                _configuration?["Reviews:AccommodationCheckoutTime"] ?? "12:00"),
             Id = Guid.NewGuid(),
 
             VisitorId = visitorId,

@@ -2,6 +2,8 @@ namespace BookingService.DTOs;
 
 public class CatalogListingResponse
 {
+    public Guid ProviderId { get; set; }
+    public string Duration { get; set; } = string.Empty;
     public Guid Id { get; set; }
 
     // Experience fields

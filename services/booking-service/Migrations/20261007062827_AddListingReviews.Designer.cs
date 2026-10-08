@@ -4,6 +4,7 @@ using BookingService.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace booking_service.Migrations
 {
     [DbContext(typeof(BookingDbContext))]
-    partial class BookingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261007062827_AddListingReviews")]
+    partial class AddListingReviews
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -349,36 +352,6 @@ namespace booking_service.Migrations
                     b.HasIndex("VisitorId");
 
                     b.ToTable("PaymentTransaction", (string)null);
-                });
-
-            modelBuilder.Entity("BookingService.Models.PlatformReview", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("Comment")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("varchar(2000)");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("Rating")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("VisitorId")
-                        .HasColumnType("char(36)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Rating", "CreatedAtUtc");
-
-                    b.ToTable("PlatformReviews", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_PlatformReviews_Rating", "`Rating` BETWEEN 1 AND 5");
-                        });
                 });
 
             modelBuilder.Entity("BookingService.Models.RestaurantReservation", b =>

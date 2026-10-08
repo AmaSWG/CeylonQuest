@@ -4,6 +4,8 @@ namespace BookingService.Models;
 
 public class AccommodationBooking : IPayableBooking
 {
+    public Guid? ProviderId { get; set; }
+    public DateTime? ScheduledEndAtUtc { get; set; }
     string IPayableBooking.BookingType => "Accommodation";
     Guid IPayableBooking.ListingId => AccommodationId;
     string IPayableBooking.ListingTitle => AccommodationName;

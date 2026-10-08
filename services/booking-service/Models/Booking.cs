@@ -4,6 +4,8 @@ namespace BookingService.Models;
 
 public class Booking : IPayableBooking
 {
+    public Guid? ProviderId { get; set; }
+    public DateTime? ScheduledEndAtUtc { get; set; }
     string IPayableBooking.BookingType => "Experience";
     [Key]
     public Guid Id { get; set; }

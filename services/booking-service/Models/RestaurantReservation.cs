@@ -4,6 +4,8 @@ namespace BookingService.Models;
 
 public class RestaurantReservation : IPayableBooking
 {
+    public Guid? ProviderId { get; set; }
+    public DateTime? ScheduledEndAtUtc { get; set; }
     string IPayableBooking.BookingType => "Restaurant";
     Guid IPayableBooking.ListingId => RestaurantId;
     string IPayableBooking.ListingTitle => RestaurantName;

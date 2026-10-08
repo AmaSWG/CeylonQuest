@@ -5,6 +5,9 @@ namespace BookingService.Data;
 
 public class BookingDbContext : DbContext
 {
+    public DbSet<ListingReview> ListingReviews { get; set; }
+    public DbSet<PlatformReview> PlatformReviews { get; set; }
+    public DbSet<ReviewOutboxMessage> ReviewOutboxMessages { get; set; }
     public DbSet<BookingCancellationMessage> BookingCancellationMessages { get; set; }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -59,6 +62,27 @@ public class BookingDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<PlatformReview>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.Comment).HasMaxLength(2000).IsRequired();
+            entity.HasIndex(r => new { r.Rating, r.CreatedAtUtc });
+            entity.ToTable("PlatformReviews", table =>
+                table.HasCheckConstraint("CK_PlatformReviews_Rating", "`Rating` BETWEEN 1 AND 5"));
+        });
+        modelBuilder.Entity<ListingReview>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.BookingType).HasMaxLength(20).IsRequired();
+            entity.Property(r => r.Comment).HasMaxLength(2000).IsRequired();
+            entity.HasIndex(r => new { r.BookingType, r.BookingId }).IsUnique();
+            entity.HasIndex(r => new { r.ListingId, r.BookingType, r.Rating, r.CreatedAtUtc });
+            entity.ToTable("ListingReviews", table =>
+                table.HasCheckConstraint("CK_ListingReviews_Rating", "`Rating` BETWEEN 1 AND 5"));
+        });
+        modelBuilder.Entity<ReviewOutboxMessage>().HasKey(m => m.Id);
+        modelBuilder.Entity<ReviewOutboxMessage>().Property(m => m.Payload).IsRequired();
+        modelBuilder.Entity<ReviewOutboxMessage>().HasIndex(m => m.PublishedAtUtc);
         modelBuilder.Entity<BookingCancellationMessage>().HasKey(m => m.BookingId);
 
         // State transitions must compare the state originally read, including

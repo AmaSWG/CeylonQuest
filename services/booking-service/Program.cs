@@ -195,6 +195,10 @@ builder.Services.AddScoped<
     AdminBookingsRevenueReportService>();
 
 builder.Services.AddScoped<PendingPaymentExpirationService>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<IReviewService, BookingService.Services.ReviewService>();
+builder.Services.AddScoped<ReviewOutboxPublisher>();
+builder.Services.AddHostedService<ReviewOutboxWorker>();
 builder.Services.AddHostedService<PendingPaymentExpirationWorker>();
 
 builder.Services.AddHttpClient<

@@ -236,6 +236,8 @@ public class ReservationsController : ControllerBase
         var reservation =
             new RestaurantReservation
             {
+                ProviderId = restaurant.ProviderId == Guid.Empty ? null : restaurant.ProviderId,
+                ScheduledEndAtUtc = ReviewSchedule.SlotEnd(request.ReservationDate, request.TimeSlot),
                 Id = Guid.NewGuid(),
 
                 VisitorId =

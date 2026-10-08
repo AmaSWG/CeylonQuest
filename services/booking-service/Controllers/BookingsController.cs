@@ -229,6 +229,8 @@ public class BookingsController : ControllerBase
         // 17. Create booking
         var booking = new Booking
         {
+            ProviderId = listing.ProviderId == Guid.Empty ? null : listing.ProviderId,
+            ScheduledEndAtUtc = ReviewSchedule.SlotEnd(request.BookingDate, request.TimeSlot, listing.Duration),
             Id = Guid.NewGuid(),
             VisitorId = visitorId,
             ListingId = request.ListingId,
