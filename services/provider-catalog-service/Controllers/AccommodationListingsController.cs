@@ -31,6 +31,7 @@ public class AccommodationListingsController : ControllerBase
     {
         Id = a.Id,
         ProviderId = a.ProviderId,
+        ProviderUserId = a.Provider?.IdentityUserId,
         ProviderBusinessName = !string.IsNullOrEmpty(businessName) ? businessName : a.Provider?.BusinessName ?? "",
         RoomType = a.RoomType,
         PropertyType = a.PropertyType,

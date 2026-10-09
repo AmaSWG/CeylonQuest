@@ -4,6 +4,10 @@ public class CatalogRestaurantResponse
 {
     public Guid Id { get; set; }
 
+    public Guid? ProviderUserId { get; set; }
+
+    public string ProviderBusinessName { get; set; } = string.Empty;
+
     public string Name { get; set; } = string.Empty;
 
     public decimal PricePerPerson { get; set; }

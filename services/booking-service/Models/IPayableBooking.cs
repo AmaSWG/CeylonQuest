@@ -5,6 +5,7 @@ public interface IPayableBooking
 {
     Guid Id { get; }
     Guid VisitorId { get; }
+    Guid? ProviderUserId { get; }
     string BookingType { get; }
     Guid ListingId { get; }
     string ListingTitle { get; }

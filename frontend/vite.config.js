@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [react()],
 
   server: {
+
+    
     proxy: {
       // Provider Catalog Service
       '/api/catalog': {
@@ -24,6 +26,13 @@ export default defineConfig({
         target: 'http://localhost:5229',
         changeOrigin: true,
         secure: false,
+      },
+
+      //notification service
+      '/api/notifications': {
+      target: 'http://localhost:5185',
+      changeOrigin: true,
+      secure: false,
       },
 
       // Booking Service - Admin bookings and revenue report.

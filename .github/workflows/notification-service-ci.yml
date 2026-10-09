@@ -1,0 +1,61 @@
+name: Notification Service CI/CD
+
+on:
+  push:
+    branches: [ main, development, "feature/**" ]
+    paths:
+      - "services/notification-service/**"
+      - "Shared/**"
+
+  pull_request:
+    branches: [ development, main ]
+    paths:
+      - "services/notification-service/**"
+      - "Shared/**"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run: |
+          dotnet restore services/notification-service/NotificationService.csproj
+          dotnet restore services/notification-service/NotificationService.Tests/NotificationService.Tests.csproj
+
+      - name: Build Notification Service
+        run: |
+          dotnet build services/notification-service/NotificationService.csproj --no-restore --configuration Release
+          dotnet build services/notification-service/NotificationService.Tests/NotificationService.Tests.csproj --no-restore --configuration Release
+
+      - name: Run Unit Tests
+        run: dotnet test services/notification-service/NotificationService.Tests/NotificationService.Tests.csproj --no-build --configuration Release --verbosity normal
+
+      # Feature branches stop here: CI only
+
+      - name: Login to Azure Container Registry
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/development' || github.ref == 'refs/heads/main')
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push Docker image to ACR
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/development' || github.ref == 'refs/heads/main')
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/notification-service/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/notification-service:${{ github.sha }}
+            ${{ secrets.ACR_LOGIN_SERVER }}/notification-service:latest
