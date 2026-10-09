@@ -20,6 +20,7 @@ public class BookingDbContext : DbContext
             var evt = new BookingService.Events.BookingCanceledEvent
             {
                 BookingId = booking.Id, ListingId = booking.ListingId,
+                VisitorId = booking.VisitorId, ProviderUserId = booking.ProviderUserId,
                 ListingType = booking.BookingType, BookingDate = booking.BookingDate.ToString("yyyy-MM-dd"),
                 TimeSlot = booking.TimeSlot, ParticipantCount = booking.ParticipantCount,
                 CanceledAt = booking.UpdatedAt, Reason = "Booking cancelled."

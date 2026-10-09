@@ -106,6 +106,9 @@ namespace booking_service.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<Guid?>("ProviderUserId")
+                        .HasColumnType("char(36)");
+
                     b.Property<Guid>("VisitorId")
                         .HasColumnType("char(36)");
 
@@ -207,6 +210,9 @@ namespace booking_service.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("ProviderUserId")
+                        .HasColumnType("char(36)");
 
                     b.Property<Guid>("VisitorId")
                         .HasColumnType("char(36)");
@@ -461,6 +467,9 @@ namespace booking_service.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("ProviderUserId")
+                        .HasColumnType("char(36)");
 
                     b.Property<Guid>("VisitorId")
                         .HasColumnType("char(36)");

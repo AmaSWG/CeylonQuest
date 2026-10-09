@@ -10,6 +10,8 @@ public class Booking : IPayableBooking
     [Key]
     public Guid Id { get; set; }
 
+    public Guid? ProviderUserId { get; set; }
+
     [Required]
     public Guid VisitorId { get; set; }
 

@@ -25,6 +25,7 @@ public class ExperienceBookingValidityTests
         var catalog = new Mock<ICatalogService>();
         catalog.Setup(c => c.GetListingAsync(listingId)).ReturnsAsync(new CatalogListingResponse
         {
+            ProviderUserId = Guid.NewGuid(),
             Id = listingId, Title = "Test", Price = 100, MaxParticipants = 10, IsActive = true,
             ValidFrom = new DateTime(2026, 11, 1), ValidUntil = new DateTime(2026, 12, 31)
         });

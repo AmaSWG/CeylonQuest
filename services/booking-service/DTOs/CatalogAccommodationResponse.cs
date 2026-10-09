@@ -4,6 +4,8 @@ public class CatalogAccommodationResponse
 {
     public Guid Id { get; set; }
 
+    public Guid? ProviderUserId { get; set; }
+
     public Guid ProviderId { get; set; }
 
     public string ProviderBusinessName { get; set; } = string.Empty;

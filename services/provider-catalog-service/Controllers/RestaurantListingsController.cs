@@ -32,6 +32,7 @@ public class RestaurantListingsController : ControllerBase
         ReviewCount = r.ReviewCount,
         Id = r.Id,
         ProviderId = r.ProviderId,
+        ProviderUserId = r.Provider?.IdentityUserId,
         ProviderBusinessName =
             !string.IsNullOrEmpty(businessName)
                 ? businessName

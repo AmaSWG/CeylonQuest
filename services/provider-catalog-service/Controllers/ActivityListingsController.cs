@@ -29,6 +29,8 @@ public class ActivityListingsController : ControllerBase
         ReviewCount = a.ReviewCount,
         ProviderId = a.ProviderId,
         Id = a.Id,
+        ProviderUserId = a.Provider?.IdentityUserId,
+        ProviderBusinessName = a.Provider?.BusinessName ?? string.Empty,
         Title = a.Title,
         Description = a.Description,
         Price = a.Price,
@@ -456,6 +458,7 @@ public class ActivityListingsController : ControllerBase
     public async Task<IActionResult> GetPublicListingById(Guid id)
     {
         var listing = await _db.ActivityListings
+            .Include(l => l.Provider)
             .AsNoTracking()
             .FirstOrDefaultAsync(l =>
                 l.Id == id &&
