@@ -1,4 +1,4 @@
-﻿using BookingService.DTOs;
+using BookingService.DTOs;
 
 namespace BookingService.Services;
 
@@ -9,6 +9,12 @@ public interface IReviewService
     Task<ReviewSummaryResponse> GetSummaryAsync(Guid listingId, string? bookingType, CancellationToken token = default);
     Task<PlatformReviewResponse> CreatePlatformAsync(Guid visitorId, CreatePlatformReviewRequest request, CancellationToken token = default);
     Task<PagedPlatformReviewsResponse> GetPlatformAsync(ReviewQuery query, CancellationToken token = default);
+
+    Task<ReviewEligibilityResponse> GetEligibilityAsync(
+    Guid visitorId,
+    Guid listingId,
+    string bookingType,
+    CancellationToken token = default);
 }
 
 public class ReviewException(int statusCode, string message) : Exception(message)

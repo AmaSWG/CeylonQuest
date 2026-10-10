@@ -53,4 +53,37 @@ public class ReviewsController(IReviewService reviews) : ControllerBase
         if (listingId == Guid.Empty) return BadRequest();
         return Ok(await reviews.GetSummaryAsync(listingId, query.BookingType, token));
     }
+
+    [HttpGet("eligibility")]
+    [Authorize(Roles = "Visitor")]
+    [ProducesResponseType(
+        typeof(ReviewEligibilityResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Eligibility(
+        [FromQuery] Guid listingId,
+        [FromQuery] string bookingType,
+        CancellationToken token)
+    {
+        if (!Guid.TryParse(
+                User.FindFirstValue(ClaimTypes.NameIdentifier)
+                    ?? User.FindFirstValue("sub"),
+                out var visitorId)
+            || visitorId == Guid.Empty)
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            return Ok(await reviews.GetEligibilityAsync(
+                visitorId, listingId, bookingType, token));
+        }
+        catch (ReviewException ex)
+        {
+            return Problem(statusCode: ex.StatusCode, detail: ex.Message);
+        }
+    }
 }

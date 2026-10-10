@@ -80,7 +80,11 @@ public class BookingDbContext : DbContext
             entity.HasIndex(r => new { r.ListingId, r.BookingType, r.Rating, r.CreatedAtUtc });
             entity.ToTable("ListingReviews", table =>
                 table.HasCheckConstraint("CK_ListingReviews_Rating", "`Rating` BETWEEN 1 AND 5"));
-        });
+            entity.Property(r => r.ReviewerDisplayName)
+                .HasMaxLength(100)
+                .HasDefaultValue("Visitor")
+                .IsRequired();
+            });
         modelBuilder.Entity<ReviewOutboxMessage>().HasKey(m => m.Id);
         modelBuilder.Entity<ReviewOutboxMessage>().Property(m => m.Payload).IsRequired();
         modelBuilder.Entity<ReviewOutboxMessage>().HasIndex(m => m.PublishedAtUtc);

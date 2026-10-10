@@ -231,6 +231,17 @@ builder.Services.AddHttpClient<
         );
 });
 
+builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddHttpClient<ReviewerProfileClient>(client =>
+{
+    client.BaseAddress = new Uri(
+        builder.Configuration["Services:Identity"]
+            ?? "http://localhost:5278");
+
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
 
 // =========================================================
 // CORS

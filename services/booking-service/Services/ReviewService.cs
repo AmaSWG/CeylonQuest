@@ -10,7 +10,13 @@ using MySqlConnector;
 
 namespace BookingService.Services;
 
-public class ReviewService(BookingDbContext db, ICatalogService catalog, TimeProvider clock) : IReviewService
+public class ReviewService(
+    BookingDbContext db,
+    ICatalogService catalog,
+    TimeProvider clock,
+    IHttpContextAccessor? httpContext = null,
+    ReviewerProfileClient? profiles = null) : IReviewService
+
 {
     public async Task<ReviewResponse> CreateAsync(Guid visitorId, CreateReviewRequest request, CancellationToken token = default)
     {
@@ -30,20 +36,18 @@ public class ReviewService(BookingDbContext db, ICatalogService catalog, TimePro
         };
         if (booking == null) throw new ReviewException(404, "Booking not found.");
         if (booking.VisitorId != visitorId) throw new ReviewException(403, "This booking belongs to another visitor.");
-        if (booking.Status != BookingStatus.Completed) throw new ReviewException(409, "Only completed bookings can be reviewed.");
-
-        var (providerId, end) = booking switch
-        {
-            Booking b => (b.ProviderId, b.ScheduledEndAtUtc ?? ReviewSchedule.SlotEnd(b.BookingDate, b.TimeSlot)),
-            RestaurantReservation r => (r.ProviderId, r.ScheduledEndAtUtc ?? ReviewSchedule.SlotEnd(r.ReservationDate, r.TimeSlot)),
-            AccommodationBooking a => (a.ProviderId, a.ScheduledEndAtUtc),
-            _ => ((Guid?)null, (DateTime?)null)
-        };
         var now = clock.GetUtcNow().UtcDateTime;
-        if (end == null) throw new ReviewException(409, "The booking's scheduled end time must be recorded before it can be reviewed.");
-        if (end >= now) throw new ReviewException(409, "Reviews are available only after the scheduled service has ended.");
-        if (await db.ListingReviews.AnyAsync(r => r.BookingType == request.BookingType && r.BookingId == booking.Id, token))
-            throw new ReviewException(409, "This booking has already been reviewed.");
+        var alreadyReviewed = await db.ListingReviews.AnyAsync(
+            r => r.BookingType == request.BookingType && r.BookingId == booking.Id, token);
+        var reason = IneligibilityReason(booking, now, alreadyReviewed);
+        if (reason != null) throw new ReviewException(409, reason);
+        Guid? providerId = booking switch
+        {
+            Booking b => b.ProviderId,
+            RestaurantReservation r => r.ProviderId,
+            AccommodationBooking a => a.ProviderId,
+            _ => null
+        };
 
         // Legacy bookings may not yet have a provider snapshot. Never trust a client-supplied provider.
         if (providerId == null || providerId == Guid.Empty)
@@ -67,11 +71,30 @@ public class ReviewService(BookingDbContext db, ICatalogService catalog, TimePro
         if (providerId == null || providerId == Guid.Empty)
             throw new ReviewException(503, "The provider could not be resolved. Please try again later.");
 
+        var reviewerDisplayName = "Visitor";
+
+        if (profiles != null)
+        {
+            var authorization = httpContext?.HttpContext?
+                .Request.Headers.Authorization.ToString() ?? string.Empty;
+
+            reviewerDisplayName = await profiles.GetDisplayNameAsync(
+                authorization, token);
+        }
+
         var review = new ListingReview
         {
-            Id = Guid.NewGuid(), BookingId = booking.Id, BookingType = request.BookingType,
-            VisitorId = visitorId, ListingId = booking.ListingId, ProviderId = providerId.Value,
-            Rating = request.Rating, Comment = request.Comment.Trim(), CreatedAtUtc = now
+            Id = Guid.NewGuid(),
+            BookingId = booking.Id,
+            BookingType = request.BookingType,
+            VisitorId = visitorId,
+            ListingId = booking.ListingId,
+            ProviderId = providerId.Value,
+            Rating = request.Rating,
+            Comment = request.Comment.Trim(),
+            ReviewerDisplayName = reviewerDisplayName,
+            CreatedAtUtc = now
+
         };
         var eventId = Guid.NewGuid();
         var evt = new ReviewSubmittedEvent(eventId, 1, review.Id, booking.Id, request.BookingType,
@@ -119,7 +142,8 @@ public class ReviewService(BookingDbContext db, ICatalogService catalog, TimePro
     private IQueryable<ListingReview> ForListing(Guid listingId, string? type)
         => db.ListingReviews.AsNoTracking().Where(r => r.ListingId == listingId && (type == null || r.BookingType == type));
     private static ReviewResponse ToResponse(ListingReview r)
-        => new(r.Id, r.ListingId, r.BookingType, r.Rating, r.Comment, DateTime.SpecifyKind(r.CreatedAtUtc, DateTimeKind.Utc));
+        => new(r.Id, r.ListingId, r.BookingType, r.Rating, r.Comment,
+            DateTime.SpecifyKind(r.CreatedAtUtc, DateTimeKind.Utc), r.ReviewerDisplayName);
 
     public async Task<PlatformReviewResponse> CreatePlatformAsync(Guid visitorId, CreatePlatformReviewRequest request, CancellationToken token = default)
     {
@@ -147,4 +171,107 @@ public class ReviewService(BookingDbContext db, ICatalogService catalog, TimePro
                 DateTime.SpecifyKind(r.CreatedAtUtc, DateTimeKind.Utc))).ToList(), query.Page, query.PageSize, total,
             (int)Math.Ceiling(total / (double)query.PageSize), Math.Round(aggregate?.Average ?? 0, 2), aggregate?.Count ?? 0);
     }
+
+    public async Task<ReviewEligibilityResponse> GetEligibilityAsync(
+    Guid visitorId,
+    Guid listingId,
+    string bookingType,
+    CancellationToken token = default)
+    {
+        if (visitorId == Guid.Empty || listingId == Guid.Empty
+            || bookingType is not ("Experience" or "Restaurant" or "Accommodation"))
+        {
+            throw new ReviewException(
+                400, "A listing ID and supported booking type are required.");
+        }
+
+        IEnumerable<IPayableBooking> bookings = bookingType switch
+        {
+            "Experience" => (await db.Bookings.AsNoTracking()
+                .Where(b => b.VisitorId == visitorId
+                    && b.ListingId == listingId
+                    && !b.IsDeleted)
+                .ToListAsync(token)).Cast<IPayableBooking>(),
+
+            "Restaurant" => (await db.RestaurantReservations.AsNoTracking()
+                .Where(b => b.VisitorId == visitorId
+                    && b.RestaurantId == listingId
+                    && !b.IsDeleted)
+                .ToListAsync(token)).Cast<IPayableBooking>(),
+
+            _ => (await db.AccommodationBookings.AsNoTracking()
+                .Where(b => b.VisitorId == visitorId
+                    && b.AccommodationId == listingId
+                    && !b.IsDeleted)
+                .ToListAsync(token)).Cast<IPayableBooking>()
+        };
+
+        var rows = bookings.OrderByDescending(b => b.BookingDate).ToList();
+
+        var reviewedIds = (await db.ListingReviews.AsNoTracking()
+            .Where(r => r.VisitorId == visitorId
+                && r.ListingId == listingId
+                && r.BookingType == bookingType)
+            .Select(r => r.BookingId)
+            .ToListAsync(token)).ToHashSet();
+
+        var now = clock.GetUtcNow().UtcDateTime;
+
+        var eligible = rows
+            .Where(b => IneligibilityReason(
+                b, now, reviewedIds.Contains(b.Id)) == null)
+            .Select(b => new EligibleReviewBooking(
+                b.Id,
+                b.BookingDate,
+                DateTime.SpecifyKind(
+                    ScheduledEnd(b)!.Value, DateTimeKind.Utc)))
+            .ToList();
+
+     string? message = null;
+
+        if (eligible.Count == 0)
+        {
+            message = rows.Count == 0
+                ? "You need a completed booking for this listing to review it."
+                : IneligibilityReason(
+                    rows[0], now, reviewedIds.Contains(rows[0].Id));
+        }
+
+        return new ReviewEligibilityResponse(eligible, message);
+    }
+private static DateTime? ScheduledEnd(IPayableBooking booking)
+    => booking switch
+    {
+        Booking b => b.ScheduledEndAtUtc
+            ?? ReviewSchedule.SlotEnd(b.BookingDate, b.TimeSlot),
+
+        RestaurantReservation r => r.ScheduledEndAtUtc
+            ?? ReviewSchedule.SlotEnd(r.ReservationDate, r.TimeSlot),
+
+        AccommodationBooking a => a.ScheduledEndAtUtc,
+
+        _ => null
+    };
+
+private static string? IneligibilityReason(
+    IPayableBooking booking,
+    DateTime now,
+    bool alreadyReviewed)
+{
+    if (alreadyReviewed)
+        return "You have already reviewed this booking.";
+
+    if (booking.Status != BookingStatus.Completed)
+        return "Only completed bookings can be reviewed.";
+
+    var end = ScheduledEnd(booking);
+
+    if (end == null)
+        return "The scheduled end time is unavailable. Please contact support.";
+
+    if (end >= now)
+        return "You can review this booking after the service has ended.";
+
+    return null;
+}
 }

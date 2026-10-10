@@ -22,6 +22,58 @@ namespace BookingService.Tests;
 
 public class ReviewTests
 {
+    [Theory]
+    [InlineData("Experience")]
+    [InlineData("Restaurant")]
+    [InlineData("Accommodation")]
+    public async Task Eligibility_OffersOwnedCompletedPastBooking_AndExcludesReviewedBooking(string type)
+    {
+        await using var db = Db(); var booking = Seed(db, type); var service = Service(db);
+        var eligible = await service.GetEligibilityAsync(booking.VisitorId, booking.ListingId, type);
+        Assert.Equal(booking.Id, Assert.Single(eligible.EligibleBookings).BookingId);
+        Assert.Null(eligible.Message);
+        Assert.Empty((await service.GetEligibilityAsync(Guid.NewGuid(), booking.ListingId, type)).EligibleBookings);
+        await service.CreateAsync(booking.VisitorId, Request(booking));
+        var reviewed = await service.GetEligibilityAsync(booking.VisitorId, booking.ListingId, type);
+        Assert.Empty(reviewed.EligibleBookings);
+        Assert.Contains("already reviewed", reviewed.Message);
+    }
+
+    [Theory, MemberData(nameof(IneligibleCases))]
+    public async Task Eligibility_UsesSameStatusAndEndRulesAsSubmission(string type, string status, int offset)
+    {
+        await using var db = Db(); var booking = Seed(db, type, status, offset);
+        var eligibility = await Service(db).GetEligibilityAsync(booking.VisitorId, booking.ListingId, type);
+        Assert.Empty(eligibility.EligibleBookings);
+        Assert.False(string.IsNullOrWhiteSpace(eligibility.Message));
+    }
+
+    private sealed class ProfileHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        {
+            Assert.Equal("/api/users/me", request.RequestUri!.AbsolutePath);
+            Assert.Equal("Bearer visitor-token", request.Headers.Authorization!.ToString());
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"firstName\":\"Nimal\",\"lastName\":\"Perera\",\"email\":\"private@example.com\"}",
+                    System.Text.Encoding.UTF8, "application/json")
+            });
+        }
+    }
+
+    [Fact]
+    public async Task ReviewerName_IsFetchedFromAuthenticatedIdentityAndReturnedPublicly()
+    {
+        await using var db = Db(); var booking = Seed(db, "Experience");
+        using var client = new HttpClient(new ProfileHandler()) { BaseAddress = new Uri("http://identity") };
+        var context = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
+        context.HttpContext.Request.Headers.Authorization = "Bearer visitor-token";
+        var service = new ReviewService(db, Mock.Of<ICatalogService>(), new Clock(), context, new ReviewerProfileClient(client));
+        var created = await service.CreateAsync(booking.VisitorId, Request(booking));
+        Assert.Equal("Nimal P.", created.ReviewerDisplayName);
+        Assert.Equal("Nimal P.", Assert.Single((await service.GetAsync(booking.ListingId, new())).Items).ReviewerDisplayName);
+    }
     private static readonly DateTime Now = new(2026, 10, 7, 12, 0, 0, DateTimeKind.Utc);
     private sealed class Clock : TimeProvider
     {
