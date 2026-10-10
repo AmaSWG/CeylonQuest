@@ -178,7 +178,7 @@ public class NotificationTests
         var result = Assert.IsType<OkObjectResult>(await controller.Get());
         var response = Assert.IsType<NotificationListResponse>(result.Value);
         Assert.Single(response.Items); Assert.Equal(1, response.UnreadCount);
-        Assert.IsType<NotFoundResult>(await controller.Read(db.Notifications.Single(n => n.RecipientUserId != user).Id, default));
+        Assert.IsType<NotFoundResult>(await controller.Read(db.Notifications.Single(n => n.RecipientUserId != user).Id.ToString(), default));
         Assert.IsType<BadRequestObjectResult>(await controller.Get(page: 0));
     }
 

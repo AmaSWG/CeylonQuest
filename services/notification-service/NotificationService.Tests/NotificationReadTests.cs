@@ -37,19 +37,19 @@ public class NotificationReadTests : IAsyncLifetime
         var user = Guid.NewGuid(); var first = Item(user); var second = Item(user); var foreign = Item(Guid.NewGuid());
         db.Notifications.AddRange(first, second, foreign); await db.SaveChangesAsync();
         var controller = Controller(user.ToString());
-        var response = Assert.IsType<MarkReadResponse>(Assert.IsType<OkObjectResult>(await controller.Read(first.Id, default)).Value);
+        var response = Assert.IsType<MarkReadResponse>(Assert.IsType<OkObjectResult>(await controller.Read(first.Id.ToString(), default)).Value);
         Assert.Equal(1, response.UpdatedCount); Assert.Equal(1, response.UnreadCount);
         db.ChangeTracker.Clear();
         var saved = await db.Notifications.SingleAsync(n => n.Id == first.Id);
         Assert.True(saved.IsRead); Assert.NotNull(saved.ReadAtUtc);
         var timestamp = saved.ReadAtUtc;
-        response = Assert.IsType<MarkReadResponse>(Assert.IsType<OkObjectResult>(await controller.Read(first.Id, default)).Value);
+        response = Assert.IsType<MarkReadResponse>(Assert.IsType<OkObjectResult>(await controller.Read(first.Id.ToString(), default)).Value);
         Assert.Equal(0, response.UpdatedCount);
         db.ChangeTracker.Clear();
         Assert.Equal(timestamp, (await db.Notifications.SingleAsync(n => n.Id == first.Id)).ReadAtUtc);
         Assert.Equal(2, await db.Notifications.CountAsync(n => !n.IsRead));
-        Assert.IsType<NotFoundResult>(await controller.Read(foreign.Id, default));
-        Assert.IsType<NotFoundResult>(await controller.Read(Guid.NewGuid(), default));
+        Assert.IsType<NotFoundResult>(await controller.Read(foreign.Id.ToString(), default));
+        Assert.IsType<NotFoundResult>(await controller.Read(Guid.NewGuid().ToString(), default));
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public class NotificationReadTests : IAsyncLifetime
         var controller = Controller(identity);
         Assert.IsType<UnauthorizedResult>(await controller.Get());
         Assert.IsType<UnauthorizedResult>(await controller.Unread(default));
-        Assert.IsType<UnauthorizedResult>(await controller.Read(Guid.NewGuid(), default));
+        Assert.IsType<UnauthorizedResult>(await controller.Read(Guid.NewGuid().ToString(), default));
         Assert.IsType<UnauthorizedResult>(await controller.ReadAll(default));
     }
 
@@ -107,5 +107,42 @@ public class NotificationReadTests : IAsyncLifetime
         var list = await service.ListAsync(user,1,20,default);
         Assert.Empty(list.Items); Assert.Equal(0,list.TotalCount); Assert.Equal(0,list.UnreadCount);
         Assert.Equal(0,(await service.ReadAllAsync(user,default)).UpdatedCount);
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("123")]
+    [InlineData("not-a-guid")]
+    public async Task Read_MalformedId_ReturnsBadRequest(string id)
+    {
+        var controller = Controller(Guid.NewGuid().ToString());
+
+        var result = await controller.Read(id, default);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task Read_UnknownValidGuid_ReturnsNotFound()
+    {
+        var result = await Controller(Guid.NewGuid().ToString()).Read(Guid.NewGuid().ToString(), default);
+        Assert.IsType<NotFoundResult>(result);
+        Assert.Empty(await db.Notifications.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Read_OtherUsersNotification_ReturnsNotFoundAndPreservesUnreadState()
+    {
+        var foreign = Item(Guid.NewGuid());
+        db.Notifications.Add(foreign);
+        await db.SaveChangesAsync();
+
+        var result = await Controller(Guid.NewGuid().ToString()).Read(foreign.Id.ToString(), default);
+
+        Assert.IsType<NotFoundResult>(result);
+        db.ChangeTracker.Clear();
+        var saved = await db.Notifications.SingleAsync(n => n.Id == foreign.Id);
+        Assert.False(saved.IsRead);
+        Assert.Null(saved.ReadAtUtc);
     }
 }
