@@ -43,6 +43,12 @@ export default defineConfig({
         secure: false,
       },
 
+      '/api/bookings': {
+      target: 'http://localhost:5229',
+      changeOrigin: true,
+      secure: false,
+    },
+
       // Booking Service - Payments
       '/api/Payments': {
         target: 'http://localhost:5229',

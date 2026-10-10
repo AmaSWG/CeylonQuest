@@ -1,0 +1,130 @@
+.cq-reviews {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+  color: inherit;
+}
+
+.cq-review-filters,
+.cq-review-pagination,
+.cq-review-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cq-review-heading {
+  justify-content: space-between;
+}
+
+.cq-reviews button,
+.cq-review-form select,
+.cq-review-form textarea {
+  font: inherit;
+}
+
+.cq-reviews button {
+  padding: 8px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+}
+
+.cq-review-filters button[aria-pressed="true"],
+.cq-review-form button[type="submit"] {
+  background: #14532d;
+  border-color: #14532d;
+  color: #fff;
+}
+
+.cq-reviews button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.cq-reviews :focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+}
+
+.cq-review-list {
+  list-style: none;
+  padding: 0;
+}
+
+.cq-review-list li {
+  padding: 16px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.cq-review-comment {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cq-stars,
+.cq-star-picker label > span[aria-hidden="true"] {
+  color: #b45309;
+  font-size: 22px;
+}
+
+.cq-review-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.cq-review-form textarea,
+.cq-review-form select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.cq-review-form textarea {
+  resize: vertical;
+}
+
+.cq-star-picker {
+  display: flex;
+  gap: 12px;
+  border: 0;
+  padding: 0;
+}
+
+.cq-star-picker label {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.cq-review-error {
+  color: #b91c1c;
+}
+
+.cq-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .cq-review-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .cq-review-form button[type="submit"] {
+    width: 100%;
+  }
+}
