@@ -42,6 +42,25 @@ public sealed class IdentityApiClient
         return login!.AccessToken;
     }
 
+    public static Guid ExtractUserIdFromJwt(string jwt)
+    {
+        var parts = jwt.Split('.');
+        if (parts.Length < 2) return Guid.Empty;
+        var payload = parts[1];
+        payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=')
+            .Replace('-', '+').Replace('_', '/');
+        var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        foreach (var prop in doc.RootElement.EnumerateObject())
+        {
+            if (prop.NameEquals("sub") || prop.NameEquals("nameid") || prop.Name.EndsWith("nameidentifier", StringComparison.OrdinalIgnoreCase))
+            {
+                if (Guid.TryParse(prop.Value.GetString(), out var id)) return id;
+            }
+        }
+        return Guid.Empty;
+    }
+
     private sealed record RegisterResponse(string Message, Guid UserId);
     private sealed record LoginResult(string AccessToken, string TokenType, string Role);
 }

@@ -9,15 +9,21 @@ public sealed class CatalogApiClient
 
     public async Task<CatalogSearchItem?> FindBookableListingAsync(string type, CancellationToken ct = default)
     {
+        var items = await FindBookableListingsAsync(type, ct);
+        return items.FirstOrDefault();
+    }
+
+    public async Task<List<CatalogSearchItem>> FindBookableListingsAsync(string type, CancellationToken ct = default)
+    {
         var response = await _http.GetAsync($"/api/catalog/search?type={type}&pageSize=50", ct);
-        if (!response.IsSuccessStatusCode) return null;
+        if (!response.IsSuccessStatusCode) return new();
         var payload = await response.Content.ReadFromJsonAsync<CatalogSearchResponse>(JsonDefaults.Options, ct);
-        return payload?.Items.FirstOrDefault();
+        return payload?.Items ?? new();
     }
 
     public async Task<(string Date, string TimeSlot)?> FindAvailableSlotAsync(Guid listingId, CancellationToken ct = default)
     {
-        for (var offset = 1; offset <= 14; offset++)
+        for (var offset = 1; offset <= 35; offset++)
         {
             var date = DateTime.UtcNow.Date.AddDays(offset).ToString("yyyy-MM-dd");
             var response = await _http.GetAsync($"/api/catalog/availability/{listingId}?date={date}", ct);
