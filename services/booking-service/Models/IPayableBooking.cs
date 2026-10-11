@@ -3,6 +3,9 @@ namespace BookingService.Models;
 // Common payment view over the three existing booking entities; not an EF entity.
 public interface IPayableBooking
 {
+    AttendanceStatus AttendanceStatus { get; set; }
+    Guid? AttendanceVerifiedByUserId { get; set; }
+    DateTime? AttendanceVerifiedAtUtc { get; set; }
     Guid Id { get; }
     Guid VisitorId { get; }
     Guid? ProviderUserId { get; }

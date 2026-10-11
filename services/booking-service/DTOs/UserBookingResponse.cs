@@ -2,6 +2,12 @@ namespace BookingService.DTOs;
 
 public class UserBookingResponse
 {
+    public string AttendanceStatus { get; set; } = "Pending";
+    public DateTime? AttendanceVerifiedAtUtc { get; set; }
+    public DateTime? ScheduledEndAtUtc { get; set; }
+    public bool CanReview { get; set; }
+    public Guid? ReviewId { get; set; }
+    public string? ReviewIneligibilityReason { get; set; }
     public Guid Id { get; set; }
 
     public Guid ServiceId { get; set; }

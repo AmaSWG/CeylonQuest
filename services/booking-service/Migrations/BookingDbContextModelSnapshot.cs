@@ -36,6 +36,20 @@ namespace booking_service.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("varchar(200)");
 
+                    b.Property<string>("AttendanceStatus")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasDefaultValue("Pending");
+
+                    b.Property<DateTime?>("AttendanceVerifiedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("AttendanceVerifiedByUserId")
+                        .HasColumnType("char(36)");
+
                     b.Property<string>("CancellationReason")
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
@@ -125,10 +139,79 @@ namespace booking_service.Migrations
                     b.ToTable("AccommodationBookings");
                 });
 
+            modelBuilder.Entity("BookingService.Models.AttendanceDispute", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("BookingType")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("OriginalAttendanceStatus")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("OriginalVerifiedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("OriginalVerifiedByUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<string>("Resolution")
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<DateTime?>("ResolvedAtUtc")
+                        .IsConcurrencyToken()
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("ResolvedAttendanceStatus")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("ResolvedByUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("VisitorId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingType", "BookingId")
+                        .IsUnique();
+
+                    b.ToTable("AttendanceDisputes");
+                });
+
             modelBuilder.Entity("BookingService.Models.Booking", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("AttendanceStatus")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasDefaultValue("Pending");
+
+                    b.Property<DateTime?>("AttendanceVerifiedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("AttendanceVerifiedByUserId")
                         .HasColumnType("char(36)");
 
                     b.Property<DateOnly>("BookingDate")
@@ -252,6 +335,9 @@ namespace booking_service.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<bool>("AttendanceVerified")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<Guid>("BookingId")
                         .HasColumnType("char(36)");
 
@@ -273,6 +359,17 @@ namespace booking_service.Migrations
 
                     b.Property<Guid>("ProviderId")
                         .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("ProviderRespondedAtUtc")
+                        .IsConcurrencyToken()
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("ProviderRespondedByUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("ProviderResponse")
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
 
                     b.Property<int>("Rating")
                         .HasColumnType("int");
@@ -400,6 +497,20 @@ namespace booking_service.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<string>("AttendanceStatus")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasDefaultValue("Pending");
+
+                    b.Property<DateTime?>("AttendanceVerifiedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("AttendanceVerifiedByUserId")
+                        .HasColumnType("char(36)");
+
                     b.Property<string>("CancellationReason")
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
@@ -506,6 +617,13 @@ namespace booking_service.Migrations
 
                     b.Property<DateTime?>("PublishedAtUtc")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Topic")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasDefaultValue("review.submitted");
 
                     b.HasKey("Id");
 

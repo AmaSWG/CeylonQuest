@@ -96,6 +96,7 @@ public class ReviewTests
             _ => new AccommodationBooking { Id = id, VisitorId = visitor, AccommodationId = listing, AccommodationName = "Room",
                 ProviderId = provider, ScheduledEndAtUtc = Now.AddHours(endOffset), Status = Enum.Parse<AccommodationBookingStatus>(status) }
         };
+        booking.AttendanceStatus = AttendanceStatus.Attended;
         db.Add(booking); db.SaveChanges(); return booking;
     }
     private static CreateReviewRequest Request(IPayableBooking b, int rating = 5)

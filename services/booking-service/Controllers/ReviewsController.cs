@@ -10,7 +10,7 @@ namespace BookingService.Controllers;
 [Route("api/bookings/reviews")]
 public class ReviewsController(IReviewService reviews) : ControllerBase
 {
-    /// <summary>Review an owned, completed booking after its scheduled end.</summary>
+    /// <summary>Review an owned, completed booking with verified attendance after its scheduled end.</summary>
     [HttpPost]
     [Authorize(Roles = "Visitor")]
     [ProducesResponseType(typeof(ReviewResponse), StatusCodes.Status201Created)]

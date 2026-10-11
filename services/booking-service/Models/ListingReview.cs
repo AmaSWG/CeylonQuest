@@ -12,5 +12,9 @@ public class ListingReview
     public Guid ProviderId { get; set; }
     public int Rating { get; set; }
     public string Comment { get; set; } = string.Empty;
+    public bool AttendanceVerified { get; set; }
+    public string? ProviderResponse { get; set; }
+    public Guid? ProviderRespondedByUserId { get; set; }
+    public DateTime? ProviderRespondedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
 }

@@ -5,6 +5,7 @@ namespace BookingService.Data;
 
 public class BookingDbContext : DbContext
 {
+    public DbSet<AttendanceDispute> AttendanceDisputes { get; set; }
     public DbSet<ListingReview> ListingReviews { get; set; }
     public DbSet<PlatformReview> PlatformReviews { get; set; }
     public DbSet<ReviewOutboxMessage> ReviewOutboxMessages { get; set; }
@@ -63,6 +64,13 @@ public class BookingDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<AttendanceDispute>().Property(d => d.Reason).HasMaxLength(2000);
+        modelBuilder.Entity<AttendanceDispute>().Property(d => d.Resolution).HasMaxLength(2000);
+        modelBuilder.Entity<AttendanceDispute>().HasIndex(d => new { d.BookingType, d.BookingId }).IsUnique();
+        modelBuilder.Entity<AttendanceDispute>().Property(d => d.ResolvedAtUtc).IsConcurrencyToken();
+        modelBuilder.Entity<ListingReview>().Property(r => r.ProviderResponse).HasMaxLength(2000);
+        modelBuilder.Entity<ListingReview>().Property(r => r.ProviderRespondedAtUtc).IsConcurrencyToken();
+        modelBuilder.Entity<ReviewOutboxMessage>().Property(m => m.Topic).HasMaxLength(100).HasDefaultValue("review.submitted");
         modelBuilder.Entity<PlatformReview>(entity =>
         {
             entity.HasKey(r => r.Id);
@@ -94,6 +102,11 @@ public class BookingDbContext : DbContext
         // when payment and expiry run in different service instances.
         foreach (var type in new[] { typeof(Booking), typeof(RestaurantReservation), typeof(AccommodationBooking) })
         {
+            modelBuilder.Entity(type).Property<DateTime?>("ScheduledEndAtUtc").HasConversion(
+                value => value, value => value.HasValue ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc) : value);
+            modelBuilder.Entity(type).Property<DateTime?>("AttendanceVerifiedAtUtc").HasConversion(
+                value => value, value => value.HasValue ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc) : value);
+            modelBuilder.Entity(type).Property("AttendanceStatus").HasConversion<string>().HasMaxLength(20).HasDefaultValue(AttendanceStatus.Pending).IsConcurrencyToken();
             modelBuilder.Entity(type).Property("Status").IsConcurrencyToken();
             modelBuilder.Entity(type).Property("PaymentStatus").IsConcurrencyToken();
             modelBuilder.Entity(type).Property<DateTime>("CreatedAt").HasConversion(

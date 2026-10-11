@@ -90,6 +90,7 @@ public class ReviewService(
             VisitorId = visitorId,
             ListingId = booking.ListingId,
             ProviderId = providerId.Value,
+            AttendanceVerified = true,
             Rating = request.Rating,
             Comment = request.Comment.Trim(),
             ReviewerDisplayName = reviewerDisplayName,
@@ -98,7 +99,7 @@ public class ReviewService(
         };
         var eventId = Guid.NewGuid();
         var evt = new ReviewSubmittedEvent(eventId, 1, review.Id, booking.Id, request.BookingType,
-            booking.ListingId, booking.ListingTitle, visitorId, providerId.Value, review.Rating, now);
+            booking.ListingId, booking.ListingTitle, visitorId, providerId.Value, review.Rating, now, booking.ProviderUserId, review.Comment);
         db.ListingReviews.Add(review);
         db.ReviewOutboxMessages.Add(new ReviewOutboxMessage { Id = eventId, Payload = JsonSerializer.Serialize(evt) });
         try
@@ -143,7 +144,8 @@ public class ReviewService(
         => db.ListingReviews.AsNoTracking().Where(r => r.ListingId == listingId && (type == null || r.BookingType == type));
     private static ReviewResponse ToResponse(ListingReview r)
         => new(r.Id, r.ListingId, r.BookingType, r.Rating, r.Comment,
-            DateTime.SpecifyKind(r.CreatedAtUtc, DateTimeKind.Utc), r.ReviewerDisplayName);
+            DateTime.SpecifyKind(r.CreatedAtUtc, DateTimeKind.Utc), r.ReviewerDisplayName, r.AttendanceVerified, r.ProviderResponse, r.ProviderRespondedAtUtc.HasValue
+                ? DateTime.SpecifyKind(r.ProviderRespondedAtUtc.Value, DateTimeKind.Utc) : null);
 
     public async Task<PlatformReviewResponse> CreatePlatformAsync(Guid visitorId, CreatePlatformReviewRequest request, CancellationToken token = default)
     {
@@ -239,7 +241,7 @@ public class ReviewService(
 
         return new ReviewEligibilityResponse(eligible, message);
     }
-private static DateTime? ScheduledEnd(IPayableBooking booking)
+public static DateTime? ScheduledEnd(IPayableBooking booking)
     => booking switch
     {
         Booking b => b.ScheduledEndAtUtc
@@ -253,7 +255,7 @@ private static DateTime? ScheduledEnd(IPayableBooking booking)
         _ => null
     };
 
-private static string? IneligibilityReason(
+public static string? IneligibilityReason(
     IPayableBooking booking,
     DateTime now,
     bool alreadyReviewed)
@@ -261,16 +263,21 @@ private static string? IneligibilityReason(
     if (alreadyReviewed)
         return "You have already reviewed this booking.";
 
-    if (booking.Status != BookingStatus.Completed)
+    if (booking.Status is not (BookingStatus.Confirmed or BookingStatus.Completed))
         return "Only completed bookings can be reviewed.";
 
     var end = ScheduledEnd(booking);
-
     if (end == null)
         return "The scheduled end time is unavailable. Please contact support.";
-
     if (end >= now)
         return "You can review this booking after the service has ended.";
+
+    if (booking.AttendanceStatus != AttendanceStatus.Attended)
+        return booking.AttendanceStatus == AttendanceStatus.NoShow
+            ? "Attendance was recorded as NoShow. You can dispute this from My Bookings."
+            : "Review available after attendance confirmation.";
+    if (booking.Status != BookingStatus.Completed)
+        return "Only completed bookings can be reviewed.";
 
     return null;
 }

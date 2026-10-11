@@ -1,5 +1,7 @@
 # Review API
 
+Current attendance-based eligibility, provider responses, frontend workflows and rollout instructions are documented in [attendance-reviews.md](attendance-reviews.md). Those rules supersede the original completed-booking-only eligibility described below.
+
 Booking-service owns reviews for experiences, restaurant reservations and accommodation stays.
 Public responses omit booking IDs, visitor IDs, provider IDs and payment information.
 

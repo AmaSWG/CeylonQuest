@@ -7,7 +7,10 @@ public record ReviewResponse(
     int Rating,
     string Comment,
     DateTime CreatedAtUtc,
-    string ReviewerDisplayName = "Visitor");
+    string ReviewerDisplayName = "Visitor",
+    bool AttendanceVerified = false,
+    string? ProviderResponse = null,
+    DateTime? ProviderRespondedAtUtc = null);
 public record ReviewSummaryResponse(
     Guid ListingId,
     string? BookingType,
