@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { bookingUrl } from '../../../api/client'
 import { formatSriLankaTime, canRetryPaymentAt, refundPreview } from '../../../api/bookingPayment'
 import ConfirmModal from '../../../components/ConfirmModal'
 import './VisitorBookingsTab.css'
+import ListingReviews from '../../../components/ListingReviews'
+import AttendanceDisputeAction from '../../../components/AttendanceDisputeAction'
+import { normalizeBookingType } from '../../../api/reviewApi'
 
 export default function VisitorBookingsTab({ onSessionExpired }) {
     const [bookings, setBookings] = useState([])
@@ -26,6 +29,11 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
 
     const [searchTerm, setSearchTerm] = useState('')
     const [statusFilter, setStatusFilter] = useState('all')
+    const [reviewTarget, setReviewTarget] = useState(null)
+    const reviewPanelRef = useRef(null)
+    useEffect(() => {
+        if (reviewTarget) reviewPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, [reviewTarget])
 
     // =========================================================
     // FETCH BOOKINGS
@@ -979,8 +987,16 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                                 {deletingBookingId === booking.id
                                                                     ? 'Deleting...'
                                                                     : 'Delete'}
-                                                            </button>
+                                                                     </button>
                                                         )}
+
+                                                        <div>
+                                                            <span>Attendance: {booking.attendanceStatus || 'Pending'}</span>
+                                                            {(booking.canReview || booking.reviewId) && <button type="button" className="vb-view-btn" onClick={() => setReviewTarget(booking)}>{booking.reviewId ? 'Review Submitted ? View Reviews' : 'Write Review'}</button>}
+                                                            {!booking.canReview && !booking.reviewId && booking.status !== 'Cancelled' && <p>{booking.reviewIneligibilityReason}</p>}
+                                                            <AttendanceDisputeAction booking={booking} onSaved={() => fetchBookings(true)} />
+                                                        </div>
+
                                                     </div>
                                                 </td>
                                             </tr>
@@ -1660,6 +1676,23 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {reviewTarget && (
+                <section ref={reviewPanelRef} aria-label={`Reviews for ${reviewTarget.serviceName}`}>
+                    <button type="button" className="vb-view-btn" onClick={() => setReviewTarget(null)}>
+                        Close reviews
+                    </button>
+                    <h2>{reviewTarget.serviceName}</h2>
+                    <ListingReviews
+                        key={`${reviewTarget.bookingType}-${reviewTarget.serviceId}`}
+                        listingId={reviewTarget.serviceId}
+                        bookingType={normalizeBookingType(reviewTarget.bookingType)}
+                        preferredBookingId={reviewTarget.id}
+                        allowSubmission={!reviewTarget.reviewId}
+                        onSubmitted={() => fetchBookings(true)}
+                    />
+                </section>
             )}
 
             <ConfirmModal

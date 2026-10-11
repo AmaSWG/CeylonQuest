@@ -106,6 +106,16 @@ export default function VisitorExploreTab({ showToast }) {
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [selectedBooking, setSelectedBooking] = useState(null)
 
+  const selectedListingId = selectedDetail?.id
+  const selectedListingType = selectedDetail?.type
+  const updateReviewSummary = useCallback((summary) => {
+    setServices(current => current.map(item => {
+      if (item.id !== selectedListingId || item.type !== selectedListingType) return item
+      if (item.averageRating === summary.averageRating && item.reviewCount === summary.reviewCount) return item
+      return { ...item, ...summary }
+    }))
+  }, [selectedListingId, selectedListingType])
+
   const fetchExploreServices = useCallback(async () => {
     setLoading(true)
     setLoadError(null)
@@ -270,6 +280,11 @@ export default function VisitorExploreTab({ showToast }) {
 
                   <div className="vd-service-card__body">
                     <div className="vd-service-card__body-left">
+                      <p aria-label="Visitor rating">
+                          {Number(item.reviewCount ?? 0) > 0
+                          ? `★ ${Number(item.averageRating).toFixed(2)} · ${item.reviewCount} reviews`
+                          : 'No reviews yet'}
+                      </p>
                       <p className="vd-service-card__desc">{item.description}</p>
                       <div className="vd-service-card__tags">
                         {item.location && (
@@ -291,7 +306,6 @@ export default function VisitorExploreTab({ showToast }) {
 
                     <ServiceCardImages item={item} />
                   </div>
-
                   <div className="vd-service-card__footer">
                     <div className="vd-service-card__actions">
                       <button
@@ -352,6 +366,7 @@ export default function VisitorExploreTab({ showToast }) {
       {selectedDetail && (
         <VisitorServiceDetailModal
           item={selectedDetail}
+          onSummaryChange={updateReviewSummary}
           onClose={() => setSelectedDetail(null)}
           onOpenBooking={(it) => setSelectedBooking(it)}
         />

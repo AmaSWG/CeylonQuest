@@ -195,6 +195,10 @@ builder.Services.AddScoped<
     AdminBookingsRevenueReportService>();
 
 builder.Services.AddScoped<PendingPaymentExpirationService>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<IReviewService, BookingService.Services.ReviewService>();
+builder.Services.AddScoped<ReviewOutboxPublisher>();
+builder.Services.AddHostedService<ReviewOutboxWorker>();
 builder.Services.AddHostedService<PendingPaymentExpirationWorker>();
 
 builder.Services.AddHttpClient<
@@ -225,6 +229,17 @@ builder.Services.AddHttpClient<
             builder.Configuration["Services:Identity"]
             ?? "http://localhost:5278"
         );
+});
+
+builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddHttpClient<ReviewerProfileClient>(client =>
+{
+    client.BaseAddress = new Uri(
+        builder.Configuration["Services:Identity"]
+            ?? "http://localhost:5278");
+
+    client.Timeout = TimeSpan.FromSeconds(10);
 });
 
 

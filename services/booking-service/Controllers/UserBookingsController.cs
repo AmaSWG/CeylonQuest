@@ -50,6 +50,9 @@ public class UserBookingsController : ControllerBase
                 .Select(b => new UserBookingResponse
                 {
                     Id = b.Id,
+                    AttendanceStatus = b.AttendanceStatus.ToString(),
+                    AttendanceVerifiedAtUtc = b.AttendanceVerifiedAtUtc,
+                    ScheduledEndAtUtc = b.ScheduledEndAtUtc,
                     ServiceId = b.ListingId,
 
                     BookingType = "Experience Booking",
@@ -93,6 +96,9 @@ public class UserBookingsController : ControllerBase
                 .Select(r => new UserBookingResponse
                 {
                     Id = r.Id,
+                    AttendanceStatus = r.AttendanceStatus.ToString(),
+                    AttendanceVerifiedAtUtc = r.AttendanceVerifiedAtUtc,
+                    ScheduledEndAtUtc = r.ScheduledEndAtUtc,
                     ServiceId = r.RestaurantId,
 
                     BookingType = "Restaurant Reservation",
@@ -137,6 +143,9 @@ public class UserBookingsController : ControllerBase
                 .Select(a => new UserBookingResponse
                 {
                     Id = a.Id,
+                    AttendanceStatus = a.AttendanceStatus.ToString(),
+                    AttendanceVerifiedAtUtc = a.AttendanceVerifiedAtUtc,
+                    ScheduledEndAtUtc = a.ScheduledEndAtUtc,
                     ServiceId = a.AccommodationId,
 
                     BookingType = "Accommodation Booking",
@@ -184,6 +193,30 @@ public class UserBookingsController : ControllerBase
                 .ThenByDescending(x => x.CreatedAt)
                 .ToList();
 
+        var experienceEntities = await _context.Bookings.AsNoTracking().Where(b => b.VisitorId == visitorId && !b.IsDeleted).ToListAsync();
+        var restaurantEntities = await _context.RestaurantReservations.AsNoTracking().Where(b => b.VisitorId == visitorId && !b.IsDeleted).ToListAsync();
+        var accommodationEntities = await _context.AccommodationBookings.AsNoTracking().Where(b => b.VisitorId == visitorId && !b.IsDeleted).ToListAsync();
+        var reviewRows = await _context.ListingReviews.AsNoTracking()
+            .Where(r => r.VisitorId == visitorId).ToListAsync();
+        foreach (var item in result)
+        {
+            var type = item.BookingType.StartsWith("Experience") ? "Experience"
+                : item.BookingType.StartsWith("Restaurant") ? "Restaurant" : "Accommodation";
+            var booking = type switch
+            {
+                "Experience" => (BookingService.Models.IPayableBooking?)experienceEntities.FirstOrDefault(b => b.Id == item.Id),
+                "Restaurant" => restaurantEntities.FirstOrDefault(b => b.Id == item.Id),
+                _ => accommodationEntities.FirstOrDefault(b => b.Id == item.Id)
+            };
+            var existing = reviewRows.FirstOrDefault(r => r.BookingType == type && r.BookingId == item.Id);
+            item.ReviewId = existing?.Id;
+            if (booking != null)
+            {
+                item.ScheduledEndAtUtc = BookingService.Services.ReviewService.ScheduledEnd(booking);
+                item.ReviewIneligibilityReason = BookingService.Services.ReviewService.IneligibilityReason(booking, DateTime.UtcNow, existing != null);
+                item.CanReview = item.ReviewIneligibilityReason == null;
+            }
+        }
         return Ok(result);
     }
 }

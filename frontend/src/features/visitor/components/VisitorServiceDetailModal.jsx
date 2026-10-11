@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import './VisitorServiceDetailModal.css'
 import ExperienceAvailabilityDetails from './ExperienceAvailabilityDetails'
+import ListingReviews from '../../../components/ListingReviews'
 import {
   CloseIcon,
   GroupIcon,
@@ -14,7 +15,7 @@ import {
   DiningIcon
 } from '../../../components/Icons'
 
-export default function VisitorServiceDetailModal({ item, onClose, onOpenBooking }) {
+export default function VisitorServiceDetailModal({ item, onClose, onOpenBooking, onSummaryChange }) {
   const [lightboxIndex, setLightboxIndex] = useState(null)
 
   const normalizeImgUrl = (url) => {
@@ -208,6 +209,13 @@ export default function VisitorServiceDetailModal({ item, onClose, onOpenBooking
               </div>
             </div>
           )}
+
+          <ListingReviews
+            key={`${item.type}-${item.id}`}
+            listingId={item.id}
+            bookingType={item.type}
+            onSummaryChange={onSummaryChange}
+          />
 
           <div className="vd-detail-modal__footer">
             <div className="vd-detail-price">

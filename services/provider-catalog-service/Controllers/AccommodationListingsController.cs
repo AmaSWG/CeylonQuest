@@ -29,6 +29,8 @@ public class AccommodationListingsController : ControllerBase
     /// </summary>
     private static AccommodationListingResponse ToDto(AccommodationListing a, string businessName = "") => new()
     {
+        AverageRating = a.AverageRating,
+        ReviewCount = a.ReviewCount,
         Id = a.Id,
         ProviderId = a.ProviderId,
         ProviderUserId = a.Provider?.IdentityUserId,

@@ -28,6 +28,7 @@ import ProviderOverviewTab from '../components/ProviderOverviewTab'
 import ProviderBusinessProfileTab from '../components/ProviderBusinessProfileTab'
 import ProviderListingsTab from '../components/ProviderListingsTab'
 import ProviderBookingsTab from '../components/ProviderBookingsTab'
+import ProviderReviewsTab from '../components/ProviderReviewsTab'
 import ProviderReportsTab from '../components/ProviderReportsTab'
 import ProviderAccountTab from '../components/ProviderAccountTab'
 
@@ -568,6 +569,11 @@ function ProviderDashboard({ onLogout }) {
     },
 
     {
+      key: 'reviews',
+      icon: <BarChartIcon size={18} />,
+      label: 'Reviews & Ratings'
+    },
+    {
       key: 'reports',
       icon:
         <BarChartIcon size={18} />,
@@ -705,6 +711,8 @@ function ProviderDashboard({ onLogout }) {
       {/* =================================================
           Reports
           ================================================= */}
+
+      {activeTab === 'reviews' && <ProviderReviewsTab services={services} bookingType={isHotel ? 'Accommodation' : isRestaurant ? 'Restaurant' : 'Experience'} />}
 
       {activeTab === 'reports' && (
         <ProviderReportsTab

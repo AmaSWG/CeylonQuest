@@ -4,6 +4,11 @@ namespace BookingService.Models;
 
 public class RestaurantReservation : IPayableBooking
 {
+    public AttendanceStatus AttendanceStatus { get; set; } = AttendanceStatus.Pending;
+    public Guid? AttendanceVerifiedByUserId { get; set; }
+    public DateTime? AttendanceVerifiedAtUtc { get; set; }
+    public Guid? ProviderId { get; set; }
+    public DateTime? ScheduledEndAtUtc { get; set; }
     string IPayableBooking.BookingType => "Restaurant";
     Guid IPayableBooking.ListingId => RestaurantId;
     string IPayableBooking.ListingTitle => RestaurantName;

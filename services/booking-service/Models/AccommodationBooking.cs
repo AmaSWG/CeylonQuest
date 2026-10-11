@@ -4,6 +4,11 @@ namespace BookingService.Models;
 
 public class AccommodationBooking : IPayableBooking
 {
+    public AttendanceStatus AttendanceStatus { get; set; } = AttendanceStatus.Pending;
+    public Guid? AttendanceVerifiedByUserId { get; set; }
+    public DateTime? AttendanceVerifiedAtUtc { get; set; }
+    public Guid? ProviderId { get; set; }
+    public DateTime? ScheduledEndAtUtc { get; set; }
     string IPayableBooking.BookingType => "Accommodation";
     Guid IPayableBooking.ListingId => AccommodationId;
     string IPayableBooking.ListingTitle => AccommodationName;

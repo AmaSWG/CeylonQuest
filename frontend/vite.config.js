@@ -22,6 +22,12 @@ export default defineConfig({
         secure: false,
       },
 
+      '/api/admin-bookings': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
       '/api/provider-bookings': {
         target: 'http://localhost:5229',
         changeOrigin: true,
@@ -42,6 +48,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+
+      '/api/bookings': {
+      target: 'http://localhost:5229',
+      changeOrigin: true,
+      secure: false,
+    },
 
       // Booking Service - Payments
       '/api/Payments': {
