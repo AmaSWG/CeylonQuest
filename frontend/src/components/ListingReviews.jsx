@@ -23,6 +23,7 @@ export default function ListingReviews({
   onSubmitted
 }) {
   const [page, setPage] = useState(1)
+  const [rating, setRating] = useState('')
   const [refresh, setRefresh] = useState(0)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -47,6 +48,7 @@ export default function ListingReviews({
 
     getReviews(listingId, bookingType, {
       page,
+      rating,
       signal: controller.signal
     })
       .then(result => {
@@ -60,7 +62,7 @@ export default function ListingReviews({
       })
 
     return () => controller.abort()
-  }, [listingId, bookingType, page, refresh])
+  }, [listingId, bookingType, page, rating, refresh])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -115,11 +117,51 @@ export default function ListingReviews({
     <section className="cq-reviews" aria-label="Visitor reviews">
       <h2>Customer Reviews &amp; Ratings</h2>
 
+      <label>
+        Filter reviews by rating: {' '}
+        <select
+          value={rating}
+          onChange={event => {
+            setRating(event.target.value)
+            setPage(1)
+            setLoading(true)
+            setError('')
+          }}
+        >
+          <option value="">All ratings</option>
+          {[5, 4, 3, 2, 1].map(stars => (
+            <option key={stars} value={stars}>
+              {stars} {stars === 1 ? 'star' : 'stars'}
+            </option>
+          ))}
+        </select>
+      </label>
+
       {data && (
         <p className="cq-review-summary">
-          <strong>{Number(data.averageRating).toFixed(2)} / 5</strong>
-          {' · '}
-          {data.reviewCount} review{data.reviewCount === 1 ? '' : 's'}
+          {rating !== '' ? (
+            <>
+              <strong>{rating} / 5</strong>
+              {' . '}
+              {!loading && ! error && (
+                <>
+                  {data.totalCount} matching review
+                  {data.totalCount === 1 ? '' : 's'}
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              {data.reviewCount > 0 && (
+                <>
+                  <strong>{Number(data.averageRating)} / 5</strong>
+                  {' . '}
+                </>
+              )}
+              {data.reviewCount} review
+              {data.reviewCount === 1 ? '' : 's'}
+            </>
+          )}
         </p>
       )}
 
@@ -140,7 +182,9 @@ export default function ListingReviews({
         <>
           {data.items.length === 0 ? (
             <p>
-              No reviews yet. Be the first to share your experience after completing a booking.
+              {rating !== ''
+                ? 'No reviews match this star rating.'
+                : 'No reviews yet. Be the first to share your experience after completing a booking.'}
             </p>
           ) : (
             <ul className="cq-review-list">

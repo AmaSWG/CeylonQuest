@@ -143,6 +143,7 @@ export default function VisitorExploreTab({ showToast }) {
     if (category !== 'all' && s.category !== category) return false
     if (location !== 'all' && !(s.location && s.location.toLowerCase().includes(location.toLowerCase()))) return false
 
+
     if (priceRange !== 'all') {
       const p = Number(s.price)
       if (priceRange === 'budget' && p >= 5000) return false
@@ -228,6 +229,7 @@ export default function VisitorExploreTab({ showToast }) {
           <option value="price_asc">Price: Low to High</option>
           <option value="price_desc">Price: High to Low</option>
         </select>
+
       </div>
 
       {loading && <LoadingSpinner label="Loading explore listings…" fullPage />}
