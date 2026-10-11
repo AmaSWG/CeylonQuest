@@ -128,3 +128,8 @@
     width: 100%;
   }
 }
+.cq-verified-booking { display: inline-block; margin: 0.5rem; color: #166534; font-size: 0.85rem; }
+.cq-provider-response { margin: 1rem 0; padding: 1rem; border-left: 3px solid #2563eb; background: #eff6ff; overflow-wrap: anywhere; }
+.cq-attendance-actions, .cq-attendance-dispute { margin-top: 0.5rem; }
+.cq-attendance-dispute textarea { display: block; width: 100%; max-width: 100%; min-height: 5rem; }
+.cq-provider-reviews article { margin-bottom: 1.5rem; }

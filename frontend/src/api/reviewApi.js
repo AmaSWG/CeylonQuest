@@ -15,19 +15,19 @@ export function normalizeBookingType(value) {
   return type
 }
 
-async function request(path, { auth = false, body, signal } = {}) {
+async function request(path, { auth = false, body, signal, method } = {}) {
   const headers = {}
   const token = localStorage.getItem('authToken')
 
   if (auth) {
-    if (!token) throw new Error('Sign in to submit a review.')
+    if (!token) throw new Error('Sign in to continue.')
     headers.Authorization = `Bearer ${token}`
   }
 
   if (body) headers['Content-Type'] = 'application/json'
 
   const response = await fetch(bookingUrl(path), {
-    method: body ? 'POST' : 'GET',
+    method: method || (body ? 'POST' : 'GET'),
     headers,
     body: body ? JSON.stringify(body) : undefined,
     signal
@@ -43,7 +43,7 @@ async function request(path, { auth = false, body, signal } = {}) {
     const fallback = response.status === 401
       ? 'Your session has expired. Please sign in again.'
       : response.status === 403
-        ? 'Only eligible visitors can submit reviews.'
+        ? 'You are not authorized to perform this action.'
         : 'Reviews could not be loaded. Please try again.'
 
     const error = new Error(
@@ -69,7 +69,7 @@ export function getReviewEligibility(listingId, bookingType, signal) {
 }
 
 export function getReviews(
-  listingId, bookingType, { rating = '', page = 1, signal } = {}
+  listingId, bookingType, { page = 1, signal } = {}
 ) {
   const query = new URLSearchParams({
     bookingType: normalizeBookingType(bookingType),
@@ -77,7 +77,6 @@ export function getReviews(
     pageSize: '10'
   })
 
-  if (rating !== '') query.set('rating', String(rating))
 
   return request(`/api/bookings/reviews/${listingId}?${query}`, { signal })
 }
@@ -90,4 +89,19 @@ export function submitReview(body) {
       bookingType: normalizeBookingType(body.bookingType)
     }
   })
+}
+export function verifyAttendance(booking, status) {
+  return request(`/api/provider-bookings/${normalizeBookingType(booking.bookingType)}/${booking.id}/attendance`, { auth: true, method: 'PATCH', body: { status } })
+}
+export function disputeAttendance(booking, reason) {
+  return request(`/api/user-bookings/${normalizeBookingType(booking.bookingType)}/${booking.id}/attendance-dispute`, { auth: true, body: { reason } })
+}
+export function respondToReview(id, comment) {
+  return request(`/api/bookings/reviews/${id}/response`, { auth: true, method: 'PUT', body: { comment } })
+}
+export function getAttendanceDisputes() {
+  return request('/api/admin-bookings/attendance-disputes', { auth: true })
+}
+export function resolveAttendanceDispute(id, status, resolution) {
+  return request(`/api/admin-bookings/attendance-disputes/${id}`, { auth: true, method: 'PATCH', body: { status, resolution } })
 }

@@ -6,6 +6,7 @@ import {
 import ReviewForm from './ReviewForm'
 import StarRating from './StarRating'
 import './ListingReviews.css'
+import ProviderReviewResponse from './ProviderReviewResponse'
 
 const dateFormatter = new Intl.DateTimeFormat('en-LK', {
   dateStyle: 'medium',
@@ -16,9 +17,11 @@ export default function ListingReviews({
   listingId,
   bookingType,
   preferredBookingId,
-  onSummaryChange
+  onSummaryChange,
+  allowSubmission = false,
+  allowResponse = false,
+  onSubmitted
 }) {
-  const [rating, setRating] = useState('')
   const [page, setPage] = useState(1)
   const [refresh, setRefresh] = useState(0)
   const [data, setData] = useState(null)
@@ -43,7 +46,6 @@ export default function ListingReviews({
     })
 
     getReviews(listingId, bookingType, {
-      rating,
       page,
       signal: controller.signal
     })
@@ -58,7 +60,7 @@ export default function ListingReviews({
       })
 
     return () => controller.abort()
-  }, [listingId, bookingType, rating, page, refresh])
+  }, [listingId, bookingType, page, refresh])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -67,10 +69,10 @@ export default function ListingReviews({
       if (!controller.signal.aborted) {
         setEligibility(null)
         setEligibilityError('')
-        setEligibilityLoading(Boolean(authToken))
+        setEligibilityLoading(Boolean(authToken && allowSubmission))
       }
     })
-    if (!authToken) return () => controller.abort()
+    if (!authToken || !allowSubmission) return () => controller.abort()
 
     getReviewEligibility(listingId, bookingType, controller.signal)
       .then(result => {
@@ -86,16 +88,16 @@ export default function ListingReviews({
       })
 
     return () => controller.abort()
-  }, [listingId, bookingType, authToken, refresh])
+  }, [listingId, bookingType, authToken, refresh, allowSubmission])
 
   function submitted() {
     setSubmissionError('')
     setSuccess('Thank you! Your review has been submitted.')
     setEligibility(null)
     setEligibilityLoading(true)
-    setRating('')
     setPage(1)
     setRefresh(value => value + 1)
+    onSubmitted?.()
   }
 
   useEffect(() => {
@@ -107,11 +109,11 @@ export default function ListingReviews({
     }
   }, [data, onSummaryChange])
 
-  const eligibleBookings = eligibility?.eligibleBookings ?? []
+  const eligibleBookings = (eligibility?.eligibleBookings ?? []).filter(b => !preferredBookingId || b.bookingId === preferredBookingId)
 
   return (
     <section className="cq-reviews" aria-label="Visitor reviews">
-      <h2>Visitor reviews</h2>
+      <h2>Customer Reviews &amp; Ratings</h2>
 
       {data && (
         <p className="cq-review-summary">
@@ -120,22 +122,6 @@ export default function ListingReviews({
           {data.reviewCount} review{data.reviewCount === 1 ? '' : 's'}
         </p>
       )}
-
-      <div className="cq-review-filters" aria-label="Filter by star rating">
-        {['', 5, 4, 3, 2, 1].map(value => (
-          <button
-            key={value === '' ? 'all' : value}
-            type="button"
-            aria-pressed={rating === value}
-            onClick={() => {
-              setRating(value)
-              setPage(1)
-            }}
-          >
-            {value === '' ? 'All' : `${value} ★`}
-          </button>
-        ))}
-      </div>
 
       {success && <p role="status">{success}</p>}
       {submissionError && <p role="alert" className="cq-review-error">{submissionError}</p>}
@@ -154,9 +140,7 @@ export default function ListingReviews({
         <>
           {data.items.length === 0 ? (
             <p>
-              {rating === ''
-                ? 'No reviews yet.'
-                : `No ${rating}-star reviews yet.`}
+              No reviews yet. Be the first to share your experience after completing a booking.
             </p>
           ) : (
             <ul className="cq-review-list">
@@ -169,7 +153,10 @@ export default function ListingReviews({
                     </time>
                   </div>
                   <StarRating value={review.rating} />
+                  <span className="cq-verified-booking" title={review.attendanceVerified ? "Attendance confirmed by provider" : "Submitted against a completed booking"}>Verified Booking</span>
                   <p className="cq-review-comment">{review.comment}</p>
+                  {review.providerResponse && <blockquote className="cq-provider-response"><strong>Provider response</strong><p>{review.providerResponse}</p>{review.providerRespondedAtUtc && <time dateTime={review.providerRespondedAtUtc}>{dateFormatter.format(new Date(review.providerRespondedAtUtc))}</time>}</blockquote>}
+                  {allowResponse && <ProviderReviewResponse review={review} onSaved={() => setRefresh(v => v + 1)} />}
                 </li>
               ))}
             </ul>
@@ -197,7 +184,7 @@ export default function ListingReviews({
         </>
       )}
 
-      {!authToken ? (
+      {allowSubmission && (!authToken ? (
         <p>Sign in as a visitor to submit a review.</p>
       ) : eligibilityLoading ? (
         <p role="status">Checking review eligibility…</p>
@@ -225,7 +212,7 @@ export default function ListingReviews({
         />
       ) : (
         <p>{eligibility?.message || 'You are not eligible to review yet.'}</p>
-      )}
+      ))}
     </section>
   )
 }

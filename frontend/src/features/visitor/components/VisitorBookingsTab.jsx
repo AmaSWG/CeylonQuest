@@ -4,6 +4,7 @@ import { formatSriLankaTime, canRetryPaymentAt, refundPreview } from '../../../a
 import ConfirmModal from '../../../components/ConfirmModal'
 import './VisitorBookingsTab.css'
 import ListingReviews from '../../../components/ListingReviews'
+import AttendanceDisputeAction from '../../../components/AttendanceDisputeAction'
 import { normalizeBookingType } from '../../../api/reviewApi'
 
 export default function VisitorBookingsTab({ onSessionExpired }) {
@@ -989,15 +990,12 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                                      </button>
                                                         )}
 
-                                                        {isCompleted(booking) && (
-                                                           <button
-                                                             type="button"
-                                                             className="vb-view-btn"
-                                                             onClick={() => setReviewTarget(booking)}
-                                                           >
-                                                             Reviews
-                                                           </button>
-                                                        )}
+                                                        <div>
+                                                            <span>Attendance: {booking.attendanceStatus || 'Pending'}</span>
+                                                            {(booking.canReview || booking.reviewId) && <button type="button" className="vb-view-btn" onClick={() => setReviewTarget(booking)}>{booking.reviewId ? 'Review Submitted ? View Reviews' : 'Write Review'}</button>}
+                                                            {!booking.canReview && !booking.reviewId && booking.status !== 'Cancelled' && <p>{booking.reviewIneligibilityReason}</p>}
+                                                            <AttendanceDisputeAction booking={booking} onSaved={() => fetchBookings(true)} />
+                                                        </div>
 
                                                     </div>
                                                 </td>
@@ -1691,6 +1689,8 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                         listingId={reviewTarget.serviceId}
                         bookingType={normalizeBookingType(reviewTarget.bookingType)}
                         preferredBookingId={reviewTarget.id}
+                        allowSubmission={!reviewTarget.reviewId}
+                        onSubmitted={() => fetchBookings(true)}
                     />
                 </section>
             )}
