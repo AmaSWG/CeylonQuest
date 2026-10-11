@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [react()],
 
   server: {
+
+    
     proxy: {
       // Provider Catalog Service
       '/api/catalog': {
@@ -20,10 +22,23 @@ export default defineConfig({
         secure: false,
       },
 
+      '/api/admin-bookings': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
       '/api/provider-bookings': {
         target: 'http://localhost:5229',
         changeOrigin: true,
         secure: false,
+      },
+
+      //notification service
+      '/api/notifications': {
+      target: 'http://localhost:5185',
+      changeOrigin: true,
+      secure: false,
       },
 
       // Booking Service - Admin bookings and revenue report.
@@ -33,6 +48,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+
+      '/api/bookings': {
+      target: 'http://localhost:5229',
+      changeOrigin: true,
+      secure: false,
+    },
 
       // Booking Service - Payments
       '/api/Payments': {

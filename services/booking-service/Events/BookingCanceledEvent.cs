@@ -8,6 +8,11 @@ public class BookingCanceledEvent
 
     public Guid ListingId { get; set; }
 
+    public Guid? ProviderUserId { get; set; }
+    
+
+    public Guid? VisitorId { get; set; }
+
     public string ListingType { get; set; } = string.Empty;
 
     public string BookingDate { get; set; } = string.Empty;

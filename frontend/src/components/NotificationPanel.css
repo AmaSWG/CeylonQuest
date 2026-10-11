@@ -1,0 +1,128 @@
+.cq-notifications { 
+    color: #23443a; 
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.cq-notifications__heading, 
+.cq-notifications__meta, 
+.cq-notifications__pagination {
+    display: flex; 
+    align-items: center;
+    justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
+
+.cq-notifications h1 {
+    margin: 0;
+    font-size: 30px;
+    font-weight: 700;
+    color: #123b5d;
+    flex: 1;
+    letter-spacing: -0.2px;
+    text-align: left;
+
+
+}
+
+.cq-notifications__heading { 
+    margin-bottom: 24px;
+    font-size: 16.5px;
+    font-weight: 700;
+    color: #123b5d;
+    flex: 1;
+    letter-spacing: -0.2px;
+    text-align: left;
+}
+
+.cq-notifications button,
+.cq-notification-bell { 
+    font: inherit; 
+    border: 1px solid #c9dcd3; 
+    background: white; 
+    color: #216047; 
+    padding: 9px 14px; 
+    border-radius: 10px; 
+    cursor: pointer; 
+}
+
+.cq-notifications button:disabled { 
+    opacity: .5; cursor: default; 
+}
+
+.cq-notifications button:focus-visible, 
+.cq-notification-bell:focus-visible { 
+    outline: 3px solid #23825d; 
+    outline-offset: 3px; 
+}
+
+.cq-notifications__list { 
+    display: grid; 
+    gap: 12px;
+}
+
+.cq-notifications__item { 
+    background: white; 
+    border: 1px solid #e0e8e3; 
+    border-radius: 14px; 
+    padding: 20px; 
+    overflow-wrap: anywhere; 
+}
+
+.cq-notifications__item--unread { 
+    background: #f0faf4;
+     border-left: 4px solid #23825d; 
+}
+
+.cq-notifications__item h2 { 
+    font-size: 20px; 
+    margin: 12px 0 8px;
+    color: #123b5d;
+
+}
+
+.cq-notifications__item p { 
+    line-height: 1.6; 
+}
+
+.cq-notifications__meta { 
+    font-size: 13px; 
+    color: #527063; 
+}
+
+.cq-notifications__empty { 
+    text-align: center; 
+    padding: 48px 16px; 
+}
+
+.cq-notifications__error { 
+    padding: 16px; 
+    margin-bottom: 16px; 
+    background: #fff1ee; 
+    color: #92372b; 
+    border-radius: 10px; 
+}
+
+.cq-notifications__pagination { 
+    margin-top: 20px; 
+    justify-content: center; 
+}
+
+.cq-notification-toolbar { 
+    display: flex; 
+    justify-content: flex-end; 
+    margin-bottom: 16px; 
+}
+
+.cq-notification-bell { 
+    display: inline-flex; 
+    align-items: center; 
+    gap: 8px; 
+}
+
+.cq-notification-bell__badge { 
+    background: #216047; 
+    color: white; 
+    border-radius: 20px; 
+    padding: 2px 7px; 
+    font-size: 12px; 
+}

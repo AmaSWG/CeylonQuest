@@ -4,9 +4,13 @@ namespace ProviderCatalogService.DTOs;
 
 public class AccommodationListingResponse
 {
+    public decimal AverageRating { get; set; }
+    public int ReviewCount { get; set; }
     public Guid Id { get; set; }
 
     public Guid ProviderId { get; set; }
+
+    public Guid? ProviderUserId { get; set; }
 
     public string ProviderBusinessName { get; set; } = string.Empty;
 

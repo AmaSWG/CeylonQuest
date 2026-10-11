@@ -2,8 +2,11 @@ using System;
 
 namespace ProviderCatalogService.Models;
 
-public class RestaurantListing
+public class RestaurantListing : IListingRating
 {
+    public long RatingSum { get; set; }
+    public int ReviewCount { get; set; }
+    public decimal AverageRating { get; set; }
     public Guid Id { get; set; }
 
     public Guid ProviderId { get; set; }

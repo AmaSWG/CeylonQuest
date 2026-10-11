@@ -81,6 +81,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       Kafka__BootstrapServers: kafka:29092
+      Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}
       # Secrets and environment-specific values are read from the host environment
       # (or a local .env file) and are never committed. See services/booking-service/README.md.
       ConnectionStrings__BookingDb: ${ConnectionStrings__BookingDb:-}

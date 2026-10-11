@@ -1,8 +1,11 @@
+import useNotifications from '../../../hooks/notification'
+import NotificationPanel from '../../../components/NotificationPanel'
 import { useState, useEffect, useCallback } from 'react'
 
 import './VisitorDashboard.css'
 
 import {
+  NotificationsActiveIcon,
   PermIdentityIcon,
   CalendarMonthIcon,
   SettingsIcon,
@@ -80,6 +83,7 @@ function VisitorDashboard({ onLogout }) {
   const [toast, setToast] = useState(null)
 
   const token = localStorage.getItem('authToken')
+  const notificationState = useNotifications(token, activePage === 'notifications')
 
 
   // =========================================================
@@ -172,6 +176,7 @@ function VisitorDashboard({ onLogout }) {
   // =========================================================
 
   const navItems = [
+    { key: 'notifications', icon: <NotificationsActiveIcon size={18} />, label: 'Notifications', badge: notificationState.unreadCount || null },
     {
       key: 'profile',
       icon: <PermIdentityIcon size={18} />,
@@ -206,6 +211,8 @@ function VisitorDashboard({ onLogout }) {
 
   const renderContent = () => {
     switch (activePage) {
+      case 'notifications':
+        return <NotificationPanel state={notificationState} />
       case 'explore':
         return (
           <VisitorExploreTab
@@ -249,6 +256,8 @@ function VisitorDashboard({ onLogout }) {
 
   return (
     <DashboardLayout
+      notificationCount={notificationState.unreadCount}
+      onOpenNotifications={() => setActivePage('notifications')}
       roleBadge="Visitor"
       navItems={navItems}
       activeTab={activePage}

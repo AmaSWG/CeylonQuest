@@ -51,6 +51,7 @@ public class RestaurantReservationTimeTests
         var kafka = new Mock<IKafkaProducer>();
         catalog.Setup(c => c.GetRestaurantAsync(restaurantId)).ReturnsAsync(new CatalogRestaurantResponse
         {
+            ProviderUserId = Guid.NewGuid(),
             Id = restaurantId, Name = "Restaurant", IsActive = true, SeatingCapacity = 10, PricePerPerson = 100
         });
         catalog.Setup(c => c.GetAvailabilityAsync(restaurantId, date)).ReturnsAsync(new CatalogAvailabilityResponse

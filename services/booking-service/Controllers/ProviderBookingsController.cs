@@ -118,6 +118,9 @@ public class ProviderBookingsController : ControllerBase
                     new ProviderBookingResponse
                     {
                         Id = b.Id,
+                        AttendanceStatus = b.AttendanceStatus.ToString(),
+                        AttendanceVerifiedAtUtc = b.AttendanceVerifiedAtUtc,
+                        ScheduledEndAtUtc = b.ScheduledEndAtUtc,
 
                         CustomerId = b.VisitorId,
 
@@ -181,6 +184,9 @@ public class ProviderBookingsController : ControllerBase
                     new ProviderBookingResponse
                     {
                         Id = r.Id,
+                        AttendanceStatus = r.AttendanceStatus.ToString(),
+                        AttendanceVerifiedAtUtc = r.AttendanceVerifiedAtUtc,
+                        ScheduledEndAtUtc = r.ScheduledEndAtUtc,
 
                         CustomerId = r.VisitorId,
 
@@ -252,6 +258,9 @@ public class ProviderBookingsController : ControllerBase
                     new ProviderBookingResponse
                     {
                         Id = a.Id,
+                        AttendanceStatus = a.AttendanceStatus.ToString(),
+                        AttendanceVerifiedAtUtc = a.AttendanceVerifiedAtUtc,
+                        ScheduledEndAtUtc = a.ScheduledEndAtUtc,
 
                         CustomerId = a.VisitorId,
 
@@ -394,6 +403,11 @@ public class ProviderBookingsController : ControllerBase
         // 10. Return provider booking list
         // -----------------------------------------------------
 
+        foreach (var item in result)
+        {
+            if (item.ScheduledEndAtUtc == null && item.BookingType != "Accommodation Booking")
+                item.ScheduledEndAtUtc = ReviewSchedule.SlotEnd(item.Date, item.Time);
+        }
         return Ok(result);
     }
 }

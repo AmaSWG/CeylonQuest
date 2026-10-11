@@ -19,15 +19,18 @@ public class AccommodationBookingsController : ControllerBase
     private readonly BookingDbContext _db;
     private readonly ICatalogService _catalogService;
     private readonly IKafkaProducer _kafkaProducer;
+    private readonly IConfiguration? _configuration;
 
     public AccommodationBookingsController(
         BookingDbContext db,
         ICatalogService catalogService,
-        IKafkaProducer kafkaProducer)
+        IKafkaProducer kafkaProducer,
+        IConfiguration? configuration = null)
     {
         _db = db;
         _catalogService = catalogService;
         _kafkaProducer = kafkaProducer;
+        _configuration = configuration;
     }
 
     // =========================================================
@@ -103,6 +106,12 @@ public class AccommodationBookingsController : ControllerBase
             {
                 message = "Accommodation could not be found."
             });
+        }
+
+        // A booking must carry the provider's identity ID for notification delivery.
+        if (accommodation.ProviderUserId is null || accommodation.ProviderUserId == Guid.Empty)
+        {
+            return StatusCode(503, new { message = "The listing provider account is not linked. Please try again after it is configured." });
         }
 
         if (!accommodation.IsActive)
@@ -231,12 +240,18 @@ public class AccommodationBookingsController : ControllerBase
         // 10. Create booking
         var booking = new AccommodationBooking
         {
+            ProviderId = accommodation.ProviderId == Guid.Empty ? null : accommodation.ProviderId,
+            ScheduledEndAtUtc = ReviewSchedule.CheckoutEnd(request.CheckOutDate,
+                _configuration?["Reviews:AccommodationCheckoutTime"] ?? "12:00"),
             Id = Guid.NewGuid(),
 
             VisitorId = visitorId,
 
             AccommodationId =
                 accommodation.Id,
+
+            ProviderUserId =
+                accommodation.ProviderUserId,
 
             AccommodationName =
                 accommodation.RoomType,
@@ -288,6 +303,8 @@ public class AccommodationBookingsController : ControllerBase
             booking.Id.ToString(),
             new BookingCreatedEvent
             {
+                ProviderUserId = booking.ProviderUserId,
+                ProviderBusinessName = accommodation.ProviderBusinessName,
                 BookingId = booking.Id,
                 VisitorId = booking.VisitorId,
                 ListingId = booking.AccommodationId,
@@ -647,6 +664,8 @@ public class AccommodationBookingsController : ControllerBase
         var canceledEvent =
             new BookingCanceledEvent
             {
+                ProviderUserId = booking.ProviderUserId,
+                VisitorId = booking.VisitorId,
                 BookingId =
                     booking.Id,
 

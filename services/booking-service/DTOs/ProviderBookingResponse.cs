@@ -2,6 +2,9 @@ namespace BookingService.DTOs;
 
 public class ProviderBookingResponse
 {
+    public string AttendanceStatus { get; set; } = "Pending";
+    public DateTime? AttendanceVerifiedAtUtc { get; set; }
+    public DateTime? ScheduledEndAtUtc { get; set; }
     public Guid Id { get; set; }
 
     // Customer information

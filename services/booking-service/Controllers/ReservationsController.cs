@@ -111,6 +111,12 @@ public class ReservationsController : ControllerBase
         }
 
         // 7. Restaurant must be active
+        // A booking must carry the provider's identity ID for notification delivery.
+        if (restaurant.ProviderUserId is null || restaurant.ProviderUserId == Guid.Empty)
+        {
+            return StatusCode(503, new { message = "The listing provider account is not linked. Please try again after it is configured." });
+        }
+
         if (!restaurant.IsActive)
         {
             return BadRequest(new
@@ -236,6 +242,8 @@ public class ReservationsController : ControllerBase
         var reservation =
             new RestaurantReservation
             {
+                ProviderId = restaurant.ProviderId == Guid.Empty ? null : restaurant.ProviderId,
+                ScheduledEndAtUtc = ReviewSchedule.SlotEnd(request.ReservationDate, request.TimeSlot),
                 Id = Guid.NewGuid(),
 
                 VisitorId =
@@ -243,6 +251,9 @@ public class ReservationsController : ControllerBase
 
                 RestaurantId =
                     request.RestaurantId,
+
+                ProviderUserId =
+                    restaurant.ProviderUserId,
 
                 RestaurantName =
                     restaurant.Name,
@@ -283,6 +294,8 @@ public class ReservationsController : ControllerBase
             reservation.Id.ToString(),
             new BookingCreatedEvent
             {
+                ProviderUserId = reservation.ProviderUserId,
+                ProviderBusinessName = restaurant.ProviderBusinessName,
                 BookingId = reservation.Id,
                 VisitorId = reservation.VisitorId,
                 ListingId = reservation.RestaurantId,
@@ -654,6 +667,8 @@ public class ReservationsController : ControllerBase
         var reservationCanceledEvent =
             new BookingCanceledEvent
             {
+                ProviderUserId = reservation.ProviderUserId,
+                VisitorId = reservation.VisitorId,
                 BookingId =
                     reservation.Id,
 

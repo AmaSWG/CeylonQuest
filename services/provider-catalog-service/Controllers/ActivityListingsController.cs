@@ -25,7 +25,12 @@ public class ActivityListingsController : ControllerBase
     /// </summary>
     private static ActivityListingResponse ToDto(ActivityListing a) => new()
     {
+        AverageRating = a.AverageRating,
+        ReviewCount = a.ReviewCount,
+        ProviderId = a.ProviderId,
         Id = a.Id,
+        ProviderUserId = a.Provider?.IdentityUserId,
+        ProviderBusinessName = a.Provider?.BusinessName ?? string.Empty,
         Title = a.Title,
         Description = a.Description,
         Price = a.Price,
@@ -120,6 +125,8 @@ public class ActivityListingsController : ControllerBase
             .OrderByDescending(l => l.CreatedAt)
             .Select(l => new ActivityListingResponse
             {
+                AverageRating = l.AverageRating,
+                ReviewCount = l.ReviewCount,
                 Id = l.Id,
                 Title = l.Title,
                 Description = l.Description,
@@ -420,6 +427,8 @@ public class ActivityListingsController : ControllerBase
             {
                 l.Id,
                 l.Title,
+                l.AverageRating,
+                l.ReviewCount,
                 l.Description,
                 l.Price,
                 l.Unit,
@@ -449,6 +458,7 @@ public class ActivityListingsController : ControllerBase
     public async Task<IActionResult> GetPublicListingById(Guid id)
     {
         var listing = await _db.ActivityListings
+            .Include(l => l.Provider)
             .AsNoTracking()
             .FirstOrDefaultAsync(l =>
                 l.Id == id &&

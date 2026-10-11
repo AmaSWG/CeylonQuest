@@ -21,6 +21,7 @@ import AdminProviderManagementTab from '../components/AdminProviderManagementTab
 import AdminReportsTab from '../components/AdminReportsTab'
 import AdminNotificationsTab from '../components/AdminNotificationsTab'
 import AdminAccountTab from '../components/AdminAccountTab'
+import AdminAttendanceDisputesTab from '../components/AdminAttendanceDisputesTab'
 
 function Toast({ message, title, onClose }) {
   const isError = typeof message === 'string' && (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') || (title && title.toLowerCase().includes('error')));
@@ -187,6 +188,7 @@ function AdminDashboard({ onLogout }) {
     { key: 'applications',  icon: <DocumentScannerIcon size={18} />,    label: 'Provider Applications', badge: pendingAppsCount > 0 ? pendingAppsCount : null },
     { key: 'users',         icon: <GroupIcon size={18} />,              label: 'User Management' },
     { key: 'providers',     icon: <WorkIcon size={18} />,               label: 'Provider Management' },
+    { key: 'attendance-disputes', icon: <DocumentScannerIcon size={18} />, label: 'Attendance Disputes' },
     { key: 'reports',       icon: <BarChartIcon size={18} />,            label: 'Reports & Analytics' },
     { key: 'notifications', icon: <NotificationsActiveIcon size={18} />, label: 'Notifications', badge: unreadNotifCount > 0 ? unreadNotifCount : null },
     { key: 'account',       icon: <PermIdentityIcon size={18} />,        label: 'Account' },
@@ -244,6 +246,7 @@ function AdminDashboard({ onLogout }) {
         />
       )}
 
+      {activeTab === 'attendance-disputes' && <AdminAttendanceDisputesTab />}
       {activeTab === 'reports' && (
         <AdminReportsTab
           token={token}

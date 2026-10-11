@@ -28,16 +28,18 @@ public class ExpirationCapacityFlowTests
         var date = DateOnly.FromDateTime(now.AddDays(2));
         var listingId = Guid.NewGuid();
         var bookingId = Guid.NewGuid();
+        var visitorId = Guid.NewGuid();
+        var providerUserId = Guid.NewGuid();
         var total = type == "Accommodation" ? 1 : 10;
         using var bookingDb = new BookingDbContext(new DbContextOptionsBuilder<BookingDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
         IPayableBooking booking = type switch
         {
-            "Restaurant" => new RestaurantReservation { Id = bookingId, RestaurantId = listingId,
+            "Restaurant" => new RestaurantReservation { Id = bookingId, VisitorId = visitorId, ProviderUserId = providerUserId, RestaurantId = listingId,
                 ReservationDate = date, TimeSlot = slot, PartySize = quantity },
-            "Accommodation" => new AccommodationBooking { Id = bookingId, AccommodationId = listingId,
+            "Accommodation" => new AccommodationBooking { Id = bookingId, VisitorId = visitorId, ProviderUserId = providerUserId, AccommodationId = listingId,
                 CheckInDate = date, CheckOutDate = date.AddDays(2), GuestCount = 4 },
-            _ => new Booking { Id = bookingId, ListingId = listingId, BookingDate = date,
+            _ => new Booking { Id = bookingId, VisitorId = visitorId, ProviderUserId = providerUserId, ListingId = listingId, BookingDate = date,
                 TimeSlot = slot, ParticipantCount = quantity }
         };
         booking.CreatedAt = now.AddMinutes(-15);
@@ -75,6 +77,8 @@ public class ExpirationCapacityFlowTests
             {
                 Assert.Equal(BookingStatus.Cancelled, booking.Status);
                 Assert.Single(bookingDb.BookingCancellationMessages);
+                Assert.Equal(visitorId, evt.VisitorId);
+                Assert.Equal(providerUserId, evt.ProviderUserId);
                 if (++attempts == 1) throw new InvalidOperationException("Broker unavailable");
                 await consumer.Deliver(JsonSerializer.Serialize(evt));
                 // Simulate delivery followed by loss of the producer acknowledgement.
