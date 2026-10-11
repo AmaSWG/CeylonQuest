@@ -69,7 +69,7 @@ export function getReviewEligibility(listingId, bookingType, signal) {
 }
 
 export function getReviews(
-  listingId, bookingType, { page = 1, signal } = {}
+  listingId, bookingType, { page = 1, rating = '', signal } = {}
 ) {
   const query = new URLSearchParams({
     bookingType: normalizeBookingType(bookingType),
@@ -77,6 +77,8 @@ export function getReviews(
     pageSize: '10'
   })
 
+
+  if (rating !== '') query.set('rating', String(rating))
 
   return request(`/api/bookings/reviews/${listingId}?${query}`, { signal })
 }

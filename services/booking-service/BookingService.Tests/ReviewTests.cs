@@ -502,6 +502,99 @@ public class ReviewTests
         Assert.Equal(3d, result.AverageRating);
     }
 
+    public static IEnumerable<object[]> ListingRatingFilters()
+    {
+        foreach (var type in new[] { "Experience", "Restaurant", "Accommodation" })
+        foreach (var rating in Enumerable.Range(1, 5))
+            yield return new object[] { type, rating };
+    }
+
+    [Theory]
+    [MemberData(nameof(ListingRatingFilters))]
+    public async Task ListingFilter_AppliesBeforePagination_AndExcludesOtherListingsAndTypes(
+        string type, int rating)
+    {
+        await using var db = Db();
+        var listingId = Guid.NewGuid();
+        var otherType = type == "Experience" ? "Restaurant" : "Experience";
+        var matchingIds = new List<Guid>();
+
+        void Add(Guid listing, string bookingType, int stars, int minutes)
+        {
+            var review = new ListingReview
+            {
+                Id = Guid.NewGuid(), BookingId = Guid.NewGuid(),
+                VisitorId = Guid.NewGuid(), ProviderId = Guid.NewGuid(),
+                ListingId = listing, BookingType = bookingType,
+                Rating = stars, Comment = "Listing feedback",
+                CreatedAtUtc = Now.AddMinutes(minutes)
+            };
+            db.ListingReviews.Add(review);
+            if (listing == listingId && bookingType == type && stars == rating)
+                matchingIds.Add(review.Id);
+        }
+
+        Add(listingId, type, rating, -3);
+        Add(listingId, type, rating, -2);
+        Add(listingId, type, rating == 5 ? 1 : rating + 1, -1);
+        Add(Guid.NewGuid(), type, rating, 0);
+        Add(listingId, otherType, rating, 1);
+        await db.SaveChangesAsync();
+
+        var service = Service(db);
+        var first = await service.GetAsync(listingId,
+            new() { BookingType = type, Rating = rating, PageSize = 1 });
+        var second = await service.GetAsync(listingId,
+            new() { BookingType = type, Rating = rating, PageSize = 1, Page = 2 });
+
+        Assert.Equal(2, first.TotalCount);
+        Assert.Equal(2, first.TotalPages);
+        Assert.Equal(2, second.TotalCount);
+        Assert.Equal(matchingIds[1], Assert.Single(first.Items).Id);
+        Assert.Equal(matchingIds[0], Assert.Single(second.Items).Id);
+        Assert.All(first.Items.Concat(second.Items), review =>
+        {
+            Assert.Equal(rating, review.Rating);
+            Assert.Equal(listingId, review.ListingId);
+            Assert.Equal(type, review.BookingType);
+        });
+    }
+
+    [Theory]
+    [InlineData("Experience")]
+    [InlineData("Restaurant")]
+    [InlineData("Accommodation")]
+    public async Task ListingFilter_NoMatchesIsEmpty_AndRemovingFilterReturnsAllRatings(string type)
+    {
+        await using var db = Db();
+        var listingId = Guid.NewGuid();
+        foreach (var rating in new[] { 1, 5 })
+        {
+            db.ListingReviews.Add(new ListingReview
+            {
+                Id = Guid.NewGuid(), BookingId = Guid.NewGuid(),
+                VisitorId = Guid.NewGuid(), ProviderId = Guid.NewGuid(),
+                ListingId = listingId, BookingType = type,
+                Rating = rating, Comment = "Listing feedback", CreatedAtUtc = Now
+            });
+        }
+        await db.SaveChangesAsync();
+
+        var service = Service(db);
+        var filtered = await service.GetAsync(listingId,
+            new() { BookingType = type, Rating = 3 });
+        Assert.Empty(filtered.Items);
+        Assert.Equal(0, filtered.TotalCount);
+        Assert.Equal(0, filtered.TotalPages);
+        Assert.Equal(2, filtered.ReviewCount);
+        Assert.Equal(3d, filtered.AverageRating);
+
+        var unfiltered = await service.GetAsync(listingId,
+            new() { BookingType = type });
+        Assert.Equal(2, unfiltered.TotalCount);
+        Assert.Equal(new[] { 1, 5 }, unfiltered.Items.Select(review => review.Rating).OrderBy(value => value));
+    }
+
     [Fact]
     public async Task ExperienceEvent_IsPublishedOnlyAfterReviewIsPersisted()
     {
