@@ -33,8 +33,8 @@ jobs:
         run: dotnet build services/booking-service/booking-service.csproj --no-restore --configuration Release
 
             # Run booking-service unit tests
-      - name: Run Unit Tests
-        run: dotnet test services/booking-service/BookingService.Tests/BookingService.Tests.csproj --no-build --configuration Release --verbosity normal
+            - name: Run Unit Tests
+        run: dotnet test services/booking-service/BookingService.Tests/BookingService.Tests.csproj --configuration Release --verbosity normal
 
       # Feature branches stop here: CI only
 

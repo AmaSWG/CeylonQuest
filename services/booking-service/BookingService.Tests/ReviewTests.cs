@@ -396,4 +396,221 @@ public class ReviewTests
         Assert.Equal((double)listing.AverageRating, summary.AverageRating);
         Assert.Equal(listing.ReviewCount, summary.ReviewCount);
     }
+     [Fact]
+    public async Task ExperienceSummary_RecalculatesAverageAndCountAfterEachReview()
+    {
+        await using var db = Db();
+        var service = Service(db);
+        var listingId = Guid.NewGuid();
+
+        var empty = await service.GetSummaryAsync(listingId, "Experience");
+        Assert.Equal(0d, empty.AverageRating);
+        Assert.Equal(0, empty.ReviewCount);
+
+        var ratings = new[] { 5, 2, 3 };
+        var expectedAverages = new[] { 5d, 3.5d, 3.33d };
+
+        for (var index = 0; index < ratings.Length; index++)
+        {
+            var booking = (Booking)Seed(db, "Experience");
+            booking.ListingId = listingId;
+            await db.SaveChangesAsync();
+
+            await service.CreateAsync(
+                booking.VisitorId,
+                Request(booking, ratings[index]));
+
+            var summary = await service.GetSummaryAsync(
+                listingId,
+                "Experience");
+
+            Assert.Equal(expectedAverages[index], summary.AverageRating);
+            Assert.Equal(index + 1, summary.ReviewCount);
+        }
+
+        // A different experience must not affect this listing's summary.
+        var otherBooking = Seed(db, "Experience");
+
+        await service.CreateAsync(
+            otherBooking.VisitorId,
+            Request(otherBooking, 1));
+
+        var unchanged = await service.GetSummaryAsync(
+            listingId,
+            "Experience");
+
+        Assert.Equal(3.33d, unchanged.AverageRating);
+        Assert.Equal(3, unchanged.ReviewCount);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public async Task ExperienceFiltering_ReturnsOnlySelectedStarRating(
+        int selectedRating)
+    {
+        await using var db = Db();
+        var service = Service(db);
+        var listingId = Guid.NewGuid();
+
+        // Two reviews per rating ensure the filter returns all matches.
+        for (var rating = 1; rating <= 5; rating++)
+        {
+            for (var index = 0; index < 2; index++)
+            {
+                var booking = (Booking)Seed(db, "Experience");
+                booking.ListingId = listingId;
+                await db.SaveChangesAsync();
+
+                await service.CreateAsync(
+                    booking.VisitorId,
+                    Request(booking, rating));
+            }
+        }
+
+        // A matching rating on another listing must not appear.
+        var otherBooking = Seed(db, "Experience");
+
+        await service.CreateAsync(
+            otherBooking.VisitorId,
+            Request(otherBooking, selectedRating));
+
+        var result = await service.GetAsync(
+            listingId,
+            new ReviewQuery
+            {
+             BookingType = "Experience",
+                Rating = selectedRating,
+                Page = 1,
+                PageSize = 20
+            });
+
+        Assert.Equal(2, result.TotalCount);
+        Assert.Equal(2, result.Items.Count);
+
+        Assert.All(result.Items, review =>
+        {
+            Assert.Equal(selectedRating, review.Rating);
+            Assert.Equal(listingId, review.ListingId);
+        });
+
+        // Summary describes all reviews for this listing, not just the filter.
+        Assert.Equal(10, result.ReviewCount);
+        Assert.Equal(3d, result.AverageRating);
+    }
+
+    [Fact]
+    public async Task ExperienceEvent_IsPublishedOnlyAfterReviewIsPersisted()
+    {
+        await using var db = Db();
+        var booking = Seed(db, "Experience");
+        var kafka = new Mock<IKafkaProducer>(MockBehavior.Strict);
+
+        kafka.Setup(producer => producer.PublishAsync(
+                "review.submitted",
+                booking.ListingId.ToString(),
+                It.IsAny<ReviewSubmittedEvent>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<string, string?, ReviewSubmittedEvent, CancellationToken>(
+                (_, _, reviewEvent, _) =>
+                {
+                    // This query reads the persisted database contents.
+                    var persistedReview = db.ListingReviews
+                        .AsNoTracking()
+                        .Single(review => review.Id == reviewEvent.ReviewId);
+
+                    Assert.Equal(booking.Id, persistedReview.BookingId);
+                    Assert.Equal(booking.VisitorId, persistedReview.VisitorId);
+                    Assert.Equal(booking.ListingId, persistedReview.ListingId);
+                })
+            .Returns(Task.CompletedTask);
+
+        var publisher = new ReviewOutboxPublisher(
+            db,
+            kafka.Object,
+            new Clock());
+
+        // Before creation there is nothing to publish.
+        await publisher.PublishAsync();
+        kafka.VerifyNoOtherCalls();
+
+        await Service(db).CreateAsync(
+            booking.VisitorId,
+            Request(booking, 4));
+
+        // Creation saves the review and outbox; Kafka publishing happens later.
+        kafka.VerifyNoOtherCalls();
+
+        Assert.Single(db.ListingReviews);
+        Assert.Null(Assert.Single(db.ReviewOutboxMessages).PublishedAtUtc);
+
+        await publisher.PublishAsync();
+
+        kafka.Verify(producer => producer.PublishAsync(
+                "review.submitted",
+                booking.ListingId.ToString(),
+                It.IsAny<ReviewSubmittedEvent>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        Assert.Equal(
+            Now,
+            Assert.Single(db.ReviewOutboxMessages).PublishedAtUtc);
+    }
+
+    private sealed class FailingReviewSaveDbContext : BookingDbContext
+{
+    public FailingReviewSaveDbContext(
+        DbContextOptions<BookingDbContext> options)
+        : base(options)
+    {
+    }
+
+    public override Task<int> SaveChangesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (ChangeTracker.Entries<ListingReview>()
+            .Any(entry => entry.State == EntityState.Added))
+        {
+            throw new DbUpdateException("Simulated review save failure.");
+        }
+
+        return base.SaveChangesAsync(cancellationToken);
+    }
+}
+
+    [Fact]
+    public async Task ExperienceSaveFailure_PersistsNothingAndPublishesNoEvent()
+    {
+        var options = new DbContextOptionsBuilder<BookingDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var failingDb = new FailingReviewSaveDbContext(options);
+        var booking = Seed(failingDb, "Experience");
+
+        await Assert.ThrowsAsync<DbUpdateException>(() =>
+            Service(failingDb).CreateAsync(
+                booking.VisitorId,
+                Request(booking)));
+
+        // Use a fresh context to check persisted data, not tracked entities.
+        await using var verificationDb = new BookingDbContext(options);
+
+        Assert.Single(verificationDb.Bookings);
+        Assert.Empty(verificationDb.ListingReviews);
+        Assert.Empty(verificationDb.ReviewOutboxMessages);
+
+        var kafka = new Mock<IKafkaProducer>(MockBehavior.Strict);
+
+        await new ReviewOutboxPublisher(
+            verificationDb,
+            kafka.Object,
+            new Clock()).PublishAsync();
+
+        kafka.VerifyNoOtherCalls();
+    } 
 }
