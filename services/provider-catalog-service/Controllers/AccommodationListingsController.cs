@@ -214,7 +214,7 @@ public class AccommodationListingsController : ControllerBase
         var query = _db.AccommodationListings
             .AsNoTracking()
             .Include(a => a.Provider)
-            .Where(a => a.IsActive);
+            .Where(a => a.IsActive && !a.IsRemoved);
 
         // Search across the main listing details
         if (!string.IsNullOrWhiteSpace(search))

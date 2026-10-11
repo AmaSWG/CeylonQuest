@@ -58,7 +58,7 @@ public class AvailabilityService
             .AsNoTracking()
             .FirstOrDefaultAsync(a =>
                 a.Id == listingId &&
-                a.IsActive);
+                a.IsActive && !a.IsRemoved);
 
         if (activity != null)
         {
@@ -72,7 +72,7 @@ public class AvailabilityService
             .AsNoTracking()
             .FirstOrDefaultAsync(r =>
                 r.Id == listingId &&
-                r.IsActive);
+                r.IsActive && !r.IsRemoved);
 
         if (restaurant != null)
         {
@@ -86,7 +86,7 @@ public class AvailabilityService
             .AsNoTracking()
             .FirstOrDefaultAsync(ac =>
                 ac.Id == listingId &&
-                ac.IsActive);
+                ac.IsActive && !ac.IsRemoved);
 
         if (accommodation != null)
         {
@@ -335,7 +335,7 @@ public class AvailabilityService
             .AsNoTracking()
             .FirstOrDefaultAsync(a =>
                 a.Id == listingId &&
-                a.IsActive);
+                a.IsActive && !a.IsRemoved);
 
         if (activity != null)
         {
@@ -352,7 +352,7 @@ public class AvailabilityService
                 .AsNoTracking()
                 .FirstOrDefaultAsync(r =>
                     r.Id == listingId &&
-                    r.IsActive);
+                    r.IsActive && !r.IsRemoved);
 
             if (restaurant != null)
             {
@@ -371,7 +371,7 @@ public class AvailabilityService
                         .AsNoTracking()
                         .FirstOrDefaultAsync(ac =>
                             ac.Id == listingId &&
-                            ac.IsActive);
+                            ac.IsActive && !ac.IsRemoved);
 
                 if (accommodation == null)
                 {
