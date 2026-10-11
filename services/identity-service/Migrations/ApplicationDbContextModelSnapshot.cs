@@ -51,6 +51,40 @@ namespace IdentityService.Migrations
                     b.ToTable("PasswordResetTokens");
                 });
 
+            modelBuilder.Entity("IdentityService.Models.PlatformReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("Rating", "CreatedAtUtc");
+
+                    b.ToTable("PlatformReviews", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PlatformReviews_Rating", "`Rating` BETWEEN 1 AND 5");
+                        });
+                });
+
             modelBuilder.Entity("IdentityService.Models.ProviderServicePrice", b =>
                 {
                     b.Property<Guid>("Id")
@@ -183,6 +217,17 @@ namespace IdentityService.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("IdentityService.Models.PlatformReview", b =>
+                {
+                    b.HasOne("IdentityService.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");

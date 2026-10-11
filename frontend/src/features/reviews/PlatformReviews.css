@@ -1,0 +1,110 @@
+.platform-reviews {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  padding: 32px 20px;
+}
+
+.platform-reviews-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.platform-review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 20px;
+  margin: 24px 0;
+}
+
+.platform-review-card {
+  padding: 22px;
+  border: 1px solid #dce5df;
+  border-radius: 16px;
+  background: #fff;
+  color: #203a2b;
+  overflow-wrap: anywhere;
+}
+
+.platform-review-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.platform-review-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.platform-review-stars {
+  color: #b77900;
+  margin-top: 14px;
+  font-size: 22px;
+}
+
+.platform-review-content {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.platform-review-card time {
+  color: #59675e;
+  font-size: 14px;
+}
+
+.platform-review-form {
+  display: grid;
+  gap: 12px;
+  max-width: 650px;
+  padding: 24px;
+  margin: 24px 0;
+  border: 1px solid #dce5df;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.platform-review-form textarea,
+.platform-reviews select {
+  padding: 10px;
+  border: 1px solid #a8b8ad;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.platform-review-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.platform-reviews button,
+.platform-reviews-link {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: #17643d;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.platform-reviews button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.platform-review-error {
+  color: #a11919;
+}
+
+.platform-review-pagination {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
