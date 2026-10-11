@@ -267,6 +267,7 @@ public class BookingsController : ControllerBase
                 VisitorId = booking.VisitorId,
                 ListingId = booking.ListingId,
                 ListingType = "Experience",
+                ListingTitle = booking.ListingTitle,
                 CreatedAt = booking.CreatedAt,
 
                 BookingDate =

@@ -298,6 +298,7 @@ public class ReservationsController : ControllerBase
                 VisitorId = reservation.VisitorId,
                 ListingId = reservation.RestaurantId,
                 ListingType = "Restaurant",
+                ListingTitle = reservation.RestaurantName,
                 BookingDate = reservation.ReservationDate.ToString("yyyy-MM-dd"),
                 TimeSlot = reservation.TimeSlot,
                 ParticipantCount = reservation.PartySize,

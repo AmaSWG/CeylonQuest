@@ -16,6 +16,8 @@ public class BookingCreatedEvent
 
     public Guid ListingId { get; set; }
 
+    public string ListingTitle { get; set; } = string.Empty;
+
     public string ListingType { get; set; } = string.Empty;
 
     public string BookingDate { get; set; } = string.Empty; // "YYYY-MM-DD"
