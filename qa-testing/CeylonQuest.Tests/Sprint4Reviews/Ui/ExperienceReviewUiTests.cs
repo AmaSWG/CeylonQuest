@@ -31,10 +31,11 @@ public sealed class ExperienceReviewUiTests
         "requires a logged-in Provider account to call the attendance endpoint, and provider " +
         "accounts cannot be self-provisioned (real email OTP + manual admin approval required).";
 
-    private const string SkipStarFilterNotBuilt =
-        "Star filter UI is not built. ListingReviews.jsx has no filter control, and " +
-        "services/booking-service/docs/attendance-reviews.md explicitly states: " +
-        "\"There are no review filtering/sorting controls.\" (The API-level rating filter does work.)";
+    private const string SkipNoReviewData =
+        "The star filter UI is now built (ListingReviews.jsx has a 'Filter reviews by rating' select, " +
+        "added after this suite's original investigation), but exercising it needs an experience with " +
+        "multiple reviews across different ratings. Creating those reviews hits the same blocker as " +
+        "UI-02/03/04/05/08/12: no automatable path to a Completed booking without a Provider login.";
 
     /// <summary>Registers a fresh visitor and creates one real Experience booking (PendingPayment) via the real API.</summary>
     private async Task<(TestUser Visitor, Guid BookingId, string ListingTitle)> CreatePendingBookingAsync(string label)
@@ -154,10 +155,10 @@ public sealed class ExperienceReviewUiTests
     [Fact(DisplayName = "TC-12.1-UI-08: S4 duplicate review", Skip = SkipNoCompletedBooking)]
     public void Ui08_DuplicateReview() { }
 
-    [Fact(DisplayName = "TC-12.1-UI-09: S3 star filter", Skip = SkipStarFilterNotBuilt)]
+    [Fact(DisplayName = "TC-12.1-UI-09: S3 star filter", Skip = SkipNoReviewData)]
     public void Ui09_StarFilter() { }
 
-    [Fact(DisplayName = "TC-12.1-UI-10: S3 filter with no matches and reset", Skip = SkipStarFilterNotBuilt)]
+    [Fact(DisplayName = "TC-12.1-UI-10: S3 filter with no matches and reset", Skip = SkipNoReviewData)]
     public void Ui10_StarFilterEmptyAndReset() { }
 
     [Fact(DisplayName = "TC-12.1-UI-11: no reviews yet shows an honest empty state, not a misleading average")]
