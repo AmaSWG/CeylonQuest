@@ -18,6 +18,8 @@ namespace NotificationService.Tests;
 
 public class NotificationTests
 {
+    private const string ExpectedSubstring = "at Ella Mountain Retreat";
+
     [Fact]
     public async Task BookingCreated_WithProviderBusinessName_SavesNamedNotificationsForBothRecipients()
     {
@@ -44,7 +46,8 @@ public class NotificationTests
         Assert.Equal(new[] { visitor, provider }.Order(), notifications.Select(n => n.RecipientUserId).Order());
         Assert.All(notifications, notification =>
         {
-            Assert.Contains("at Ella Mountain Retreat", notification.Message);
+            Assert.Contains(ExpectedSubstring, notification.Message);
+            Assert.Equal("Booking created", notification.Title);
             Assert.Contains("2026-10-10", notification.Message);
             Assert.Equal("booking.created", notification.EventType);
             Assert.Equal(created.BookingId, notification.BookingId);
