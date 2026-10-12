@@ -18,10 +18,50 @@ public class CatalogDbContext : DbContext
 	public DbSet<AvailabilitySlot> AvailabilitySlots { get; set; }
     public DbSet<BookingCapacityRelease> BookingCapacityReleases { get; set; }
     public DbSet<ReviewRatingContribution> ReviewRatingContributions { get; set; }
-	
+    public DbSet<ListingRemovalAudit> ListingRemovalAudits { get; set; }
+
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<ListingRemovalAudit>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+
+            entity.Property(a => a.ListingType)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(a => a.PreviousStatus)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(a => a.NewStatus)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(a => a.Reason)
+                .HasMaxLength(1000)
+                .IsRequired();
+
+            entity.HasIndex(a => new { a.ListingType, a.ListingId });
+            entity.HasIndex(a => a.RemovedAtUtc);
+        });
+
+        foreach (var listingType in new[]
+        {
+            typeof(ActivityListing),
+            typeof(RestaurantListing),
+            typeof(AccommodationListing)
+        })
+        {
+            modelBuilder.Entity(listingType)
+                .Property<bool>("IsRemoved")
+                .HasDefaultValue(false)
+                .IsConcurrencyToken();
+
+            modelBuilder.Entity(listingType)
+                .HasIndex("IsRemoved", "IsActive");
+        }
         modelBuilder.Entity<ReviewRatingContribution>(entity =>
         {
             entity.HasKey(r => r.ReviewId);

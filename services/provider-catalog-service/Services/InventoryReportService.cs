@@ -37,9 +37,9 @@ public class InventoryReportService
         var locFilter = locationFilter?.Trim();
 
         // Fetch Listings
-        var actQuery = _db.ActivityListings.Include(a => a.Provider).AsNoTracking().Where(a => a.IsActive);
-        var restQuery = _db.RestaurantListings.Include(r => r.Provider).AsNoTracking().Where(r => r.IsActive);
-        var stayQuery = _db.AccommodationListings.Include(ac => ac.Provider).AsNoTracking().Where(ac => ac.IsActive);
+        var actQuery = _db.ActivityListings.Include(a => a.Provider).AsNoTracking().Where(a => a.IsActive && !a.IsRemoved);
+        var restQuery = _db.RestaurantListings.Include(r => r.Provider).AsNoTracking().Where(r => r.IsActive && !r.IsRemoved);
+        var stayQuery = _db.AccommodationListings.Include(ac => ac.Provider).AsNoTracking().Where(ac => ac.IsActive && !ac.IsRemoved);
 
         // Scope all listing queries to the requested provider when supplied
         if (providerId.HasValue)
