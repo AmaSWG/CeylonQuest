@@ -31,6 +31,7 @@ public class NotificationTests
         {
             BookingId = Guid.NewGuid(), VisitorId = visitor, ProviderUserId = provider,
             ListingId = Guid.NewGuid(), ListingType = "Accommodation",
+            ListingTitle = "Deluxe Mountain Suite",
             ProviderBusinessName = "Ella Mountain Retreat", BookingDate = "2026-10-10",
             TimeSlot = "Stay (Min 2 Nights)", ParticipantCount = 1, CreatedAt = DateTime.UtcNow
         };
@@ -40,19 +41,28 @@ public class NotificationTests
         // Act: process the event using the notification service's real processor.
         await processor.ProcessAsync("booking.created", JsonSerializer.Serialize(created), default);
 
-        // Assert: both recipients receive the named, unread booking notification.
+        // Assert: each recipient receives the appropriate unread booking notification.
         var notifications = await db.Notifications.ToListAsync();
         Assert.Equal(2, notifications.Count);
         Assert.Equal(new[] { visitor, provider }.Order(), notifications.Select(n => n.RecipientUserId).Order());
         Assert.All(notifications, notification =>
         {
-            Assert.Contains(ExpectedSubstring, notification.Message);
-            Assert.Equal("Booking created", notification.Title);
             Assert.Contains("2026-10-10", notification.Message);
             Assert.Equal("booking.created", notification.EventType);
             Assert.Equal(created.BookingId, notification.BookingId);
             Assert.False(notification.IsRead);
         });
+
+        var visitorNotification = Assert.Single(notifications, n => n.RecipientUserId == visitor);
+        Assert.Equal("Booking created", visitorNotification.Title);
+        Assert.Contains(ExpectedSubstring, visitorNotification.Message);
+        Assert.Contains(created.ListingTitle, visitorNotification.Message);
+        Assert.Contains("Your booking", visitorNotification.Message);
+
+        var providerNotification = Assert.Single(notifications, n => n.RecipientUserId == provider);
+        Assert.Equal("New booking received", providerNotification.Title);
+        Assert.Contains(created.ListingTitle, providerNotification.Message);
+        Assert.Contains("You have received a new booking", providerNotification.Message);
     }
 
     // Mapping tests only: MySQL integration must separately verify transactions and uniqueness.
