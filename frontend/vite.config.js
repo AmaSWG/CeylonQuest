@@ -6,7 +6,7 @@ export default defineConfig({
 
   server: {
 
-    
+
     proxy: {
       // Provider Catalog Service
       '/api/catalog': {
@@ -36,9 +36,9 @@ export default defineConfig({
 
       //notification service
       '/api/notifications': {
-      target: 'http://localhost:5185',
-      changeOrigin: true,
-      secure: false,
+        target: 'http://localhost:5185',
+        changeOrigin: true,
+        secure: false,
       },
 
       // Booking Service - Admin bookings and revenue report.
@@ -50,10 +50,10 @@ export default defineConfig({
       },
 
       '/api/bookings': {
-      target: 'http://localhost:5229',
-      changeOrigin: true,
-      secure: false,
-    },
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
 
       // Booking Service - Payments
       '/api/Payments': {
@@ -83,6 +83,12 @@ export default defineConfig({
         secure: false,
       },
 
+      '/api/admin/reports/provider-performance': {
+        target: 'http://localhost:5229',
+        changeOrigin: true,
+        secure: false,
+      },
+
       // Identity Service
       // Keep this AFTER the more specific service routes.
       '/api': {
@@ -97,6 +103,8 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+
+      
     },
   },
 })

@@ -7,6 +7,7 @@ import {
 import InventoryReportView from '../../../components/InventoryReportView'
 import AdminBookingsRevenueReportTab from './AdminBookingsRevenueReportTab'
 import { apiUrl } from '../../../api/client'
+import AdminProviderPerformanceReportTab from './AdminProviderPerformanceReportTab'
 
 function initials(first, last) {
   return `${(first || '').charAt(0)}${(last || '').charAt(0)}`.toUpperCase() || 'A'
@@ -51,9 +52,9 @@ function RegistrationReportsSection({ token, onLogout }) {
 
   const buildQuery = (f) => {
     const params = new URLSearchParams()
-    if (f.dateFrom)          params.append('dateFrom', f.dateFrom)
-    if (f.dateTo)            params.append('dateTo',   f.dateTo)
-    if (f.role)              params.append('role',     f.role)
+    if (f.dateFrom) params.append('dateFrom', f.dateFrom)
+    if (f.dateTo) params.append('dateTo', f.dateTo)
+    if (f.role) params.append('role', f.role)
     if (f.applicationStatus) params.append('applicationStatus', f.applicationStatus)
     return params.toString()
   }
@@ -196,21 +197,21 @@ function RegistrationReportsSection({ token, onLogout }) {
         <div className="ad-report__active-filters">
           <span className="ad-report__filter-badge-label">Active filters:</span>
           {af.dateFrom && <span className="ad-report__filter-badge">From: {af.dateFrom}</span>}
-          {af.dateTo   && <span className="ad-report__filter-badge">To: {af.dateTo}</span>}
-          {af.role     && <span className="ad-report__filter-badge">Role: {af.role}</span>}
+          {af.dateTo && <span className="ad-report__filter-badge">To: {af.dateTo}</span>}
+          {af.role && <span className="ad-report__filter-badge">Role: {af.role}</span>}
           {af.applicationStatus && <span className="ad-report__filter-badge">Status: {af.applicationStatus}</span>}
         </div>
       )}
 
       {loading && <LoadingState label="Generating report…" />}
-      {error   && <div className="ad-report__error">{error}</div>}
+      {error && <div className="ad-report__error">{error}</div>}
 
       {!loading && !error && report && (
         <>
           {r && (
             <section className="ad-report__section">
               <h2 className="ad-report__section-title">
-                 User Registrations {af.role ? `(${af.role}s)` : ''}
+                User Registrations {af.role ? `(${af.role}s)` : ''}
               </h2>
               <div className="ad-report__cards">
                 {af.role === 'Visitor' && (
@@ -299,7 +300,7 @@ function RegistrationReportsSection({ token, onLogout }) {
           {a && (
             <section className="ad-report__section">
               <h2 className="ad-report__section-title">
-                 Provider Applications {af.applicationStatus ? `(${af.applicationStatus})` : ''}
+                Provider Applications {af.applicationStatus ? `(${af.applicationStatus})` : ''}
               </h2>
               <div className="ad-report__cards">
                 {af.applicationStatus === 'Pending' && (
@@ -424,14 +425,38 @@ export default function ReportsTab({ token, onLogout }) {
         >
           <BarChartIcon size={16} /> Bookings &amp; Revenue Report
         </button>
+        <button
+          type="button"
+          className={`cq-report-subtab-btn ${reportSubTab === 'provider-performance' ? 'active' : ''
+            }`}
+          onClick={() => setReportSubTab('provider-performance')}
+        >
+          <BarChartIcon size={16} />
+          Provider Performance &amp; Reviews
+        </button>
       </div>
 
       {reportSubTab === 'inventory' ? (
-        <InventoryReportView token={token} onLogout={onLogout} isAdmin={true} />
+        <InventoryReportView
+          token={token}
+          onLogout={onLogout}
+          isAdmin={true}
+        />
       ) : reportSubTab === 'registrations' ? (
-        <RegistrationReportsSection token={token} onLogout={onLogout} />
+        <RegistrationReportsSection
+          token={token}
+          onLogout={onLogout}
+        />
+      ) : reportSubTab === 'provider-performance' ? (
+        <AdminProviderPerformanceReportTab
+          token={token}
+          onLogout={onLogout}
+        />
       ) : (
-        <AdminBookingsRevenueReportTab token={token} onLogout={onLogout} />
+        <AdminBookingsRevenueReportTab
+          token={token}
+          onLogout={onLogout}
+        />
       )}
     </div>
   )
