@@ -11,7 +11,8 @@ export default function ConfirmModal({
   confirmVariant = 'danger',
   onConfirm,
   onCancel,
-  loading = false
+  loading = false,
+  loadingText = 'Removing…'
 }) {
   if (!isOpen) return null
 
@@ -45,7 +46,7 @@ export default function ConfirmModal({
             onClick={onConfirm}
             disabled={loading}
           >
-            {loading ? 'Removing…' : confirmText}
+            {loading ? loadingText : confirmText}
           </button>
         </div>
       </div>

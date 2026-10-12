@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   GroupIcon,
   ManageSearchIcon,
@@ -7,6 +7,7 @@ import {
 } from '../../../components/Icons'
 import ConfirmModal from '../../../components/ConfirmModal'
 import { apiUrl } from '../../../api/client'
+import { updateAdminUserStatus } from '../../../api/adminManagementApi'
 
 function initials(first, last) {
   return `${(first || '').charAt(0)}${(last || '').charAt(0)}`.toUpperCase() || 'A'
@@ -52,7 +53,7 @@ function Modal({ title, onClose, wide = false, children }) {
 }
 
 
-export default function UserManagementTab({ token, onLogout, users, onRefresh, showToast }) {
+export default function UserManagementTab({ token, onLogout, users, onRefresh, onUsersChange, usersLoading, usersError, showToast }) {
   const [search, setSearch] = useState('')
   const [filterRole, setFilterRole] = useState('all') // all | visitor | provider | admin
   const [filterStatus, setFilterStatus] = useState('all') // all | active | inactive
@@ -66,29 +67,45 @@ export default function UserManagementTab({ token, onLogout, users, onRefresh, s
   }
 
   const executeToggleUserStatus = async () => {
-    if (!confirmUserAction) return
+    if (!confirmUserAction || actionLoading) return
+
     const { user, newStatus } = confirmUserAction
     setActionLoading(true)
+
     try {
-      const resp = await fetch(apiUrl(`/api/admin/users/${user.id}/status`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ isActive: newStatus })
-      })
-      if (resp.ok) {
-        showToast(`User ${user.firstName} ${user.lastName} is now ${newStatus ? 'Active' : 'Inactive'}.`)
-        if (selectedUser && selectedUser.id === user.id) {
-          setSelectedUser(prev => ({ ...prev, isActive: newStatus }))
-        }
-        setConfirmUserAction(null)
-        onRefresh && onRefresh()
-      } else if (resp.status === 401) {
-        onLogout && onLogout()
-      } else {
-        showToast('Failed to update user status.')
-      }
-    } catch {
-      showToast('Network error. Please check connection.')
+      const result = await updateAdminUserStatus(
+        token,
+        user.id,
+        newStatus,
+     )
+
+      const isActive = result?.isActive ?? newStatus
+
+      onUsersChange(previous =>
+        previous.map(item =>
+          item.id === user.id ? { ...item, isActive } : item,
+        ),
+      )
+
+      setSelectedUser(previous =>
+        previous?.id === user.id
+          ? { ...previous, isActive }
+          : previous,
+        )
+
+      setConfirmUserAction(null)
+
+      showToast(
+        isActive
+          ? `${user.firstName} ${user.lastName} was reactivated successfully.`
+          : `${user.firstName} ${user.lastName} was suspended successfully.`,
+        'Success',
+      )
+    } catch (error) {
+      showToast(
+        error.message || 'Failed to update user status.',
+        'Error',
+      )
     } finally {
       setActionLoading(false)
     }
@@ -116,14 +133,18 @@ export default function UserManagementTab({ token, onLogout, users, onRefresh, s
     <div className="ad-users-tab">
       <ConfirmModal
         isOpen={Boolean(confirmUserAction)}
-        title={confirmUserAction?.newStatus ? 'Activate User' : 'Deactivate User'}
-        message={`Are you sure you want to ${confirmUserAction?.newStatus ? 'activate' : 'deactivate'} user ${confirmUserAction?.user?.email}?`}
-        confirmText={confirmUserAction?.newStatus ? 'Activate User' : 'Deactivate User'}
-        cancelText="Cancel"
-        confirmVariant={confirmUserAction?.newStatus ? 'primary' : 'danger'}
         onConfirm={executeToggleUserStatus}
-        onCancel={() => setConfirmUserAction(null)}
         loading={actionLoading}
+        loadingText="Updating…"
+        confirmVariant={confirmUserAction?.newStatus ? 'primary' : 'danger'}
+        title={confirmUserAction?.newStatus ? 'Reactivate User' : 'Suspend User'}
+        message={`Are you sure you want to ${
+          confirmUserAction?.newStatus ? 'reactivate' : 'suspend'
+        } ${confirmUserAction?.user?.email}?`}
+        confirmText={confirmUserAction?.newStatus ? 'Reactivate User' : 'Suspend User'}
+        onCancel={() => {
+          if (!actionLoading) setConfirmUserAction(null)
+        }}
       />
       <div className="ad-page-header">
         <div className="ad-page-header__left">
@@ -144,7 +165,7 @@ export default function UserManagementTab({ token, onLogout, users, onRefresh, s
                 <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
                   <span className={`ad-badge ad-badge--${selectedUser.role.toLowerCase()}`}>{selectedUser.role}</span>
                   <span className={`ad-badge ad-badge--${selectedUser.isActive ? 'active' : 'inactive'}`}>
-                    {selectedUser.isActive ? 'Active' : 'Inactive'}
+                    {selectedUser.isActive ? 'Active' : 'Suspended'}
                   </span>
                 </div>
               </div>
@@ -177,9 +198,9 @@ export default function UserManagementTab({ token, onLogout, users, onRefresh, s
               <button
                 className={`ad-quick-btn ${selectedUser.isActive ? 'ad-quick-btn--danger' : 'ad-quick-btn--success'}`}
                 onClick={() => handleToggleUserStatus(selectedUser)}
-                disabled={actionLoading}
+                disabled={actionLoading || usersLoading}
               >
-                {selectedUser.isActive ? 'Deactivate User Account' : 'Activate User Account'}
+                {selectedUser.isActive ? 'Suspend User Account' : 'Reactivate User Account'}
               </button>
             </div>
           </div>
@@ -216,9 +237,37 @@ export default function UserManagementTab({ token, onLogout, users, onRefresh, s
       </div>
 
       {/* Users Table */}
+      <div className="ad-filter-pills" style={{ marginBottom: '16px' }}>
+        {[
+          ['all', 'All statuses'],
+          ['active', 'Active'],
+          ['inactive', 'Suspended'],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className={`ad-filter-pill ${filterStatus === value ? 'active' : ''}`}
+            onClick={() => setFilterStatus(value)}
+          >
+            {label}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="ad-row-btn ad-row-btn--view"
+          onClick={onRefresh}
+          disabled={usersLoading || actionLoading}
+        >
+          {usersLoading ? 'Loading…' : 'Refresh'}
+        </button>
+      </div>
+      {usersLoading && <p role="status">Loading users…</p>}
+      {usersError && (
+        <p role="alert" style={{ color: '#b42318' }}>{usersError}</p>
+      )}
       <div className="ad-card">
         <div className="ad-card__body" style={{ padding: 0 }}>
-          {filtered.length === 0 ? (
+          {usersLoading || usersError ? null : filtered.length === 0 ? (
             <div className="ad-empty">
               <div className="ad-empty__icon"><GroupIcon size={32} /></div>
               <p className="ad-empty__title">No users found</p>
@@ -254,7 +303,7 @@ export default function UserManagementTab({ token, onLogout, users, onRefresh, s
                       </td>
                       <td>
                         <span className={`ad-badge ad-badge--${user.isActive ? 'active' : 'inactive'}`}>
-                          {user.isActive ? 'Active' : 'Inactive'}
+                          {user.isActive ? 'Active' : 'Suspended'}
                         </span>
                       </td>
                       <td>{formatDate(user.createdAt)}</td>
@@ -266,8 +315,9 @@ export default function UserManagementTab({ token, onLogout, users, onRefresh, s
                           <button
                             className="ad-row-btn ad-row-btn--toggle"
                             onClick={() => handleToggleUserStatus(user)}
+                            disabled={actionLoading || usersLoading}
                           >
-                            {user.isActive ? 'Deactivate' : 'Activate'}
+                            {user.isActive ? 'Suspend' : 'Reactivate'}
                           </button>
                         </div>
                       </td>
@@ -284,4 +334,4 @@ export default function UserManagementTab({ token, onLogout, users, onRefresh, s
 }
 
 // ── 4. Provider Management Tab ────────────────────────────────────────────────
-
+
