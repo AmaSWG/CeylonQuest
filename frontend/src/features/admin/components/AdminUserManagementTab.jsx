@@ -140,7 +140,10 @@ export default function UserManagementTab({ token, onLogout, users, onRefresh, o
         title={confirmUserAction?.newStatus ? 'Reactivate User' : 'Suspend User'}
         message={`Are you sure you want to ${
           confirmUserAction?.newStatus ? 'reactivate' : 'suspend'
-        } ${confirmUserAction?.user?.email}?`}
+        } ${[
+          confirmUserAction?.user?.firstName,
+          confirmUserAction?.user?.lastName,
+        ].filter(Boolean).join(' ') || 'this user'}?`}
         confirmText={confirmUserAction?.newStatus ? 'Reactivate User' : 'Suspend User'}
         onCancel={() => {
           if (!actionLoading) setConfirmUserAction(null)
