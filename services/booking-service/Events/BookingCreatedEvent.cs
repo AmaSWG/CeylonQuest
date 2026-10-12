@@ -14,6 +14,8 @@ public class BookingCreatedEvent
 
     public string ListingType { get; set; } = string.Empty;
 
+    public string ListingTitle { get; set; } = string.Empty;
+
     public string BookingDate { get; set; } = string.Empty;
 
     public string TimeSlot { get; set; } = string.Empty;

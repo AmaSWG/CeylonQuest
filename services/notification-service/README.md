@@ -27,11 +27,30 @@ key must match identity-service. The development fallback key is rejected outsid
 
 ## Recipient integration
 
-Subscriptions: booking.created, payment.completed, booking.canceled, review.submitted.
+Subscriptions: booking.created, payment.completed, booking.canceled, review.submitted, review.eligibility-granted.
 The group defaults to payment-notification-service and is distinct from catalog consumer groups.
 This existing group ID is retained to preserve Kafka consumer offsets after the service rename.
 DTOs match existing producer payloads; optional extra fields support future enriched contracts.
-ReviewSubmittedEvent is a proposed contract: no review publisher currently exists in booking-service.
+Booking-service publishes review events through its review outbox.
+
+### Kafka topic provisioning in deployment
+
+Before subscribing, the consumer creates any missing required topics with the Kafka Admin API.
+This runs locally and in production, independently of broker automatic topic creation.
+Existing topics, their configuration, and consumer offsets are preserved. Concurrent instances
+treat TopicAlreadyExists as success. Broker or permission failures are logged and retried.
+The Admin client uses the configured Kafka bootstrap servers and SASL credentials.
+
+By default, new topics use the broker's partition and replication defaults (-1).
+Override these for your deployment using Notifications__TopicPartitions and
+Notifications__TopicReplicationFactor; replication must fit the cluster size.
+The Kafka account needs CREATE permission for the five topics above, in addition to its
+normal consumer permissions. Set Kafka__BootstrapServers and authentication secrets for
+the target cluster rather than using localhost in production.
+
+If production credentials cannot create topics, provision all five through your deployment
+infrastructure first, then set Notifications__ProvisionTopics=false. Disabling provisioning
+without creating the topics will reproduce the missing-topic failure.
 
 ProviderUserId means the identity-service user ID, not the catalog Provider.Id.
 Current booking.created payloads lack that ID. Configure an explicit listing mapping for local integration:

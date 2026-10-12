@@ -309,6 +309,7 @@ public class AccommodationBookingsController : ControllerBase
                 VisitorId = booking.VisitorId,
                 ListingId = booking.AccommodationId,
                 ListingType = "Accommodation",
+                ListingTitle = booking.AccommodationName,
                 BookingDate = booking.CheckInDate.ToString("yyyy-MM-dd"),
                 TimeSlot = slotName,
                 ParticipantCount = 1,
