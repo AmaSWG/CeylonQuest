@@ -194,6 +194,10 @@ builder.Services.AddScoped<
     IAdminBookingsRevenueReportService,
     AdminBookingsRevenueReportService>();
 
+builder.Services.AddScoped<
+    IProviderPerformanceReportService,
+    ProviderPerformanceReportService>();
+
 builder.Services.AddScoped<PendingPaymentExpirationService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IReviewService, BookingService.Services.ReviewService>();

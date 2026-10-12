@@ -46,4 +46,7 @@ public class RestaurantListingResponse
     public DateTime CreatedAt { get; set; }
 
     public string? Images { get; set; }
+
+    public bool IsRemoved { get; set; }
+    public string Status { get; set; } = string.Empty;
 }

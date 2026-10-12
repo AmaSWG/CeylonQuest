@@ -326,7 +326,7 @@ public class RestaurantListingsController : ControllerBase
         var query = _db.RestaurantListings
             .AsNoTracking()
             .Include(r => r.Provider)
-            .Where(r => r.IsActive);
+            .Where(r => r.IsActive && !r.IsRemoved);
 
         // Free-text search
         if (!string.IsNullOrWhiteSpace(search))
