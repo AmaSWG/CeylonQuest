@@ -32,7 +32,17 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
     const [reviewTarget, setReviewTarget] = useState(null)
     const reviewPanelRef = useRef(null)
     useEffect(() => {
-        if (reviewTarget) reviewPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        if (!reviewTarget) return
+        const dialog = reviewPanelRef.current
+        const previousFocus = document.activeElement
+        const previousOverflow = document.body.style.overflow
+        dialog?.showModal()
+        document.body.style.overflow = 'hidden'
+        return () => {
+            dialog?.close()
+            document.body.style.overflow = previousOverflow
+            previousFocus?.focus()
+        }
     }, [reviewTarget])
 
     // =========================================================
@@ -836,7 +846,9 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                         <th>PEOPLE</th>
                                         <th>AMOUNT</th>
                                         <th>STATUS</th>
+                                        <th>ATTENDANCE</th>
                                         <th>ACTIONS</th>
+                                        <th>REVIEWS &amp; REPORTS</th>
                                     </tr>
                                 </thead>
 
@@ -941,6 +953,15 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                 </td>
 
                                                 <td>
+                                                    <div className="vb-attendance-cell">
+                                                        <strong>{booking.attendanceStatus || 'Pending'}</strong>
+                                                        {!booking.canReview && !booking.reviewId && booking.status !== 'Cancelled' && booking.reviewIneligibilityReason && (
+                                                            <p>{booking.reviewIneligibilityReason}</p>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                <td>
                                                     <div className="vb-table-actions">
                                                         <button
                                                             type="button"
@@ -990,13 +1011,16 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                                      </button>
                                                         )}
 
-                                                        <div>
-                                                            <span>Attendance: {booking.attendanceStatus || 'Pending'}</span>
-                                                            {(booking.canReview || booking.reviewId) && <button type="button" className="vb-view-btn" onClick={() => setReviewTarget(booking)}>{booking.reviewId ? 'Review Submitted ? View Reviews' : 'Write Review'}</button>}
-                                                            {!booking.canReview && !booking.reviewId && booking.status !== 'Cancelled' && <p>{booking.reviewIneligibilityReason}</p>}
-                                                            <AttendanceDisputeAction booking={booking} onSaved={() => fetchBookings(true)} />
-                                                        </div>
-
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div className="vb-review-actions">
+                                                        {(booking.canReview || booking.reviewId) && <button type="button" className="vb-view-btn" onClick={() => setReviewTarget(booking)}>{booking.reviewId ? 'Review Submitted — View Reviews' : 'Write Review'}</button>}
+                                                        <AttendanceDisputeAction
+                                                            booking={booking}
+                                                            onSaved={() => fetchBookings(true)}
+                                                            emptyFallback={!booking.canReview && !booking.reviewId ? <span aria-label="No actions available">—</span> : null}
+                                                        />
                                                     </div>
                                                 </td>
                                             </tr>
@@ -1679,11 +1703,27 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
             )}
 
             {reviewTarget && (
-                <section ref={reviewPanelRef} aria-label={`Reviews for ${reviewTarget.serviceName}`}>
-                    <button type="button" className="vb-view-btn" onClick={() => setReviewTarget(null)}>
-                        Close reviews
-                    </button>
-                    <h2>{reviewTarget.serviceName}</h2>
+                <dialog
+                    ref={reviewPanelRef}
+                    className="vb-review-modal"
+                    aria-labelledby="vb-review-modal-title"
+                    onCancel={() => setReviewTarget(null)}
+                    onClick={(event) => {
+                        if (event.target === event.currentTarget) {
+                            const bounds = event.currentTarget.getBoundingClientRect()
+                            if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) setReviewTarget(null)
+                        }
+                    }}
+                >
+                    <div className="vb-review-modal__header">
+                        <div>
+                            <p>{reviewTarget.reviewId ? 'Your booking reviews' : 'Share your experience'}</p>
+                            <h2 id="vb-review-modal-title">{reviewTarget.serviceName}</h2>
+                        </div>
+                        <button type="button" className="vb-review-modal__close" aria-label="Close reviews" onClick={() => setReviewTarget(null)} autoFocus>
+                            ×
+                        </button>
+                    </div>
                     <ListingReviews
                         key={`${reviewTarget.bookingType}-${reviewTarget.serviceId}`}
                         listingId={reviewTarget.serviceId}
@@ -1692,7 +1732,7 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                         allowSubmission={!reviewTarget.reviewId}
                         onSubmitted={() => fetchBookings(true)}
                     />
-                </section>
+                </dialog>
             )}
 
             <ConfirmModal
