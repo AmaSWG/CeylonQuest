@@ -15,7 +15,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<ProviderTimeSlot> ProviderTimeSlots => Set<ProviderTimeSlot>();
     public DbSet<ProviderServicePrice> ProviderServicePrices => Set<ProviderServicePrice>();
-
+    public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -41,7 +41,7 @@ public class ApplicationDbContext : DbContext
 
             entity.HasIndex(review => new
             {
-             review.Rating,
+                review.Rating,
                 review.CreatedAtUtc
             });
 
@@ -52,5 +52,35 @@ public class ApplicationDbContext : DbContext
                     "`Rating` BETWEEN 1 AND 5");
             });
         });
+
+        modelBuilder.Entity<AdminAuditLog>(entity =>
+       {
+            entity.HasKey(a => a.Id);
+
+            entity.Property(a => a.ActionType)
+                .HasMaxLength(40)
+                .IsRequired();
+
+            entity.Property(a => a.TargetType)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.Property(a => a.PreviousStatus)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(a => a.NewStatus)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.HasIndex(a => new { a.TimestampUtc, a.Id });
+            entity.HasIndex(a => a.AdministratorId);
+            entity.HasIndex(a => a.TargetId);
+        });
+
+        // Detect concurrent status changes instead of recording an incorrect transition.
+        modelBuilder.Entity<User>()
+            .Property(u => u.IsActive)
+            .IsConcurrencyToken();
     }
 }
