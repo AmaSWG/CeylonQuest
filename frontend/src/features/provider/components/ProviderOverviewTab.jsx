@@ -201,7 +201,7 @@ export default function OverviewTab({ providerInfo, services = [], bookings = []
             {recentNotifs.length === 0 ? (
               <p className="pd-muted-13">No new notifications.</p>
             ) : (
-              <div className="pd-column-gap-10">
+              <div className="pd-recent-notification-blocks">
                 {recentNotifs.map(n => (
                   <div key={n.id} className="pd-notif-preview-item">
                     <span className="pd-notif-icon-wrap"><ManageSearchIcon size={18} /></span>
