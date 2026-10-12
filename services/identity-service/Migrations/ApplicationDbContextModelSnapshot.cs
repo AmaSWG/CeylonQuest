@@ -22,6 +22,52 @@ namespace IdentityService.Migrations
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
+            modelBuilder.Entity("IdentityService.Models.AdminAuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<Guid>("AdministratorId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("NewStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("PreviousStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<DateTime>("TimestampUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdministratorId");
+
+                    b.HasIndex("TargetId");
+
+                    b.HasIndex("TimestampUtc", "Id");
+
+                    b.ToTable("AdminAuditLogs");
+                });
+
             modelBuilder.Entity("IdentityService.Models.PasswordResetToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -170,6 +216,7 @@ namespace IdentityService.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<bool>("IsActive")
+                        .IsConcurrencyToken()
                         .HasColumnType("tinyint(1)");
 
                     b.Property<string>("LastName")

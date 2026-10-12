@@ -112,6 +112,15 @@ if (!builder.Environment.IsEnvironment("Testing"))
 
 builder.Services.AddScoped<IBlobStorageService, BlobStorageService>();
 
+builder.Services.AddHttpClient("AuditCatalog", client =>
+{
+    var baseUrl = builder.Configuration["Services:CatalogBaseUrl"]
+        ?? "http://localhost:5141";
+
+    client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
+
 var app = builder.Build();
 
 // Fail loudly at startup rather than silently at first use. These values are secrets
