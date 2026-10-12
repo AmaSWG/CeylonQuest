@@ -16,10 +16,6 @@ public class ReviewSubmittedEvent
 
     public string ReviewText { get; set; } = "";
     
-<<<<<<< Updated upstream
     public DateTime SubmittedAtUtc { get; set; }
-=======
-    [System.Text.Json.Serialization.JsonPropertyName("SubmittedAtUtc")]
->>>>>>> Stashed changes
     public DateTime SubmittedAt { get; set; }
 }
