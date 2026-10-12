@@ -28,31 +28,46 @@ public class ProviderPerformanceReportTests
         mock.Setup(c => c.GetAdminListingsAsync("admin-token"))
             .ReturnsAsync(listings.ToList());
 
+        var providers = listings
+            .GroupBy(l => l.ProviderId)
+            .Select(g => new CatalogReportProviderResponse
+            {
+                ProviderId = g.Key,
+                ProviderName = g.First().ProviderName,
+                ServiceType = g.First().BookingType
+            })
+            .ToList();
+
+        mock.Setup(c => c.GetReportProvidersAsync(
+                "admin-token",
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(providers);
+
         return mock;
     }
 
     private static CatalogAdminListingResponse Listing(
         Guid providerId, Guid listingId, string category) => new()
-    {
-        Id = listingId,
-        ProviderId = providerId,
-        ProviderName = providerId.ToString(),
-        BookingType = category
-    };
+        {
+            Id = listingId,
+            ProviderId = providerId,
+            ProviderName = providerId.ToString(),
+            BookingType = category
+        };
 
     private static ListingReview Review(
         Guid providerId, Guid listingId, string category,
         int rating, DateOnly? date = null) => new()
-    {
-        Id = Guid.NewGuid(),
-        BookingId = Guid.NewGuid(),
-        ProviderId = providerId,
-        ListingId = listingId,
-        BookingType = category,
-        Rating = rating,
-        CreatedAtUtc = (date ?? Day).ToDateTime(
+        {
+            Id = Guid.NewGuid(),
+            BookingId = Guid.NewGuid(),
+            ProviderId = providerId,
+            ListingId = listingId,
+            BookingType = category,
+            Rating = rating,
+            CreatedAtUtc = (date ?? Day).ToDateTime(
             TimeOnly.MinValue, DateTimeKind.Utc)
-    };
+        };
 
     [Fact]
     public async Task AggregatesRevenueAndEveryStarWithoutMultiplyingRevenue()
@@ -316,5 +331,73 @@ public class ProviderPerformanceReportTests
         Assert.Equal(
             "Admin",
             Assert.IsType<AuthorizeAttribute>(Assert.Single(attributes)).Roles);
+    }
+
+    [Theory]
+    [InlineData(null, null, true)]
+    [InlineData("Experience", null, true)]
+    [InlineData("Restaurant", null, false)]
+    [InlineData(null, 0d, false)]
+    public async Task HandlesProviderWithoutListings(
+    string? category,
+    double? minimumRating,
+    bool shouldInclude)
+    {
+        using var db = CreateDb();
+
+        var providerId = Guid.NewGuid();
+        var catalog = Catalog();
+
+        catalog.Setup(c => c.GetReportProvidersAsync(
+                "admin-token",
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<CatalogReportProviderResponse>
+            {
+            new()
+            {
+                ProviderId = providerId,
+                ProviderName = "Provider without listings",
+                ServiceType = "tour"
+            }
+            });
+
+        var service = new ProviderPerformanceReportService(
+            db,
+            catalog.Object);
+
+        var report = await service.GenerateAsync(
+            "admin-token",
+            new ProviderPerformanceReportQuery
+            {
+                ProviderId = providerId,
+                Category = category,
+                MinimumRating = minimumRating
+            });
+
+        if (!shouldInclude)
+        {
+            Assert.Empty(report.Providers);
+            return;
+        }
+
+        var row = Assert.Single(report.Providers);
+
+        Assert.Equal(providerId, row.ProviderId);
+        Assert.Equal("Provider without listings", row.ProviderName);
+        Assert.Contains("Experience", row.Categories);
+
+        Assert.Equal(0m, row.TotalRevenue);
+        Assert.Equal(0, row.TotalReviewCount);
+        Assert.Null(row.AverageRating);
+
+        Assert.Equal(0, row.StarRatingBreakdown.OneStar);
+        Assert.Equal(0, row.StarRatingBreakdown.TwoStars);
+        Assert.Equal(0, row.StarRatingBreakdown.ThreeStars);
+        Assert.Equal(0, row.StarRatingBreakdown.FourStars);
+        Assert.Equal(0, row.StarRatingBreakdown.FiveStars);
+
+        Assert.True(row.NoReviews);
+        Assert.False(row.LowRating);
+        Assert.Equal("No Reviews", row.RatingState);
     }
 }

@@ -77,6 +77,28 @@ public class ReportsController : ControllerBase
         return Ok(listings);
     }
 
+    [HttpGet("admin-providers")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAdminProviders(
+    CancellationToken cancellationToken)
+    {
+        var providers = await _db.Providers
+            .AsNoTracking()
+            .OrderBy(p => p.BusinessName)
+            .Select(p => new
+            {
+                ProviderId = p.Id,
+                ProviderName = p.BusinessName,
+                p.ServiceType
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(providers);
+    }
+
     /// <summary>
     /// Generates an inventory summary report for the requested date range,
     /// scoped to the authenticated provider unless the caller is an admin
