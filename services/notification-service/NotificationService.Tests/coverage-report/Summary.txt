@@ -1,0 +1,40 @@
+Summary
+  Generated on: 10/10/2026 - 6:20:48 PM
+  Coverage date: 10/10/2026 - 6:19:14 PM
+  Parser: Cobertura
+  Assemblies: 1
+  Classes: 18
+  Files: 16
+  Line coverage: 73.1%
+  Covered lines: 305
+  Uncovered lines: 112
+  Coverable lines: 417
+  Total lines: 676
+  Branch coverage: 79.3% (146 of 184)
+  Covered branches: 146
+  Total branches: 184
+  Method coverage: 91.7% (111 of 121)
+  Full method coverage: 90.9% (110 of 121)
+  Covered methods: 111
+  Fully covered methods: 110
+  Total methods: 121
+
+NotificationService                                         73.1%
+  NotificationService.Controllers.NotificationController     100%
+  NotificationService.Data.NotificationDbContext             100%
+  NotificationService.Data.NotificationDbContextFactory        0%
+  NotificationService.DTOs.MarkReadResponse                  100%
+  NotificationService.DTOs.NotificationDto                    50%
+  NotificationService.DTOs.NotificationListResponse          100%
+  NotificationService.Events.BookingCanceledEvent            100%
+  NotificationService.Events.BookingCreatedEvent             100%
+  NotificationService.Events.PaymentCompletedEvent           100%
+  NotificationService.Events.ReviewSubmittedEvent            100%
+  NotificationService.Models.BookingContext                  100%
+  NotificationService.Models.FailedEvent                    71.4%
+  NotificationService.Models.Notification                    100%
+  NotificationService.Models.ProcessedEvent                  100%
+  NotificationService.Services.NotificationEventConsumer       0%
+  NotificationService.Services.NotificationEventProcessor   96.2%
+  NotificationService.Services.NotificationService           100%
+  NotificationService.Services.RecipientResolver             100%

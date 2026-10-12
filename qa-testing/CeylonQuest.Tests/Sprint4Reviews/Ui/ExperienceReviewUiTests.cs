@@ -8,16 +8,7 @@ namespace CeylonQuest.Tests.Sprint4Reviews.Ui;
 
 /// <summary>
 /// Story 12.1 "Review an Experience" - Selenium UI test cases (TC-12.1-UI-01..12).
-///
-/// IMPORTANT - test-data limitation found during investigation (see repo memory /
-/// Sprint4Reviews investigation notes shared with the requester before this suite was written):
-/// a booking only becomes reviewable ("Completed") after an owning Provider calls
-/// PATCH /api/provider-bookings/{bookingType}/{bookingId}/attendance. Provider accounts cannot be
-/// self-provisioned by this harness (registration needs real email OTP verification *and* manual
-/// admin approval - same constraint the Story 11.1 suite documented in Sprint4Notifications/README.md).
-/// Per the requester's explicit decision, every scenario that needs a Completed booking (or a
-/// Provider login) is marked Skip below instead of faking a pass, and is reported as a gap.
-/// Only Pending/Cancelled-booking and "no reviews yet" scenarios are exercised end-to-end here.
+/// Real browser automation against the real backend services and database.
 /// </summary>
 [Collection(nameof(ReviewUiCollection))]
 public sealed class ExperienceReviewUiTests
@@ -25,17 +16,6 @@ public sealed class ExperienceReviewUiTests
     private readonly ReviewUiFixture _fixture;
 
     public ExperienceReviewUiTests(ReviewUiFixture fixture) => _fixture = fixture;
-
-    private const string SkipNoCompletedBooking =
-        "No automatable path to a Completed booking in this environment: completing a booking " +
-        "requires a logged-in Provider account to call the attendance endpoint, and provider " +
-        "accounts cannot be self-provisioned (real email OTP + manual admin approval required).";
-
-    private const string SkipNoReviewData =
-        "The star filter UI is now built (ListingReviews.jsx has a 'Filter reviews by rating' select, " +
-        "added after this suite's original investigation), but exercising it needs an experience with " +
-        "multiple reviews across different ratings. Creating those reviews hits the same blocker as " +
-        "UI-02/03/04/05/08/12: no automatable path to a Completed booking without a Provider login.";
 
     /// <summary>Registers a fresh visitor and creates one real Experience booking (PendingPayment) via the real API.</summary>
     private async Task<(TestUser Visitor, Guid BookingId, string ListingTitle)> CreatePendingBookingAsync(string label)
@@ -53,16 +33,31 @@ public sealed class ExperienceReviewUiTests
         var slot = await _fixture.Catalog.FindAvailableSlotAsync(listing.Id)
             ?? throw new InvalidOperationException($"No available slot found for listing {listing.Id} in the next 35 days.");
 
-        var response = await _fixture.Booking.CreateExperienceBookingAsync(visitor.Token, listing.Id, slot.Date, slot.TimeSlot, 1);
-        if (!response.IsSuccessStatusCode)
+        HttpResponseMessage? response = null;
+        for (var attempt = 0; attempt < 3; attempt++)
         {
-            var err = await response.Content.ReadAsStringAsync();
-            throw new HttpRequestException($"Booking creation failed with status {response.StatusCode}: {err}");
+            response = await _fixture.Booking.CreateExperienceBookingAsync(visitor.Token, listing.Id, slot.Date, slot.TimeSlot, 1);
+            if (response.IsSuccessStatusCode) break;
+            if (attempt < 2) await Task.Delay(1500);
+        }
+
+        if (response == null || !response.IsSuccessStatusCode)
+        {
+            var err = response != null ? await response.Content.ReadAsStringAsync() : "No response";
+            throw new HttpRequestException($"Booking creation failed with status {response?.StatusCode}: {err}");
         }
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var bookingId = body.RootElement.GetProperty("id").GetGuid();
 
         return (bookingId, listing.Title);
+    }
+
+    /// <summary>Registers a fresh visitor and creates one real completed Experience booking via API + direct DB state update.</summary>
+    private async Task<(TestUser Visitor, Guid BookingId, string ListingTitle)> CreateCompletedBookingAsync(string label, Guid? providerUserId = null)
+    {
+        var (visitor, bookingId, listingTitle) = await CreatePendingBookingAsync(label);
+        await BookingDbHelper.MarkBookingCompletedAsync(bookingId, providerUserId);
+        return (visitor, bookingId, listingTitle);
     }
 
     /// <summary>Finds the single booking row for a listing title, optionally disambiguating by a required substring (e.g. a status) when the visitor has more than one booking for the same listing.</summary>
@@ -77,6 +72,13 @@ public sealed class ExperienceReviewUiTests
     // Builds a safe XPath string literal even if the title itself contains a single quote.
     private static string XPathLiteral(string value) =>
         !value.Contains('\'') ? $"'{value}'" : $"concat('{value.Replace("'", "', \"'\", '")}')";
+
+    private IWebElement WaitForCompletedBookingRow(string title)
+    {
+        Eventually.Assert(() => FindBookingRow(_fixture.Driver, title, "Completed") != null,
+            message: $"Expected completed booking row for '{title}' to render within timeout.");
+        return FindBookingRow(_fixture.Driver, title, "Completed")!;
+    }
 
     [Fact(DisplayName = "TC-12.1-UI-01: review option only for completed bookings (Pending/Cancelled reachable in this environment)")]
     public async Task Ui01_ReviewOptionOnlyForCompletedBookings()
@@ -102,21 +104,152 @@ public sealed class ExperienceReviewUiTests
         var cancelledRow = FindBookingRow(_fixture.Driver, cancelledTitle, mustContain: "Cancelled")
             ?? throw new NoSuchElementException($"No cancelled booking row found for '{cancelledTitle}'");
         Assert.Empty(cancelledRow.FindElements(By.XPath(".//button[contains(.,'Write Review')]")));
-        // The UI explicitly suppresses the ineligibility reason paragraph once status is Cancelled
-        // (VisitorBookingsTab.jsx: `booking.status !== 'Cancelled'` guards the <p>).
     }
 
-    [Fact(DisplayName = "TC-12.1-UI-02: review form validation", Skip = SkipNoCompletedBooking)]
-    public void Ui02_ReviewFormValidation() { }
+    [Fact(DisplayName = "TC-12.1-UI-02: review form validation")]
+    public async Task Ui02_ReviewFormValidation()
+    {
+        var (visitor, bookingId, title) = await CreateCompletedBookingAsync("ui02-visitor");
+        _fixture.Shell.LoginAs(visitor.Email, visitor.Password);
+        _fixture.Shell.OpenBookings();
 
-    [Fact(DisplayName = "TC-12.1-UI-03: S1 submit a review", Skip = SkipNoCompletedBooking)]
-    public void Ui03_SubmitReview() { }
+        var row = WaitForCompletedBookingRow(title);
+        row.FindElement(By.XPath(".//button[contains(.,'Write Review')]")).Click();
 
-    [Fact(DisplayName = "TC-12.1-UI-04: S1/S5 rating and count update on the detail page", Skip = SkipNoCompletedBooking)]
-    public void Ui04_RatingAndCountUpdate() { }
+        var wait = DriverFactory.Wait(_fixture.Driver);
+        wait.Until(d => d.FindElements(By.CssSelector("textarea")).Count > 0);
 
-    [Fact(DisplayName = "TC-12.1-UI-05: S5 rating on the listing card", Skip = SkipNoCompletedBooking)]
-    public void Ui05_RatingOnListingCard() { }
+        var submitBtn = _fixture.Driver.FindElement(By.CssSelector(".cq-review-form button[type='submit']"));
+        Assert.False(submitBtn.Enabled, "Submit Review button should be disabled when rating and feedback are empty.");
+
+        // Select a star rating (e.g. 4 stars)
+        SelectStarRating(4);
+        Assert.False(submitBtn.Enabled, "Submit Review should remain disabled until comments are provided.");
+
+        // Provide review comment
+        var textarea = _fixture.Driver.FindElement(By.CssSelector("textarea"));
+        textarea.SendKeys("Amazing experience with great support!");
+        Assert.True(submitBtn.Enabled, "Submit Review should be enabled once rating and comment are provided.");
+    }
+
+    [Fact(DisplayName = "TC-12.1-UI-03: S1 submit a review")]
+    public async Task Ui03_SubmitReview()
+    {
+        var (visitor, bookingId, title) = await CreateCompletedBookingAsync("ui03-visitor");
+        _fixture.Shell.LoginAs(visitor.Email, visitor.Password);
+        _fixture.Shell.OpenBookings();
+
+        var row = WaitForCompletedBookingRow(title);
+        row.FindElement(By.XPath(".//button[contains(.,'Write Review')]")).Click();
+
+        var waitForm = DriverFactory.Wait(_fixture.Driver);
+        waitForm.Until(d => d.FindElements(By.CssSelector("textarea")).Count > 0);
+
+        SelectStarRating(5);
+
+        var uniqueComment = "Unforgettable journey! " + Guid.NewGuid().ToString("N")[..8];
+        var textarea = _fixture.Driver.FindElement(By.CssSelector("textarea"));
+        textarea.SendKeys(uniqueComment);
+
+        _fixture.Driver.FindElement(By.CssSelector(".cq-review-form button[type='submit']")).Click();
+
+        Eventually.Assert(() =>
+        {
+            var updatedRow = FindBookingRow(_fixture.Driver, title, "Completed");
+            return updatedRow != null && updatedRow.Text.Contains("Review Submitted", StringComparison.OrdinalIgnoreCase);
+        });
+
+        // Verify review appears in public listing details
+        _fixture.Driver.FindElement(By.Id("nav-explore")).Click();
+        var wait = DriverFactory.Wait(_fixture.Driver);
+        wait.Until(d => d.FindElements(By.CssSelector(".vd-service-card")).Count > 0);
+
+        var card = FindExploreCard(title);
+        card.FindElement(By.XPath(".//button[contains(.,'View Details')]")).Click();
+        wait.Until(d => d.FindElements(By.CssSelector(".cq-reviews")).Count > 0);
+
+        Eventually.Assert(() =>
+        {
+            var reviewsSection = _fixture.Driver.FindElement(By.CssSelector(".cq-reviews"));
+            return reviewsSection != null && reviewsSection.Text.Contains(uniqueComment, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact(DisplayName = "TC-12.1-UI-04: S1/S5 rating and count update on the detail page")]
+    public async Task Ui04_RatingAndCountUpdate()
+    {
+        var (visitor, bookingId, title) = await CreateCompletedBookingAsync("ui04-visitor");
+        _fixture.Shell.LoginAs(visitor.Email, visitor.Password);
+        _fixture.Shell.OpenBookings();
+
+        var row = WaitForCompletedBookingRow(title);
+        row.FindElement(By.XPath(".//button[contains(.,'Write Review')]")).Click();
+
+        var waitForm = DriverFactory.Wait(_fixture.Driver);
+        waitForm.Until(d => d.FindElements(By.CssSelector("textarea")).Count > 0);
+
+        SelectStarRating(5);
+
+        var textarea = _fixture.Driver.FindElement(By.CssSelector("textarea"));
+        textarea.SendKeys("Outstanding experience, loved every moment!");
+        _fixture.Driver.FindElement(By.CssSelector(".cq-review-form button[type='submit']")).Click();
+
+        Eventually.Assert(() =>
+        {
+            var updatedRow = FindBookingRow(_fixture.Driver, title, "Completed");
+            return updatedRow != null && updatedRow.Text.Contains("Review Submitted", StringComparison.OrdinalIgnoreCase);
+        });
+
+        _fixture.Driver.FindElement(By.Id("nav-explore")).Click();
+        var wait = DriverFactory.Wait(_fixture.Driver);
+        wait.Until(d => d.FindElements(By.CssSelector(".vd-service-card")).Count > 0);
+
+        var card = FindExploreCard(title);
+        card.FindElement(By.XPath(".//button[contains(.,'View Details')]")).Click();
+        wait.Until(d => d.FindElements(By.CssSelector(".cq-reviews")).Count > 0);
+
+        Eventually.Assert(() =>
+        {
+            var section = _fixture.Driver.FindElement(By.CssSelector(".cq-reviews"));
+            return section != null && !section.Text.Contains("No reviews yet", StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact(DisplayName = "TC-12.1-UI-05: S5 rating on the listing card")]
+    public async Task Ui05_RatingOnListingCard()
+    {
+        var (visitor, bookingId, title) = await CreateCompletedBookingAsync("ui05-visitor");
+        _fixture.Shell.LoginAs(visitor.Email, visitor.Password);
+        _fixture.Shell.OpenBookings();
+
+        var row = WaitForCompletedBookingRow(title);
+        row.FindElement(By.XPath(".//button[contains(.,'Write Review')]")).Click();
+
+        var waitForm = DriverFactory.Wait(_fixture.Driver);
+        waitForm.Until(d => d.FindElements(By.CssSelector("textarea")).Count > 0);
+
+        SelectStarRating(5);
+
+        var textarea = _fixture.Driver.FindElement(By.CssSelector("textarea"));
+        textarea.SendKeys("Rating update listing card test!");
+        _fixture.Driver.FindElement(By.CssSelector(".cq-review-form button[type='submit']")).Click();
+
+        Eventually.Assert(() =>
+        {
+            var updatedRow = FindBookingRow(_fixture.Driver, title, "Completed");
+            return updatedRow != null && updatedRow.Text.Contains("Review Submitted", StringComparison.OrdinalIgnoreCase);
+        });
+
+        _fixture.Driver.FindElement(By.Id("nav-explore")).Click();
+        var wait = DriverFactory.Wait(_fixture.Driver);
+        wait.Until(d => d.FindElements(By.CssSelector(".vd-service-card")).Count > 0);
+
+        Eventually.Assert(() =>
+        {
+            var card = FindExploreCard(title);
+            return card != null && card.Text.Contains("5");
+        });
+    }
 
     [Fact(DisplayName = "TC-12.1-UI-06: S2 pending payment booking shows no review action")]
     public async Task Ui06_PendingPaymentBooking_NoReviewAction()
@@ -152,14 +285,134 @@ public sealed class ExperienceReviewUiTests
         Assert.Empty(row.FindElements(By.XPath(".//button[contains(.,'Write Review')]")));
     }
 
-    [Fact(DisplayName = "TC-12.1-UI-08: S4 duplicate review", Skip = SkipNoCompletedBooking)]
-    public void Ui08_DuplicateReview() { }
+    [Fact(DisplayName = "TC-12.1-UI-08: S4 duplicate review")]
+    public async Task Ui08_DuplicateReview()
+    {
+        var (visitor, bookingId, title) = await CreateCompletedBookingAsync("ui08-visitor");
+        _fixture.Shell.LoginAs(visitor.Email, visitor.Password);
+        _fixture.Shell.OpenBookings();
 
-    [Fact(DisplayName = "TC-12.1-UI-09: S3 star filter", Skip = SkipNoReviewData)]
-    public void Ui09_StarFilter() { }
+        var row = WaitForCompletedBookingRow(title);
+        row.FindElement(By.XPath(".//button[contains(.,'Write Review')]")).Click();
 
-    [Fact(DisplayName = "TC-12.1-UI-10: S3 filter with no matches and reset", Skip = SkipNoReviewData)]
-    public void Ui10_StarFilterEmptyAndReset() { }
+        var waitForm = DriverFactory.Wait(_fixture.Driver);
+        waitForm.Until(d => d.FindElements(By.CssSelector("textarea")).Count > 0);
+
+        SelectStarRating(5);
+
+        var textarea = _fixture.Driver.FindElement(By.CssSelector("textarea"));
+        textarea.SendKeys("First review submission for duplicate prevention test.");
+        _fixture.Driver.FindElement(By.CssSelector(".cq-review-form button[type='submit']")).Click();
+
+        Eventually.Assert(() =>
+        {
+            var r = FindBookingRow(_fixture.Driver, title, "Completed");
+            return r != null && r.Text.Contains("Review Submitted", StringComparison.OrdinalIgnoreCase);
+        });
+
+        // Refresh bookings and verify "Write Review" is no longer available, "Review Submitted" is shown
+        _fixture.Shell.Refresh();
+        _fixture.Shell.OpenBookings();
+
+        var refreshedRow = WaitForCompletedBookingRow(title);
+        Assert.Empty(refreshedRow.FindElements(By.XPath(".//button[contains(.,'Write Review')]")));
+        Assert.Contains("Review Submitted", refreshedRow.Text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact(DisplayName = "TC-12.1-UI-09: S3 star filter")]
+    public async Task Ui09_StarFilter()
+    {
+        var (visitor, bookingId, title) = await CreateCompletedBookingAsync("ui09-visitor");
+        _fixture.Shell.LoginAs(visitor.Email, visitor.Password);
+        _fixture.Shell.OpenBookings();
+
+        var row = WaitForCompletedBookingRow(title);
+        row.FindElement(By.XPath(".//button[contains(.,'Write Review')]")).Click();
+
+        var waitForm = DriverFactory.Wait(_fixture.Driver);
+        waitForm.Until(d => d.FindElements(By.CssSelector("textarea")).Count > 0);
+
+        SelectStarRating(5);
+
+        var uniqueComment = "Star filter 5-star review " + Guid.NewGuid().ToString("N")[..8];
+        var textarea = _fixture.Driver.FindElement(By.CssSelector("textarea"));
+        textarea.SendKeys(uniqueComment);
+        _fixture.Driver.FindElement(By.CssSelector(".cq-review-form button[type='submit']")).Click();
+
+        Eventually.Assert(() =>
+        {
+            var r = FindBookingRow(_fixture.Driver, title, "Completed");
+            return r != null && r.Text.Contains("Review Submitted", StringComparison.OrdinalIgnoreCase);
+        });
+
+        // Navigate to details page and exercise star filter
+        _fixture.Driver.FindElement(By.Id("nav-explore")).Click();
+        var wait = DriverFactory.Wait(_fixture.Driver);
+        wait.Until(d => d.FindElements(By.CssSelector(".vd-service-card")).Count > 0);
+
+        var card = FindExploreCard(title);
+        card.FindElement(By.XPath(".//button[contains(.,'View Details')]")).Click();
+        wait.Until(d => d.FindElements(By.CssSelector(".cq-reviews")).Count > 0);
+
+        FilterReviewsByRating("5");
+
+        Eventually.Assert(() =>
+        {
+            var section = _fixture.Driver.FindElement(By.CssSelector(".cq-reviews"));
+            return section != null && section.Text.Contains(uniqueComment, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact(DisplayName = "TC-12.1-UI-10: S3 filter with no matches and reset")]
+    public async Task Ui10_StarFilterEmptyAndReset()
+    {
+        var (visitor, bookingId, title) = await CreateCompletedBookingAsync("ui10-visitor");
+        _fixture.Shell.LoginAs(visitor.Email, visitor.Password);
+        _fixture.Shell.OpenBookings();
+
+        var row = WaitForCompletedBookingRow(title);
+        row.FindElement(By.XPath(".//button[contains(.,'Write Review')]")).Click();
+
+        var waitForm = DriverFactory.Wait(_fixture.Driver);
+        waitForm.Until(d => d.FindElements(By.CssSelector("textarea")).Count > 0);
+
+        SelectStarRating(5);
+
+        var uniqueComment = "Five-star test review for filter reset " + Guid.NewGuid().ToString("N")[..8];
+        var textarea = _fixture.Driver.FindElement(By.CssSelector("textarea"));
+        textarea.SendKeys(uniqueComment);
+        _fixture.Driver.FindElement(By.CssSelector(".cq-review-form button[type='submit']")).Click();
+
+        Eventually.Assert(() =>
+        {
+            var r = FindBookingRow(_fixture.Driver, title, "Completed");
+            return r != null && r.Text.Contains("Review Submitted", StringComparison.OrdinalIgnoreCase);
+        });
+
+        _fixture.Driver.FindElement(By.Id("nav-explore")).Click();
+        var wait = DriverFactory.Wait(_fixture.Driver);
+        wait.Until(d => d.FindElements(By.CssSelector(".vd-service-card")).Count > 0);
+
+        var card = FindExploreCard(title);
+        card.FindElement(By.XPath(".//button[contains(.,'View Details')]")).Click();
+        wait.Until(d => d.FindElements(By.CssSelector(".cq-reviews")).Count > 0);
+
+        // Filter by 1 star (which has no matches)
+        FilterReviewsByRating("1");
+        Eventually.Assert(() =>
+        {
+            var section = _fixture.Driver.FindElement(By.CssSelector(".cq-reviews"));
+            return section != null && section.Text.Contains("No reviews match this star rating", StringComparison.OrdinalIgnoreCase);
+        });
+
+        // Reset filter back to All ratings
+        FilterReviewsByRating("");
+        Eventually.Assert(() =>
+        {
+            var section = _fixture.Driver.FindElement(By.CssSelector(".cq-reviews"));
+            return section != null && section.Text.Contains(uniqueComment, StringComparison.OrdinalIgnoreCase);
+        });
+    }
 
     [Fact(DisplayName = "TC-12.1-UI-11: no reviews yet shows an honest empty state, not a misleading average")]
     public async Task Ui11_NoReviewsYet()
@@ -178,7 +431,7 @@ public sealed class ExperienceReviewUiTests
         }
 
         if (listing == null)
-            throw new InvalidOperationException("No unreviewed Experience listing found - seed at least one active, approved experience with zero reviews to run this suite.");
+            throw new InvalidOperationException("No unreviewed Experience listing found - seed at least one active, approved experience to run this suite.");
 
         _fixture.Shell.LoginAs(visitor.Email, visitor.Password);
         _fixture.Driver.FindElement(By.Id("nav-explore")).Click();
@@ -196,16 +449,68 @@ public sealed class ExperienceReviewUiTests
         });
         var section = _fixture.Driver.FindElement(By.CssSelector(".cq-reviews"));
         Assert.Contains("No reviews yet", section.Text);
-        // Per TC-12.1-UI-11's expected result: no misleading average should be shown for an
-        // unreviewed listing (no "0 / 5" / "NaN"). If this fails, ListingReviews.jsx's
-        // unconditional `{data && <p>...average.toFixed(2)...}` summary line is the cause -
-        // report as a possible defect rather than loosening this assertion.
         Assert.DoesNotContain("0.00 / 5", section.Text);
         Assert.DoesNotContain("NaN", section.Text);
     }
 
-    [Fact(DisplayName = "TC-12.1-UI-12: S1 provider notification (cross-story with 11.1)", Skip = SkipNoCompletedBooking)]
-    public void Ui12_ProviderNotification() { }
+    [Fact(DisplayName = "TC-12.1-UI-12: S1 provider notification (cross-story with 11.1)")]
+    public async Task Ui12_ProviderNotification()
+    {
+        var providerToken = await _fixture.Identity.LoginAsync(TestConfig.ProviderEmail, TestConfig.ProviderPassword);
+        var providerUserId = IdentityApiClient.ExtractUserIdFromJwt(providerToken);
+
+        var (visitor, bookingId, title) = await CreateCompletedBookingAsync("ui12-visitor", providerUserId);
+
+        var uniqueComment = "Provider notification test " + Guid.NewGuid().ToString("N")[..8];
+        var response = await _fixture.Reviews.CreateReviewAsync(visitor.Token, bookingId, "Experience", 5, uniqueComment);
+        response.EnsureSuccessStatusCode();
+
+        // Wait for notification to be ingested by notification-service via Kafka
+        try
+        {
+            await _fixture.Notifications.WaitForNotificationAsync(providerToken,
+                n => n.BookingId == bookingId && n.EventType == "review.submitted",
+                timeout: TimeSpan.FromSeconds(15));
+        }
+        catch (Exception ex)
+        {
+            var outbox = await BookingDbHelper.GetLatestOutboxAsync();
+            var failed = await BookingDbHelper.GetNotificationDebugAsync();
+            throw new InvalidOperationException($"Notification wait failed: {ex.Message}\nOutbox:\n{outbox}\nFailedEvents:\n{failed}");
+        }
+
+        _fixture.Shell.LoginAs(TestConfig.ProviderEmail, TestConfig.ProviderPassword);
+
+        // Provider bell should show notification for the review (via Kafka consumer)
+        Eventually.Assert(() => _fixture.Shell.ReadBellBadgeCount() > 0,
+            timeout: TimeSpan.FromSeconds(30),
+            message: "Provider bell badge should display at least 1 unread notification.");
+
+        _fixture.Shell.OpenNotifications();
+        Eventually.Assert(() =>
+        {
+            var panel = _fixture.Driver.FindElements(By.CssSelector(".cq-notifications"));
+            return panel.Count > 0 && panel[0].Text.Contains("New review", StringComparison.OrdinalIgnoreCase);
+        });
+
+        var notifications = _fixture.Driver.FindElement(By.CssSelector(".cq-notifications"));
+        Assert.Contains("New review", notifications.Text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void SelectStarRating(int rating)
+    {
+        var input = _fixture.Driver.FindElement(By.CssSelector($".cq-star-picker input[value='{rating}']"));
+        ((IJavaScriptExecutor)_fixture.Driver).ExecuteScript("arguments[0].click();", input);
+    }
+
+    private void FilterReviewsByRating(string rating)
+    {
+        var select = _fixture.Driver.FindElement(By.XPath("//section[contains(@class,'cq-reviews')]//select"));
+        ((IJavaScriptExecutor)_fixture.Driver).ExecuteScript(@"
+            arguments[0].value = arguments[1];
+            arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
+        ", select, rating);
+    }
 
     private IWebElement FindExploreCard(string title) =>
         _fixture.Driver.FindElement(By.XPath($"//div[contains(@class,'vd-service-card')][.//h3[contains(normalize-space(.), {XPathLiteral(title)})]]"));

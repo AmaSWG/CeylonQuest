@@ -1,0 +1,45 @@
+Summary
+  Generated on: 10/12/2026 - 11:25:08 AM
+  Coverage date: 10/12/2026 - 11:25:03 AM
+  Parser: Cobertura
+  Assemblies: 1
+  Classes: 23
+  Files: 19
+  Line coverage: 83.2%
+  Covered lines: 362
+  Uncovered lines: 73
+  Coverable lines: 435
+  Total lines: 728
+  Branch coverage: 68.7% (143 of 208)
+  Covered branches: 143
+  Total branches: 208
+  Method coverage: 85.1% (86 of 101)
+  Full method coverage: 77.2% (78 of 101)
+  Covered methods: 86
+  Fully covered methods: 78
+  Total methods: 101
+
+booking-service                                          83.2%
+  BookingService.Controllers.PlatformReviewsController      0%
+  BookingService.Controllers.ReviewsController            100%
+  BookingService.DTOs.CreatePlatformReviewRequest         100%
+  BookingService.DTOs.CreateReviewRequest                  90%
+  BookingService.DTOs.EligibleReviewBooking                75%
+  BookingService.DTOs.PagedPlatformReviewsResponse        100%
+  BookingService.DTOs.PagedReviewsResponse                100%
+  BookingService.DTOs.PlatformReviewResponse              100%
+  BookingService.DTOs.ReviewEligibilityResponse           100%
+  BookingService.DTOs.ReviewQuery                         100%
+  BookingService.DTOs.ReviewResponse                     63.6%
+  BookingService.DTOs.ReviewSummaryResponse              66.6%
+  BookingService.Events.ReviewEligibilityGrantedEvent       0%
+  BookingService.Events.ReviewSubmittedEvent              100%
+  BookingService.Models.ListingReview                    92.8%
+  BookingService.Models.PlatformReview                    100%
+  BookingService.Models.ReviewOutboxMessage               100%
+  BookingService.Services.ReviewerProfileClient          68.7%
+  BookingService.Services.ReviewException                 100%
+  BookingService.Services.ReviewOutboxPublisher          68.1%
+  BookingService.Services.ReviewOutboxWorker                0%
+  BookingService.Services.ReviewSchedule                  100%
+  BookingService.Services.ReviewService                  92.2%

@@ -15,6 +15,7 @@ public sealed class ReviewUiFixture : IAsyncLifetime
     public CatalogApiClient Catalog { get; } = new();
     public BookingApiClient Booking { get; } = new();
     public ReviewApiClient Reviews { get; } = new();
+    public NotificationApiClient Notifications { get; } = new();
     public IWebDriver Driver { get; private set; } = null!;
     public AppShell Shell { get; private set; } = null!;
 

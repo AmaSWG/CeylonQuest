@@ -229,11 +229,45 @@ public class ReviewTests
         var service = new Mock<IReviewService>(); var controller = new ReviewsController(service.Object)
         { ControllerContext = new() { HttpContext = new DefaultHttpContext() } };
         Assert.IsType<UnauthorizedResult>(await controller.Create(new(), default));
-        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()) }));
+        var visitorId = Guid.NewGuid();
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, visitorId.ToString()) }));
         service.Setup(s => s.CreateAsync(It.IsAny<Guid>(), It.IsAny<CreateReviewRequest>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new ReviewException(409, "Duplicate"));
         Assert.Equal(409, Assert.IsType<ObjectResult>(await controller.Create(new(), default)).StatusCode);
+
+        // Success Create
+        var sampleResponse = new ReviewResponse(Guid.NewGuid(), Guid.NewGuid(), "Experience", 5, "Great", DateTime.UtcNow);
+        service.Setup(s => s.CreateAsync(visitorId, It.IsAny<CreateReviewRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(sampleResponse);
+        var createdResult = Assert.IsType<CreatedAtActionResult>(await controller.Create(new(), default));
+        Assert.Equal(sampleResponse, createdResult.Value);
+
+        // Get reviews
+        Assert.IsType<BadRequestResult>(await controller.Get(Guid.Empty, new(), default));
+        service.Setup(s => s.GetAsync(sampleResponse.ListingId, It.IsAny<ReviewQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PagedReviewsResponse(new List<ReviewResponse> { sampleResponse }, 1, 10, 1, 1, 5.0, 1));
+        Assert.IsType<OkObjectResult>(await controller.Get(sampleResponse.ListingId, new(), default));
+
+        // Summary
+        Assert.IsType<BadRequestResult>(await controller.Summary(Guid.Empty, new(), default));
+        service.Setup(s => s.GetSummaryAsync(sampleResponse.ListingId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ReviewSummaryResponse(sampleResponse.ListingId, "Experience", 5.0, 1));
+        Assert.IsType<OkObjectResult>(await controller.Summary(sampleResponse.ListingId, new(), default));
+
+        // Eligibility
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        Assert.IsType<UnauthorizedResult>(await controller.Eligibility(sampleResponse.ListingId, "Experience", default));
+
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, visitorId.ToString()) }));
+        service.Setup(s => s.GetEligibilityAsync(visitorId, sampleResponse.ListingId, "Experience", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ReviewEligibilityResponse(new List<EligibleReviewBooking>(), null));
+        Assert.IsType<OkObjectResult>(await controller.Eligibility(sampleResponse.ListingId, "Experience", default));
+
+        service.Setup(s => s.GetEligibilityAsync(visitorId, sampleResponse.ListingId, "Experience", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ReviewException(400, "Invalid type"));
+        Assert.Equal(400, Assert.IsType<ObjectResult>(await controller.Eligibility(sampleResponse.ListingId, "Experience", default)).StatusCode);
     }
+
 
     [Theory]
     [InlineData("09:00 - 11:00", null, 5, 30)]

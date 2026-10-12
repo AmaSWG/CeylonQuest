@@ -17,6 +17,7 @@
     <!-- Sprint 4 / Story 11.1 QA suite: publishes events directly to Kafka to test the
          notification-service consumer + REST API in isolation (see Sprint4Notifications/README.md). -->
     <PackageReference Include="Confluent.Kafka" Version="2.6.1" />
+    <PackageReference Include="MySqlConnector" Version="2.3.7" />
   </ItemGroup>
 
   <ItemGroup>

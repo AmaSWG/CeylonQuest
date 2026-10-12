@@ -14,6 +14,10 @@ public static class TestConfig
     public static string CatalogApiBaseUrl => Env("CQ_CATALOG_API_URL", "http://localhost:5141");
     public static string NotificationApiBaseUrl => Env("CQ_NOTIFICATION_API_URL", "http://localhost:5185");
     public static string KafkaBootstrapServers => Env("CQ_KAFKA_BOOTSTRAP", "localhost:9092");
+    public static string BookingDbConnectionString => Env("CQ_BOOKING_DB_CONN",
+        "Server=ceylonquest-mysql-db.mysql.database.azure.com;Port=3306;Database=booking_db;User=booking_user;Password=piyumiy@121624101854;SslMode=Required;");
+    public static string ProviderEmail => Env("CQ_PROVIDER_EMAIL", "piyumiyashodara@gmail.com");
+    public static string ProviderPassword => Env("CQ_PROVIDER_PASSWORD", "Piyumi@2003");
 
     /// <summary>Set CQ_HEADLESS=false to watch the browser while debugging a failing scenario.</summary>
     public static bool Headless =>
