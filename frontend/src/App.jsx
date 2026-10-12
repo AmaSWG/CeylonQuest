@@ -211,29 +211,14 @@ function App() {
 
   if (page === 'visitor-dashboard') {
     return (
-      <>
-        <div style={{ padding: '12px 20px', background: '#eef7f1' }}>
-          <a href="/?page=platform-reviews">
-            Read or write a platform review
-          </a>
-        </div>
-
         <VisitorDashboard onLogout={handleLogout} />
-      </>
+      
     )
   }
 
   if (page === 'provider-dashboard') {
     return (
-      <>
-        <div style={{ padding: '12px 20px', background: '#eef7f1' }}>
-          <a href="/?page=platform-reviews">
-            Read or write a platform review
-          </a>
-        </div>
-
         <ProviderDashboard onLogout={handleLogout} />
-      </>
     )
   }
 

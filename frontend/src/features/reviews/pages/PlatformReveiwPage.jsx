@@ -4,9 +4,10 @@ import PlatformReviewCard from '../components/PlatformReviewCard'
 import PlatformReviewForm from '../components/PlatformReviewForm'
 import '../PlatformReviews.css'
 
-const PAGE_SIZE = 12
+const PAGE_SIZE = 3
 
-export default function PlatformReviewsPage() {
+
+export default function PlatformReviewsPage({ embedded = false }) {
   const [rating, setRating] = useState('')
   const [page, setPage] = useState(1)
   const [refresh, setRefresh] = useState(0)
@@ -77,10 +78,12 @@ export default function PlatformReviewsPage() {
 
   return (
     <main className="platform-reviews">
-      <a href="/">Back to CeylonQuest</a>
+      {!embedded && <a href="/">Back to CeylonQuest</a>}
 
-      <h1>Platform reviews</h1>
-      <p>Experiences shared by CeylonQuest visitors and providers.</p>
+      <header className="platform-reviews-page-header">
+        <h1>Platform Reviews</h1>
+        <p>Experiences shared by CeylonQuest visitors and providers.</p>
+      </header>
 
       {canSubmit ? (
         <PlatformReviewForm onSubmitted={handleSubmitted} />
