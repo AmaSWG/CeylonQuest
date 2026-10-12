@@ -30,10 +30,50 @@ public class ReportsController : ControllerBase
     public async Task<IActionResult> GetAdminListings()
     {
         var listings = await _db.Providers
-            .SelectMany(p => p.ActivityListings.Select(l => new CatalogAdminListingResponse { Id = l.Id, BookingType = "Experience", ServiceName = l.Title, ProviderId = p.Id, ProviderName = p.BusinessName })
-                .Concat(p.RestaurantListings.Select(l => new CatalogAdminListingResponse { Id = l.Id, BookingType = "Restaurant", ServiceName = l.Name, ProviderId = p.Id, ProviderName = p.BusinessName }))
-                .Concat(p.AccommodationListings.Select(l => new CatalogAdminListingResponse { Id = l.Id, BookingType = "Accommodation", ServiceName = l.RoomType, ProviderId = p.Id, ProviderName = p.BusinessName })))
+            .SelectMany(p => p.ActivityListings.Select(l =>
+                new CatalogAdminListingResponse
+                {
+                    Id = l.Id,
+                    BookingType = "Experience",
+                    ServiceName = l.Title,
+                    ProviderId = p.Id,
+                    ProviderName = p.BusinessName,
+                    IsActive = l.IsActive,
+                    IsRemoved = l.IsRemoved,
+                    Status = l.IsRemoved
+                        ? "Removed"
+                        : l.IsActive ? "Active" : "Inactive"
+                })
+                .Concat(p.RestaurantListings.Select(l =>
+                    new CatalogAdminListingResponse
+                    {
+                        Id = l.Id,
+                        BookingType = "Restaurant",
+                        ServiceName = l.Name,
+                        ProviderId = p.Id,
+                        ProviderName = p.BusinessName,
+                        IsActive = l.IsActive,
+                        IsRemoved = l.IsRemoved,
+                        Status = l.IsRemoved
+                            ? "Removed"
+                            : l.IsActive ? "Active" : "Inactive"
+                    }))
+                .Concat(p.AccommodationListings.Select(l =>
+                    new CatalogAdminListingResponse
+                    {
+                        Id = l.Id,
+                        BookingType = "Accommodation",
+                        ServiceName = l.RoomType,
+                        ProviderId = p.Id,
+                        ProviderName = p.BusinessName,
+                        IsActive = l.IsActive,
+                        IsRemoved = l.IsRemoved,
+                        Status = l.IsRemoved
+                            ? "Removed"
+                            : l.IsActive ? "Active" : "Inactive"
+                    })))
             .ToListAsync();
+
         return Ok(listings);
     }
 
