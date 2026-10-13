@@ -80,7 +80,6 @@ const addDurationToTime = (startTimeStr, durationStr) => {
   return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
 }
 
-
 const parseOpeningHours = (str) => {
   const fallback = { open: '11:30', close: '22:00' }
   if (!str) return fallback
@@ -91,7 +90,6 @@ const parseOpeningHours = (str) => {
     close: toInputTime(parts[1])
   }
 }
-
 
 const formatOpeningHours = (open, close) => {
   if (!open || !close) return ''
@@ -118,6 +116,57 @@ export default function ListingsTab({
   const [serviceToDelete, setServiceToDelete] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
+  // Listing Images (Universal for all listing types)
+  const [uploadedImages, setUploadedImages] = useState([])
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [imageError, setImageError] = useState(null)
+
+  // Image Upload Handler
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files)
+    if (!files.length) return
+
+    if (uploadedImages.length + files.length > 5) {
+      setImageError('You can only attach a maximum of 5 images per listing.')
+      return
+    }
+
+    setImageError(null)
+    setUploadingImage(true)
+
+    try {
+      const newUrls = []
+      for (const file of files) {
+        if (file.size > 5 * 1024 * 1024) {
+          setImageError(`File ${file.name} exceeds the 5MB size limit.`)
+          continue
+        }
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const authToken = localStorage.getItem('cq_token') || token
+        const resp = await fetch(catalogUrl('/api/catalog/images/upload'), {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${authToken}` },
+          body: formData
+        })
+
+        if (resp.ok) {
+          const data = await resp.json()
+          newUrls.push(data.imageUrl)
+        }
+      }
+      setUploadedImages(prev => [...prev, ...newUrls].slice(0, 5))
+    } catch {
+      setImageError('Failed to upload images. Please try again.')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  const handleRemoveImage = (indexToRemove) => {
+    setUploadedImages(prev => prev.filter((_, idx) => idx !== indexToRemove))
+  }
 
   const emptyForm = {
     // shared / activity
@@ -251,6 +300,8 @@ export default function ListingsTab({
   const openAdd = () => {
     setEditTarget(null)
     setForm(emptyForm)
+    setUploadedImages([])
+    setImageError(null)
     if (isRestaurant) {
       setSlotsList([{ startTime: '09:00', endTime: '10:00' }])
     } else {
@@ -262,6 +313,20 @@ export default function ListingsTab({
 
   const openEdit = (item) => {
     setEditTarget(item)
+    setImageError(null)
+
+    // Load existing images for all service types
+    if (item.images) {
+      try {
+        const parsed = JSON.parse(item.images)
+        setUploadedImages(Array.isArray(parsed) ? parsed : [item.images])
+      } catch {
+        setUploadedImages(item.images.split(',').map(s => s.trim()).filter(Boolean))
+      }
+    } else {
+      setUploadedImages([])
+    }
+
     if (isHotel) {
       setForm({
         ...emptyForm,
@@ -329,7 +394,7 @@ export default function ListingsTab({
         .map(s => {
           const parts = s.split(' - ')
           if (parts.length === 2) {
-            return { startTime: toInputTime(parts[0]), endTime: toInputTime(parts[1].split(' ')[0]) }
+            return { startTime: toInputTime(parts[0]), endTime: toInputTime(parts[1]) }
           }
           const single = toInputTime(s)
           return { startTime: single, endTime: addDurationToTime(single, currentDuration) }
@@ -362,6 +427,8 @@ export default function ListingsTab({
     setModal(null)
     setEditTarget(null)
     setFormError(null)
+    setUploadedImages([])
+    setImageError(null)
     setForm(emptyForm)
     setSlotsList([{ startTime: '08:00', endTime: '10:00' }])
   }
@@ -373,6 +440,8 @@ export default function ListingsTab({
   }
 
   const buildPayload = () => {
+    const imagesPayload = uploadedImages.length > 0 ? JSON.stringify(uploadedImages) : null
+
     if (isHotel) {
       return {
         roomType: form.roomType.trim(),
@@ -385,6 +454,7 @@ export default function ListingsTab({
         amenities: form.amenities || 'Free WiFi, AC',
         bathroomDetails: form.bathroomDetails || 'En-suite Private Bathroom',
         description: form.description.trim(),
+        images: imagesPayload,
         isActive: form.isActive
       }
     }
@@ -408,6 +478,7 @@ export default function ListingsTab({
         dietaryOptions: form.dietaryOptions || 'Standard',
         groupSizeCategory: form.groupSizeCategory || 'Table for Two',
         seatingCapacity: parseInt(form.seatingCapacity, 10),
+        images: imagesPayload,
         isActive: form.isActive
       }
     }
@@ -427,6 +498,7 @@ export default function ListingsTab({
       timeSlots: serializedTimeSlots,
       validFrom: form.validFrom || null,
       validUntil: form.validUntil || null,
+      images: imagesPayload,
       isActive: form.isActive
     }
   }
@@ -445,10 +517,7 @@ export default function ListingsTab({
       if (!form.name?.trim()) return { id: 'rest-name', msg: 'Restaurant / item name is required.' }
       if (!form.cuisineType?.trim()) return { id: 'rest-cuisine', msg: 'Cuisine type is required.' }
       if (!form.location?.trim()) return { id: 'rest-location', msg: 'Location is required.' }
-      if (!form.description?.trim()) return { id: 'rest-desc', msg: 'Description is required.' }
-      if (form.description.trim().length < 10) {
-        return { id: 'rest-desc', msg: 'Description must be at least 10 characters long.' }
-      }
+      if (!form.description?.trim()) return { id: 'rest-desc', msg: 'Description must be at least 10 characters long.' }
       const p = parseFloat(form.pricePerPerson)
       if (isNaN(p) || p <= 0) return { id: 'rest-price', msg: 'Price per person must be a positive amount.' }
 
@@ -542,11 +611,12 @@ export default function ListingsTab({
         : catalogUrl(catalogEndpoint)
       const method = modal === 'edit' ? 'PUT' : 'POST'
 
+      const authToken = localStorage.getItem('cq_token') || token
       const resp = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${authToken}`
         },
         body: JSON.stringify(payload)
       })
@@ -575,7 +645,7 @@ export default function ListingsTab({
         roomType: item.roomType, propertyType: item.propertyType, location: item.location,
         pricePerNight: item.pricePerNight, maxGuests: item.maxGuests, bedDetails: item.bedDetails,
         minStayNights: item.minStayNights, amenities: item.amenities,
-        bathroomDetails: item.bathroomDetails, description: item.description, isActive: newStatus
+        bathroomDetails: item.bathroomDetails, description: item.description, images: item.images, isActive: newStatus
       }
     } else if (isRestaurant) {
       payload = {
@@ -583,20 +653,21 @@ export default function ListingsTab({
         diningStyle: item.diningStyle, location: item.location, pricePerPerson: item.pricePerPerson,
         priceRange: item.priceRange, openingHours: item.openingHours, timeSlots: item.timeSlots || '',
         setMenuDetails: item.setMenuDetails, dietaryOptions: item.dietaryOptions, groupSizeCategory: item.groupSizeCategory || 'Table for Two',
-        seatingCapacity: item.seatingCapacity, isActive: newStatus
+        seatingCapacity: item.seatingCapacity, images: item.images, isActive: newStatus
       }
     } else {
       payload = {
         title: item.title, description: item.description, price: item.price, unit: item.unit,
         location: item.location, maxParticipants: item.maxParticipants, duration: item.duration,
         availableDays: item.availableDays, timeSlots: item.timeSlots,
-        validFrom: item.validFrom, validUntil: item.validUntil, isActive: newStatus
+        validFrom: item.validFrom, validUntil: item.validUntil, images: item.images, isActive: newStatus
       }
     }
     try {
+      const authToken = localStorage.getItem('cq_token') || token
       const resp = await fetch(catalogUrl(`${catalogEndpoint}/${item.id}`), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify(payload)
       })
       if (resp.ok) {
@@ -610,9 +681,10 @@ export default function ListingsTab({
     if (!serviceToDelete) return
     setDeleteLoading(true)
     try {
+      const authToken = localStorage.getItem('cq_token') || token
       const resp = await fetch(catalogUrl(`${catalogEndpoint}/${serviceToDelete}`), {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${authToken}` }
       })
       if (resp.status === 204 || resp.ok) {
         showToast('Listing deleted.')
@@ -657,6 +729,12 @@ export default function ListingsTab({
   const emptyMsg = isHotel ? 'Create Your First Accommodation Listing'
     : isRestaurant ? 'Create Your First Dining Listing'
       : 'Create Your First Tourism Experience Listing'
+
+  const photoSectionTitle = isHotel
+    ? 'Room & Accommodation Photos (Optional, Max 5)'
+    : isRestaurant
+      ? 'Menu & Dining Photos (Optional, Max 5)'
+      : 'Experience Photos (Optional, Max 5)'
 
   return (
     <div className="pd-activities-tab">
@@ -1276,6 +1354,59 @@ export default function ListingsTab({
               </>
             )}
 
+            {/* ─── SHARED REUSABLE IMAGES SECTION (Applied to Experiences, Dining & Accommodations) ─── */}
+            <div className="pd-images-section">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label style={{ fontWeight: 600, fontSize: '13.5px', color: '#123b5d', margin: 0 }}>
+                  {photoSectionTitle}
+                </label>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>{uploadedImages.length} / 5</span>
+              </div>
+
+              {imageError && <p className="pd-field-error" style={{ marginBottom: '8px' }}>{imageError}</p>}
+
+              <div className="pd-image-grid-preview">
+                {uploadedImages.map((url, idx) => (
+                  <div key={idx} className="pd-image-thumb-wrap">
+                    <img src={url} alt={`Preview ${idx + 1}`} className="pd-image-thumb" />
+                    <button
+                      type="button"
+                      className="pd-image-remove-btn"
+                      onClick={() => handleRemoveImage(idx)}
+                      title="Remove image"
+                    >
+                      ✕
+                    </button>
+                    {idx === 0 && <span className="pd-image-primary-badge">Cover</span>}
+                  </div>
+                ))}
+
+                {uploadedImages.length < 5 && (
+                  <div>
+                    <input
+                      type="file"
+                      id="listing-images-input"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      onChange={handleImageUpload}
+                      disabled={uploadingImage}
+                      style={{ display: 'none' }}
+                    />
+                    <label
+                      htmlFor="listing-images-input"
+                      className="pd-image-upload-btn"
+                      style={{ cursor: uploadingImage ? 'wait' : 'pointer' }}
+                    >
+                      <span style={{ fontSize: '20px', lineHeight: 1 }}>+</span>
+                      <span style={{ fontSize: '11px', marginTop: '4px', fontWeight: 600 }}>
+                        {uploadingImage ? 'Uploading…' : 'Add Photo'}
+                      </span>
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="pd-checkbox-group" style={{ marginTop: '8px' }}>
               <label className="pd-checkbox-label">
                 <input
@@ -1478,6 +1609,3 @@ export default function ListingsTab({
     </div>
   )
 }
-
-// ── Root Provider Dashboard Component ─────────────────────────────────────────
-

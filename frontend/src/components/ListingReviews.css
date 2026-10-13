@@ -1,0 +1,243 @@
+.cq-reviews {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+  color: #1e293b;
+}
+
+.cq-reviews--submit-only {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.cq-reviews--submit-only .cq-review-form {
+  margin-top: 4px;
+}
+
+.cq-reviews h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 12px;
+}
+
+.cq-review-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 16px;
+  flex-wrap: wrap;
+}
+
+.cq-review-filter-label {
+  font-size: 13.5px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.cq-review-filter-select {
+  padding: 6px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.cq-review-filter-select:hover {
+  border-color: #94a3b8;
+}
+
+.cq-review-filter-select:focus {
+  border-color: #0891b2;
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.15);
+}
+
+.cq-review-success {
+  padding: 10px 14px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  color: #065f46;
+  font-size: 13.5px;
+  font-weight: 600;
+  margin: 8px 0 16px;
+}
+
+.cq-review-filters,
+.cq-review-pagination,
+.cq-review-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cq-review-heading {
+  justify-content: space-between;
+}
+
+.cq-review-heading strong {
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 14.5px;
+}
+
+.cq-review-heading time {
+  color: #64748b;
+  font-size: 12.5px;
+}
+
+.cq-reviews button,
+.cq-review-form select,
+.cq-review-form textarea {
+  font: inherit;
+}
+
+.cq-reviews button {
+  padding: 8px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+}
+
+.cq-review-filters button[aria-pressed="true"],
+.cq-review-form button[type="submit"] {
+  background: #14532d;
+  border-color: #14532d;
+  color: #fff;
+}
+
+.cq-reviews button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.cq-reviews :focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+}
+
+.cq-review-list {
+  list-style: none;
+  padding: 0;
+}
+
+.cq-review-list li {
+  padding: 16px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.cq-review-comment {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cq-stars,
+.cq-star-picker label > span[aria-hidden="true"] {
+  color: #b45309;
+  font-size: 22px;
+}
+
+.cq-review-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.cq-review-form textarea,
+.cq-review-form select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.cq-review-form textarea {
+  resize: vertical;
+}
+
+.cq-star-picker {
+  display: flex;
+  gap: 12px;
+  border: 0;
+  padding: 0;
+}
+
+.cq-star-picker label {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.cq-review-error {
+  color: #b91c1c;
+}
+
+.cq-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .cq-review-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .cq-review-form button[type="submit"] {
+    width: 100%;
+  }
+}
+
+.cq-review-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 10px;
+}
+
+.cq-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.2px;
+}
+
+.cq-badge--verified-customer {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.cq-badge--attendance-verified {
+  background: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.cq-verified-booking { display: inline-block; margin: 0.5rem; color: #166534; font-size: 0.85rem; }
+.cq-provider-response { margin: 1rem 0; padding: 1rem; border-left: 3px solid #2563eb; background: #eff6ff; overflow-wrap: anywhere; }
+.cq-attendance-actions, .cq-attendance-dispute { margin-top: 0.5rem; }
+.cq-attendance-dispute textarea { display: block; width: 100%; max-width: 100%; min-height: 5rem; }
+.cq-provider-reviews article { margin-bottom: 1.5rem; }

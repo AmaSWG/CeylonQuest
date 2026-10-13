@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react'
 import HomeNavbar from '../components/HomeNavbar'
 import HomeHero from '../components/HomeHero'
 import HomeFeatures from '../components/HomeFeatures'
+import HomePlatformReviews from '../../reviews/components/HomePlatformReviews'
 import HomeCtaBanner from '../components/HomeCtaBanner'
 import HomeFooter from '../components/HomeFooter'
 import './HomePage.css'
 
-function HomePage({ onLogin, onRegister }) {
+
+function HomePage({ onLogin, onRegister, onViewReviews }) {
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
@@ -26,6 +28,7 @@ function HomePage({ onLogin, onRegister }) {
       <HomeHero onRegister={onRegister} />
 
       <HomeFeatures />
+      <HomePlatformReviews onViewReviews={onViewReviews} />
 
       <HomeCtaBanner
         onLogin={onLogin}

@@ -7,8 +7,8 @@
   display: flex;
   /*background-color: #f7f3e8;*/
   background: 
-    linear-gradient(rgba(247, 243, 232, 0.85), rgba(247, 243, 232, 0.85)),
-    url('../assets/hero.png') center / cover no-repeat;
+    linear-gradient(rgba(247, 243, 232, 0.65), rgba(247, 243, 232, 0.65)),
+    url('../assets/back.png') center / cover no-repeat;
   
   font-family: 'Inter', system-ui, sans-serif;
   color: #222222;
@@ -295,6 +295,55 @@
   padding: 36px 36px 60px;
   overflow-y: auto;
   box-sizing: border-box;
+  text-align: left;
+}
+
+/* ── Top Notification Button ── */
+.cq-notification-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+
+.cq-notification-bell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 8px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #123b5d;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(18, 59, 93, 0.06);
+  transition: all 0.2s ease;
+}
+
+.cq-notification-bell:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(18, 59, 93, 0.1);
+}
+
+.cq-notification-bell:active {
+  transform: translateY(0);
+}
+
+.cq-notification-bell svg {
+  color: #168aad;
+}
+
+.cq-notification-bell__badge {
+  background: #ef4444;
+  color: #ffffff;
+  border-radius: 20px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 /* ── Mobile Overlay ── */

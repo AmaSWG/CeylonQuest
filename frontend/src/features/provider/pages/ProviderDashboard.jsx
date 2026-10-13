@@ -1,6 +1,9 @@
+import useNotifications from '../../../hooks/notification'
+import NotificationPanel from '../../../components/NotificationPanel'
 import { useState, useEffect, useCallback } from 'react'
 
 import './ProviderDashboard.css'
+import PlatformReviewsPage from '../../reviews/pages/PlatformReveiwPage'
 
 import {
   DashboardIcon,
@@ -11,7 +14,8 @@ import {
   PermIdentityIcon,
   BarChartIcon,
   CheckCircleIcon,
-  CancelIcon
+  CancelIcon,
+  RateReviewIcon
 } from '../../../components/Icons'
 
 import DashboardLayout from '../../../components/DashboardLayout'
@@ -26,8 +30,8 @@ import ProviderOverviewTab from '../components/ProviderOverviewTab'
 import ProviderBusinessProfileTab from '../components/ProviderBusinessProfileTab'
 import ProviderListingsTab from '../components/ProviderListingsTab'
 import ProviderBookingsTab from '../components/ProviderBookingsTab'
+import ProviderReviewsTab from '../components/ProviderReviewsTab'
 import ProviderReportsTab from '../components/ProviderReportsTab'
-import ProviderNotificationsTab from '../components/ProviderNotificationsTab'
 import ProviderAccountTab from '../components/ProviderAccountTab'
 
 
@@ -57,8 +61,8 @@ function Toast({
   return (
     <div
       className={`pd-toast ${isError
-          ? 'pd-toast--error'
-          : 'pd-toast--success'
+        ? 'pd-toast--error'
+        : 'pd-toast--success'
         }`}
       role="alert"
       aria-live="polite"
@@ -130,23 +134,6 @@ function ProviderDashboard({ onLogout }) {
      Notifications
      ======================================================= */
 
-  const [notifications, setNotifications] =
-    useState(() => {
-      try {
-        const saved =
-          localStorage.getItem(
-            'ceylonquest_provider_notifications'
-          )
-
-        return saved
-          ? JSON.parse(saved)
-          : []
-      } catch {
-        return []
-      }
-    })
-
-
   /* =======================================================
      Authentication
      ======================================================= */
@@ -155,21 +142,8 @@ function ProviderDashboard({ onLogout }) {
     localStorage.getItem('authToken')
 
 
-  /* =======================================================
-     Save notifications
-     ======================================================= */
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        'ceylonquest_provider_notifications',
-        JSON.stringify(notifications)
-      )
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, [notifications])
-
+  const notificationState = useNotifications(token, activeTab === 'notifications')
+  const notifications = notificationState.items
 
   /* =======================================================
      Toast helper
@@ -555,63 +529,7 @@ function ProviderDashboard({ onLogout }) {
      Notification Actions
      ======================================================= */
 
-  const handleMarkAllNotificationsRead =
-    () => {
-      setNotifications(
-        previous =>
-          previous.map(
-            notification => ({
-              ...notification,
-              read: true
-            })
-          )
-      )
-
-      showToast(
-        'All notifications marked as read.'
-      )
-    }
-
-
-  const handleToggleNotificationRead =
-    (notificationId) => {
-      setNotifications(
-        previous =>
-          previous.map(
-            notification =>
-              notification.id ===
-                notificationId
-                ? {
-                  ...notification,
-                  read:
-                    !notification.read
-                }
-                : notification
-          )
-      )
-    }
-
-
-  const handleClearNotifications =
-    () => {
-      setNotifications([])
-
-      showToast(
-        'Notifications cleared.'
-      )
-    }
-
-
-  /* =======================================================
-     Notification Count
-     ======================================================= */
-
-  const unreadNotifCount =
-    notifications.filter(
-      notification =>
-        !notification.read
-    ).length
-
+  const unreadNotifCount = notificationState.unreadCount
 
   /* =======================================================
      Navigation
@@ -653,6 +571,11 @@ function ProviderDashboard({ onLogout }) {
     },
 
     {
+      key: 'reviews',
+      icon: <BarChartIcon size={18} />,
+      label: 'Reviews & Ratings'
+    },
+    {
       key: 'reports',
       icon:
         <BarChartIcon size={18} />,
@@ -674,11 +597,17 @@ function ProviderDashboard({ onLogout }) {
     },
 
     {
+      key: 'platform-reviews',
+      icon:
+        <RateReviewIcon size={18} />,
+      label: 'Platform Reviews'
+    },
+    {
       key: 'account',
       icon:
         <PermIdentityIcon size={18} />,
       label: 'Account'
-    }
+    },
   ]
 
 
@@ -688,6 +617,8 @@ function ProviderDashboard({ onLogout }) {
 
   return (
     <DashboardLayout
+      notificationCount={unreadNotifCount}
+      onOpenNotifications={() => setActiveTab('notifications')}
       roleBadge="Provider Portal"
       navItems={navItems}
       activeTab={activeTab}
@@ -784,10 +715,16 @@ function ProviderDashboard({ onLogout }) {
         />
       )}
 
+      {activeTab === 'platform-reviews' && (
+        <PlatformReviewsPage embedded />
+      )}
+
 
       {/* =================================================
           Reports
           ================================================= */}
+
+      {activeTab === 'reviews' && <ProviderReviewsTab services={services} bookingType={isHotel ? 'Accommodation' : isRestaurant ? 'Restaurant' : 'Experience'} />}
 
       {activeTab === 'reports' && (
         <ProviderReportsTab
@@ -803,23 +740,7 @@ function ProviderDashboard({ onLogout }) {
 
       {activeTab ===
         'notifications' && (
-          <ProviderNotificationsTab
-            notifications={
-              notifications
-            }
-
-            onMarkAllRead={
-              handleMarkAllNotificationsRead
-            }
-
-            onToggleRead={
-              handleToggleNotificationRead
-            }
-
-            onClearAll={
-              handleClearNotifications
-            }
-          />
+          <NotificationPanel state={notificationState} />
         )}
 
 

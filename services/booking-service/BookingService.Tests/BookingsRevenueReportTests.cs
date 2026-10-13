@@ -65,14 +65,14 @@ public class BookingsRevenueReportTests
         Seed(db, Guid.NewGuid());
         var report = await new BookingsRevenueReportService(db, Catalog(ownedId).Object)
             .GenerateAsync("provider-token", new());
-        Assert.Equal(11, report.TotalBookings);
+        Assert.Equal(12, report.TotalBookings);
         Assert.Equal(900m, report.TotalRevenue);
         Assert.Equal(3, report.StatusCounts["Confirmed"]);
         Assert.Equal(3, report.StatusCounts["Cancelled"]);
-        Assert.Equal(2, report.StatusCounts["Completed"]);
+        Assert.Equal(3, report.StatusCounts["Completed"]);
         Assert.Equal(3, report.StatusCounts["PendingPayment"]);
         Assert.Equal(4, report.BookingTypeCounts["Experience"]);
-        Assert.Equal(3, report.BookingTypeCounts["Restaurant"]);
+        Assert.Equal(4, report.BookingTypeCounts["Restaurant"]);
         Assert.Equal(4, report.BookingTypeCounts["Accommodation"]);
         Assert.All(report.Records.Where(r => r.Status is "Cancelled" or "PendingPayment"), r => Assert.Equal(0m, r.Revenue));
     }
@@ -108,7 +108,7 @@ public class BookingsRevenueReportTests
         Seed(db, id, Day.AddDays(-1)); Seed(db, id); Seed(db, id, Day.AddDays(1));
         var report = await new BookingsRevenueReportService(db, Catalog(id).Object).GenerateAsync("provider-token",
             new() { StartDate = startOnly ? Day : null, EndDate = startOnly ? null : Day });
-        Assert.Equal(22, report.TotalBookings);
+        Assert.Equal(24, report.TotalBookings);
     }
 
     [Theory]

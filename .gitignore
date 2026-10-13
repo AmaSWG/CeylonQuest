@@ -68,3 +68,6 @@ coverage/
 *.log
 
 services/identity-service/uploads/
+
+# Test coverage output
+**/coveragereport/

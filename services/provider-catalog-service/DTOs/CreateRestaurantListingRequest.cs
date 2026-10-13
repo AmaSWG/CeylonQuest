@@ -8,6 +8,8 @@ public class CreateRestaurantListingRequest
     [StringLength(150, MinimumLength = 2)]
     public string Name { get; set; } = string.Empty;
 
+    public string ProviderBusinessName { get; set; } = string.Empty;
+
     [Required]
     [StringLength(2000, MinimumLength = 10)]
     public string Description { get; set; } = string.Empty;

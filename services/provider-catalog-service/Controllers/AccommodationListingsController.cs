@@ -29,8 +29,11 @@ public class AccommodationListingsController : ControllerBase
     /// </summary>
     private static AccommodationListingResponse ToDto(AccommodationListing a, string businessName = "") => new()
     {
+        AverageRating = a.AverageRating,
+        ReviewCount = a.ReviewCount,
         Id = a.Id,
         ProviderId = a.ProviderId,
+        ProviderUserId = a.Provider?.IdentityUserId,
         ProviderBusinessName = !string.IsNullOrEmpty(businessName) ? businessName : a.Provider?.BusinessName ?? "",
         RoomType = a.RoomType,
         PropertyType = a.PropertyType,
@@ -211,7 +214,7 @@ public class AccommodationListingsController : ControllerBase
         var query = _db.AccommodationListings
             .AsNoTracking()
             .Include(a => a.Provider)
-            .Where(a => a.IsActive);
+            .Where(a => a.IsActive && !a.IsRemoved);
 
         // Search across the main listing details
         if (!string.IsNullOrWhiteSpace(search))

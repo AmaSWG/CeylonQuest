@@ -2,7 +2,14 @@ namespace ProviderCatalogService.DTOs;
 
 public class ActivityListingResponse
 {
+    public decimal AverageRating { get; set; }
+    public int ReviewCount { get; set; }
+    public Guid ProviderId { get; set; }
     public Guid Id { get; set; }
+
+    public Guid? ProviderUserId { get; set; }
+
+    public string ProviderBusinessName { get; set; } = string.Empty;
 
     public string Title { get; set; } = string.Empty;
 
@@ -30,4 +37,7 @@ public class ActivityListingResponse
 
     public DateTime? ValidUntil { get; set; }
     public string? Images { get; set; }
+
+    public bool IsRemoved { get; set; }
+    public string Status { get; set; } = string.Empty;
 }

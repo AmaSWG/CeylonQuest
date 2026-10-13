@@ -6,7 +6,6 @@ import {
   GroupIcon,
   WorkIcon,
   BarChartIcon,
-  NotificationsActiveIcon,
   PermIdentityIcon,
   CheckCircleIcon,
   CancelIcon
@@ -21,6 +20,10 @@ import AdminProviderManagementTab from '../components/AdminProviderManagementTab
 import AdminReportsTab from '../components/AdminReportsTab'
 import AdminNotificationsTab from '../components/AdminNotificationsTab'
 import AdminAccountTab from '../components/AdminAccountTab'
+import AdminAttendanceDisputesTab from '../components/AdminAttendanceDisputesTab'
+import AdminListingManagementTab from '../components/AdminListingManagementTab'
+import { getAdminUsers } from '../../../api/adminManagementApi'
+import AdminAuditTrailTab from '../components/AdminAuditTrailTab'
 
 function Toast({ message, title, onClose }) {
   const isError = typeof message === 'string' && (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') || (title && title.toLowerCase().includes('error')));
@@ -32,9 +35,9 @@ function Toast({ message, title, onClose }) {
   }, [onClose])
 
   return (
-    <div 
-      className={`ad-toast ${isError ? 'ad-toast--error' : 'ad-toast--success'}`} 
-      role="alert" 
+    <div
+      className={`ad-toast ${isError ? 'ad-toast--error' : 'ad-toast--success'}`}
+      role="alert"
       aria-live="polite"
     >
       <div className="ad-toast__icon">
@@ -63,6 +66,8 @@ function AdminDashboard({ onLogout }) {
   })
 
   const [users, setUsers] = useState([])
+  const [usersLoading, setUsersLoading] = useState(true)
+  const [usersError, setUsersError] = useState('')
   const [applications, setApplications] = useState([])
   const [bookings, setBookings] = useState([])
 
@@ -80,7 +85,7 @@ function AdminDashboard({ onLogout }) {
   useEffect(() => {
     try {
       localStorage.setItem('ceylonquest_admin_notifications', JSON.stringify(notifications))
-    } catch {}
+    } catch { }
   }, [notifications])
 
   const showToast = useCallback((msg, title) => setToast({ message: msg, title }), [])
@@ -94,7 +99,7 @@ function AdminDashboard({ onLogout }) {
       if (resp.ok) {
         setUserProfile(await resp.json())
       }
-    } catch {}
+    } catch { }
   }, [token])
 
   useEffect(() => {
@@ -102,15 +107,22 @@ function AdminDashboard({ onLogout }) {
   }, [fetchUserProfile])
 
   const fetchUsers = useCallback(async () => {
-    if (!token) return
+    setUsersLoading(true)
+    setUsersError('')
+
     try {
-      const resp = await fetch(apiUrl('/api/admin/users'), {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (resp.ok) {
-        setUsers(await resp.json())
+      const data = await getAdminUsers(token)
+
+      if (!Array.isArray(data)) {
+        throw new Error('The user API returned an invalid response.')
       }
-    } catch {}
+
+      setUsers(data)
+    } catch (error) {
+      setUsersError(error.message || 'Failed to load users.')
+    } finally {
+      setUsersLoading(false)
+    }
   }, [token])
 
   const fetchApplications = useCallback(async () => {
@@ -122,7 +134,7 @@ function AdminDashboard({ onLogout }) {
       if (resp.ok) {
         setApplications(await resp.json())
       }
-    } catch {}
+    } catch { }
   }, [token])
 
   const fetchBookings = useCallback(async () => {
@@ -132,7 +144,7 @@ function AdminDashboard({ onLogout }) {
       if (saved) {
         setBookings(await resp.json())
       }
-    } catch {}
+    } catch { }
   }, [token])
 
   useEffect(() => {
@@ -179,17 +191,18 @@ function AdminDashboard({ onLogout }) {
     onLogout && onLogout()
   }, [onLogout])
 
-  const unreadNotifCount = notifications.filter(n => !n.read).length
   const pendingAppsCount = applications.filter(a => a.status === 'Pending').length
 
   const navItems = [
-    { key: 'overview',      icon: <DashboardIcon size={18} />,          label: 'Overview' },
-    { key: 'applications',  icon: <DocumentScannerIcon size={18} />,    label: 'Provider Applications', badge: pendingAppsCount > 0 ? pendingAppsCount : null },
-    { key: 'users',         icon: <GroupIcon size={18} />,              label: 'User Management' },
-    { key: 'providers',     icon: <WorkIcon size={18} />,               label: 'Provider Management' },
-    { key: 'reports',       icon: <BarChartIcon size={18} />,            label: 'Reports & Analytics' },
-    { key: 'notifications', icon: <NotificationsActiveIcon size={18} />, label: 'Notifications', badge: unreadNotifCount > 0 ? unreadNotifCount : null },
-    { key: 'account',       icon: <PermIdentityIcon size={18} />,        label: 'Account' },
+    { key: 'overview', icon: <DashboardIcon size={18} />, label: 'Overview' },
+    { key: 'applications', icon: <DocumentScannerIcon size={18} />, label: 'Provider Applications', badge: pendingAppsCount > 0 ? pendingAppsCount : null },
+    { key: 'users', icon: <GroupIcon size={18} />, label: 'User Management' },
+    { key: 'listings', icon: <WorkIcon size={18} />, label: 'Listing Management', },
+    { key: 'audit-trail', icon: <DocumentScannerIcon size={18} />, label: 'Audit Trail', },
+    { key: 'providers', icon: <WorkIcon size={18} />, label: 'Provider Management' },
+    { key: 'attendance-disputes', icon: <DocumentScannerIcon size={18} />, label: 'Attendance Disputes' },
+    { key: 'reports', icon: <BarChartIcon size={18} />, label: 'Reports & Analytics' },
+    { key: 'account', icon: <PermIdentityIcon size={18} />, label: 'Account' },
   ]
 
   return (
@@ -213,6 +226,10 @@ function AdminDashboard({ onLogout }) {
         />
       )}
 
+      {activeTab === 'audit-trail' && (
+        <AdminAuditTrailTab token={token} />
+      )}
+
       {activeTab === 'applications' && (
         <AdminProviderApplicationsTab
           token={token}
@@ -229,6 +246,16 @@ function AdminDashboard({ onLogout }) {
           onLogout={handleLogout}
           users={users}
           onRefresh={fetchUsers}
+          onUsersChange={setUsers}
+          usersLoading={usersLoading}
+          usersError={usersError}
+          showToast={showToast}
+        />
+      )}
+
+      {activeTab === 'listings' && (
+        <AdminListingManagementTab
+          token={token}
           showToast={showToast}
         />
       )}
@@ -244,6 +271,7 @@ function AdminDashboard({ onLogout }) {
         />
       )}
 
+      {activeTab === 'attendance-disputes' && <AdminAttendanceDisputesTab />}
       {activeTab === 'reports' && (
         <AdminReportsTab
           token={token}

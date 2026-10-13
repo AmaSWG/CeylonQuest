@@ -26,6 +26,8 @@ import AdminDashboard from './features/admin/pages/AdminDashboard'
 import PaymentSuccessPage from './features/payment/pages/PaymentSuccessPage'
 import PaymentCancelPage from './features/payment/pages/PaymentCancelPage'
 
+//Review Feature
+import PlatformReviewsPage from './features/reviews/pages/PlatformReveiwPage'
 function App() {
   const storedRole = localStorage.getItem('userRole')
   const hasToken   = Boolean(localStorage.getItem('authToken'))
@@ -34,6 +36,9 @@ function App() {
     const params = new URLSearchParams(window.location.search)
     const path = window.location.pathname.toLowerCase()
 
+    if (params.get('page') === 'platform-reviews') {
+      return 'platform-reviews'
+    }
     if (path.includes('reset-password') || params.has('token') || params.get('page') === 'reset-password') {
       return 'reset-password'
     }
@@ -81,6 +86,19 @@ function App() {
     localStorage.removeItem('authToken')
     localStorage.removeItem('userRole')
     setPage('home')
+  }
+
+  if (page === 'platform-reviews') {
+    return (
+      <PlatformReviewsPage
+        onHome={() => {
+          window.history.pushState({}, '', '/')
+          setPage('home')
+        }}
+        onLogin={() => setPage('login')}
+        onRegister={() => setPage('registration')}
+      />
+    )
   }
 
   if (page === 'provider-application') {
@@ -201,11 +219,16 @@ function App() {
   }
 
   if (page === 'visitor-dashboard') {
-    return <VisitorDashboard onLogout={handleLogout} />
+    return (
+        <VisitorDashboard onLogout={handleLogout} />
+      
+    )
   }
 
   if (page === 'provider-dashboard') {
-    return <ProviderDashboard onLogout={handleLogout} />
+    return (
+        <ProviderDashboard onLogout={handleLogout} />
+    )
   }
 
   if (page === 'admin-dashboard') {
@@ -217,6 +240,7 @@ function App() {
       <HomePage
         onLogin={() => setPage('login')}
         onRegister={() => setPage('registration')}
+        onViewReviews={() => setPage('platform-reviews')}
       />
     )
   }

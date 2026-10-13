@@ -4,6 +4,8 @@ namespace ProviderCatalogService.DTOs;
 
 public class SearchResultItemDto
 {
+    public decimal AverageRating { get; set; }
+    public int ReviewCount { get; set; }
     public Guid Id { get; set; }
 
     public string Type { get; set; } = "Experience"; // "Experience" | "Restaurant" | "Accommodation"

@@ -32,6 +32,12 @@ namespace ProviderCatalogService.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<decimal>("AverageRating")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(3, 2)
+                        .HasColumnType("decimal(3,2)")
+                        .HasDefaultValue(0m);
+
                     b.Property<string>("BathroomDetails")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -52,6 +58,12 @@ namespace ProviderCatalogService.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsRemoved")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Location")
                         .IsRequired()
@@ -74,6 +86,18 @@ namespace ProviderCatalogService.Migrations
                     b.Property<Guid>("ProviderId")
                         .HasColumnType("char(36)");
 
+                    b.Property<long>("RatingSum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
+                    b.Property<int>("ReviewCount")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("RoomType")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -81,6 +105,8 @@ namespace ProviderCatalogService.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ProviderId");
+
+                    b.HasIndex("IsRemoved", "IsActive");
 
                     b.ToTable("AccommodationListings");
                 });
@@ -94,6 +120,12 @@ namespace ProviderCatalogService.Migrations
                     b.Property<string>("AvailableDays")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<decimal>("AverageRating")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(3, 2)
+                        .HasColumnType("decimal(3,2)")
+                        .HasDefaultValue(0m);
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
@@ -112,6 +144,12 @@ namespace ProviderCatalogService.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<bool>("IsRemoved")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Location")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -125,6 +163,18 @@ namespace ProviderCatalogService.Migrations
 
                     b.Property<Guid>("ProviderId")
                         .HasColumnType("char(36)");
+
+                    b.Property<long>("RatingSum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
+                    b.Property<int>("ReviewCount")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("TimeSlots")
                         .IsRequired()
@@ -151,6 +201,8 @@ namespace ProviderCatalogService.Migrations
                     b.HasIndex("IsActive", "CreatedAt");
 
                     b.HasIndex("IsActive", "Price");
+
+                    b.HasIndex("IsRemoved", "IsActive");
 
                     b.ToTable("ActivityListings");
                 });
@@ -192,6 +244,64 @@ namespace ProviderCatalogService.Migrations
                         .IsUnique();
 
                     b.ToTable("AvailabilitySlots");
+                });
+
+            modelBuilder.Entity("ProviderCatalogService.Models.BookingCapacityRelease", b =>
+                {
+                    b.Property<Guid>("BookingId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("ReleasedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("BookingId");
+
+                    b.ToTable("BookingCapacityReleases");
+                });
+
+            modelBuilder.Entity("ProviderCatalogService.Models.ListingRemovalAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("AdministratorId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ListingId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("ListingType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("NewStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("PreviousStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<DateTime>("RemovedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RemovedAtUtc");
+
+                    b.HasIndex("ListingType", "ListingId");
+
+                    b.ToTable("ListingRemovalAudits");
                 });
 
             modelBuilder.Entity("ProviderCatalogService.Models.Provider", b =>
@@ -309,6 +419,12 @@ namespace ProviderCatalogService.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<decimal>("AverageRating")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(3, 2)
+                        .HasColumnType("decimal(3,2)")
+                        .HasDefaultValue(0m);
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -338,6 +454,12 @@ namespace ProviderCatalogService.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<bool>("IsRemoved")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Location")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -361,6 +483,18 @@ namespace ProviderCatalogService.Migrations
                     b.Property<Guid>("ProviderId")
                         .HasColumnType("char(36)");
 
+                    b.Property<long>("RatingSum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
+                    b.Property<int>("ReviewCount")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<int>("SeatingCapacity")
                         .HasColumnType("int");
 
@@ -376,7 +510,45 @@ namespace ProviderCatalogService.Migrations
 
                     b.HasIndex("ProviderId");
 
+                    b.HasIndex("IsRemoved", "IsActive");
+
                     b.ToTable("RestaurantListings");
+                });
+
+            modelBuilder.Entity("ProviderCatalogService.Models.ReviewRatingContribution", b =>
+                {
+                    b.Property<Guid>("ReviewId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("BookingType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ListingId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("ProcessedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("int");
+
+                    b.HasKey("ReviewId");
+
+                    b.HasIndex("EventId")
+                        .IsUnique();
+
+                    b.HasIndex("ListingId", "BookingType");
+
+                    b.ToTable("ReviewRatingContributions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ReviewRatingContributions_Rating", "`Rating` BETWEEN 1 AND 5");
+                        });
                 });
 
             modelBuilder.Entity("ProviderCatalogService.Models.AccommodationListing", b =>

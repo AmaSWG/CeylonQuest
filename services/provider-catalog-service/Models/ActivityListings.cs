@@ -1,7 +1,10 @@
 namespace ProviderCatalogService.Models;
 
-public class ActivityListing
+public class ActivityListing : IListingRating
 {
+    public long RatingSum { get; set; }
+    public int ReviewCount { get; set; }
+    public decimal AverageRating { get; set; }
     public Guid Id { get; set; }
 
     public Guid ProviderId { get; set; }
@@ -19,6 +22,13 @@ public class ActivityListing
     public int MaxParticipants { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    public bool IsRemoved { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public string Status => IsRemoved
+        ? "Removed"
+        : IsActive ? "Active" : "Inactive"; 
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 	

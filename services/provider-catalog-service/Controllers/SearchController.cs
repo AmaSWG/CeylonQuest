@@ -91,7 +91,7 @@ public class SearchController : ControllerBase
             var expQuery = _db.ActivityListings
                 .AsNoTracking()
                 .Include(a => a.Provider)
-                .Where(a => a.IsActive);
+                .Where(a => a.IsActive && !a.IsRemoved);
 
             // Apply the keyword search across the most relevant text fields
             if (!string.IsNullOrEmpty(keyword))
@@ -125,6 +125,8 @@ public class SearchController : ControllerBase
             var expList = await expQuery.ToListAsync();
             var experiences = expList.Select(a => new SearchResultItemDto
             {
+                AverageRating = a.AverageRating,
+                ReviewCount = a.ReviewCount,
                 Id = a.Id,
                 Type = "Experience",
                 Title = a.Title,
@@ -156,7 +158,7 @@ public class SearchController : ControllerBase
             var restQuery = _db.RestaurantListings
                 .AsNoTracking()
                 .Include(r => r.Provider)
-                .Where(r => r.IsActive);
+                .Where(r => r.IsActive && !r.IsRemoved);
 
             // Apply the keyword search across the most relevant text fields
             if (!string.IsNullOrEmpty(keyword))
@@ -187,6 +189,8 @@ public class SearchController : ControllerBase
             var restList = await restQuery.ToListAsync();
             var restaurants = restList.Select(r => new SearchResultItemDto
             {
+                AverageRating = r.AverageRating,
+                ReviewCount = r.ReviewCount,
                 Id = r.Id,
                 Type = "Restaurant",
                 Title = r.Name,
@@ -218,7 +222,7 @@ public class SearchController : ControllerBase
             var accQuery = _db.AccommodationListings
                 .AsNoTracking()
                 .Include(a => a.Provider)
-                .Where(a => a.IsActive);
+                .Where(a => a.IsActive && !a.IsRemoved);
 
             // Apply the keyword search across the most relevant text fields
             if (!string.IsNullOrEmpty(keyword))
@@ -248,6 +252,8 @@ public class SearchController : ControllerBase
             var accList = await accQuery.ToListAsync();
             var accommodations = accList.Select(a => new SearchResultItemDto
             {
+                AverageRating = a.AverageRating,
+                ReviewCount = a.ReviewCount,
                 Id = a.Id,
                 Type = "Accommodation",
                 Title = a.RoomType,

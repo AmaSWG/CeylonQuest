@@ -28,8 +28,11 @@ public class RestaurantListingsController : ControllerBase
         RestaurantListing r,
         string businessName = "") => new()
     {
+        AverageRating = r.AverageRating,
+        ReviewCount = r.ReviewCount,
         Id = r.Id,
         ProviderId = r.ProviderId,
+        ProviderUserId = r.Provider?.IdentityUserId,
         ProviderBusinessName =
             !string.IsNullOrEmpty(businessName)
                 ? businessName
@@ -323,7 +326,7 @@ public class RestaurantListingsController : ControllerBase
         var query = _db.RestaurantListings
             .AsNoTracking()
             .Include(r => r.Provider)
-            .Where(r => r.IsActive);
+            .Where(r => r.IsActive && !r.IsRemoved);
 
         // Free-text search
         if (!string.IsNullOrWhiteSpace(search))

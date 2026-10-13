@@ -1,0 +1,209 @@
+using Confluent.Kafka;
+using Confluent.Kafka.Admin;
+using Microsoft.Extensions.Options;
+using NotificationService.Data;
+using NotificationService.Models;
+using Shared.Kafka;
+
+namespace NotificationService.Services;
+
+public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfiguration configuration,
+    IServiceScopeFactory scopes, ILogger<NotificationEventConsumer> logger) : BackgroundService
+{
+    public static readonly IReadOnlyList<string> Topics =
+        new[] { "booking.created", "payment.completed", "booking.canceled", "review.submitted", "review.eligibility-granted" };
+
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        Task.Run(() => RunAsync(stoppingToken), stoppingToken);
+
+    private async Task RunAsync(CancellationToken ct)
+    {
+        var s = settings.Value;
+        var maxProcessingAttempts = Math.Max(
+            1,
+            configuration.GetValue<int?>(
+                "Notifications:MaxProcessingAttempts") ?? 5);
+        var config = new ConsumerConfig
+        {
+            BootstrapServers = s.BootstrapServers,
+            GroupId = configuration["Notifications:ConsumerGroupId"] ?? "payment-notification-service",
+            EnableAutoCommit = false,
+            EnableAutoOffsetStore = false,
+            AutoOffsetReset = AutoOffsetReset.Earliest
+        };
+        if (!string.IsNullOrWhiteSpace(s.SecurityProtocol))
+        {
+            config.SecurityProtocol = Enum.Parse<SecurityProtocol>(s.SecurityProtocol.Replace("_", "").Replace("-", ""), true);
+            if (!string.IsNullOrWhiteSpace(s.SaslMechanism))
+                config.SaslMechanism = Enum.Parse<SaslMechanism>(s.SaslMechanism.Replace("_", "").Replace("-", ""), true);
+            config.SaslUsername = s.SaslUsername ?? s.ApiKey;
+            config.SaslPassword = s.SaslPassword ?? s.ApiSecret;
+        }
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                await EnsureTopicsAsync(config, ct);
+                using var consumer = new ConsumerBuilder<string, string>(config).Build();
+                consumer.Subscribe(Topics);
+                logger.LogInformation("Notification consumer subscribed to {Topics}", string.Join(", ", Topics));
+                while (!ct.IsCancellationRequested)
+                {
+                    var record = consumer.Consume(ct);
+                    if (record?.Message == null) continue;
+                    var payload = record.Message.Value ?? "null";
+                    try
+                    {
+                        await using var scope = scopes.CreateAsyncScope();
+                        await scope.ServiceProvider.GetRequiredService<NotificationEventProcessor>()
+                            .ProcessAsync(record.Topic, payload, ct);
+
+                        logger.LogInformation(
+                        "Successfully processed notification event: Topic={Topic}, Partition={Partition}, Offset={Offset}",
+                        record.Topic,
+                        record.Partition.Value,
+                        record.Offset.Value);
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                    catch (Exception ex)
+                    {
+                        var attemptCount = await RecordFailureAsync(
+                            record.Topic, payload, ex, ct);
+
+                        if (attemptCount.HasValue &&
+                            attemptCount.Value >= maxProcessingAttempts)
+                        {
+                            logger.LogError(
+                                ex,
+                                "Quarantining notification event {Topic}/{Partition}/{Offset} " +
+                                "after {Attempts} attempts. Payload retained in FailedEvents.",
+                                record.Topic,
+                                record.Partition.Value,
+                                record.Offset.Value,
+                                attemptCount.Value);
+
+                            consumer.Commit(record);
+                            continue;
+                        }
+
+                        logger.LogError(
+                            ex,
+                            "Failed notification event {Topic}/{Partition}/{Offset}; " +
+                            "offset remains uncommitted. Persisted attempt count: {Attempts}",
+                            record.Topic,
+                            record.Partition.Value,
+                            record.Offset.Value,
+                            attemptCount);
+
+                        throw;
+                    }
+                    logger.LogInformation(
+                    "Received notification event: Topic={Topic}, Key={Key}, Payload={Payload}",
+                    record.Topic,
+                    record.Message.Key,
+                    payload);
+                    consumer.Commit(record);
+                }
+            }
+
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Notification consumer restarting after failure");
+                try
+                {
+                    await Task.Delay(
+                        TimeSpan.FromSeconds(Math.Max(1, s.RetryDelaySeconds)), ct);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    private async Task EnsureTopicsAsync(ConsumerConfig consumerConfig, CancellationToken ct)
+    {
+        if (!configuration.GetValue("Notifications:ProvisionTopics", true)) return;
+
+        // Use the same broker and credentials as the consumer, without group settings.
+        var adminConfig = new AdminClientConfig
+        {
+            BootstrapServers = consumerConfig.BootstrapServers,
+            SecurityProtocol = consumerConfig.SecurityProtocol,
+            SaslMechanism = consumerConfig.SaslMechanism,
+            SaslUsername = consumerConfig.SaslUsername,
+            SaslPassword = consumerConfig.SaslPassword
+        };
+        using var admin = new AdminClientBuilder(adminConfig).Build();
+        var partitions = configuration.GetValue("Notifications:TopicPartitions", -1);
+        var replication = configuration.GetValue<short>("Notifications:TopicReplicationFactor", -1);
+        try
+        {
+            await admin.CreateTopicsAsync(Topics.Select(topic => new TopicSpecification
+            {
+                Name = topic, NumPartitions = partitions, ReplicationFactor = replication
+            }), new CreateTopicsOptions { RequestTimeout = TimeSpan.FromSeconds(30) }).WaitAsync(ct);
+        }
+        catch (CreateTopicsException ex) when (ex.Results.All(result =>
+            result.Error.Code is ErrorCode.NoError or ErrorCode.TopicAlreadyExists))
+        {
+            // Existing topics and concurrent startup by another instance are safe.
+        }
+        catch (CreateTopicsException ex)
+        {
+            logger.LogError(ex, "Cannot provision notification topics. Grant Kafka topic CREATE permission " +
+                "or provision all required topics during deployment and set Notifications:ProvisionTopics=false");
+            throw;
+        }
+        logger.LogInformation("Notification Kafka topics are provisioned");
+    }
+
+    private async Task<int?> RecordFailureAsync(string topic, string payload, Exception error, CancellationToken ct)
+    {
+        try
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var db = scope.ServiceProvider
+                .GetRequiredService<NotificationDbContext>();
+
+            var key = NotificationEventProcessor.PayloadKey(topic, payload);
+            var failure = await db.FailedEvents.FindAsync(
+                new object[] { key }, ct);
+
+            if (failure == null)
+            {
+                failure = new FailedEvent
+                {
+                    EventKey = key,
+                    Topic = topic,
+                    Payload = payload
+                };
+
+                db.FailedEvents.Add(failure);
+            }
+
+            failure.Error = error.ToString();
+            failure.AttemptCount++;
+            failure.LastAttemptAtUtc = DateTime.UtcNow;
+            failure.Resolved = false;
+
+            await db.SaveChangesAsync(ct);
+
+            return failure.AttemptCount;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Cannot persist failure record; Kafka offset remains uncommitted");
+
+            return null;
+        }
+    }
+}

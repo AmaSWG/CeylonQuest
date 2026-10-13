@@ -161,6 +161,7 @@
 .ad-report,
 .ad-account {
   text-align: left;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
 .ad-page-header {
@@ -516,6 +517,10 @@
 
 .ad-table tr:hover td {
   background: #faf8f3;
+}
+
+.ad-table.ad-listings-table tbody td {
+  text-align: left;
 }
 
 /* ── Badges ── */
@@ -3111,3 +3116,30 @@
     flex-basis: 30px;
   }
 }
+
+/* ── Spinner animation & loading state ── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.ad-loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 24px;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.ad-loading-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid #cbd5e1;
+  border-top-color: #123b5d;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}

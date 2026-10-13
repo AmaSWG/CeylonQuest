@@ -1,13 +1,17 @@
+import useNotifications from '../../../hooks/notification'
+import NotificationPanel from '../../../components/NotificationPanel'
 import { useState, useEffect, useCallback } from 'react'
 
 import './VisitorDashboard.css'
+import PlatformReviewsPage from '../../reviews/pages/PlatformReveiwPage'
 
 import {
+  NotificationsActiveIcon,
   PermIdentityIcon,
   CalendarMonthIcon,
-  SettingsIcon,
   PublicIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  RateReviewIcon
 } from '../../../components/Icons'
 
 import DashboardLayout from '../../../components/DashboardLayout'
@@ -80,6 +84,7 @@ function VisitorDashboard({ onLogout }) {
   const [toast, setToast] = useState(null)
 
   const token = localStorage.getItem('authToken')
+  const notificationState = useNotifications(token, activePage === 'notifications')
 
 
   // =========================================================
@@ -172,6 +177,7 @@ function VisitorDashboard({ onLogout }) {
   // =========================================================
 
   const navItems = [
+    { key: 'notifications', icon: <NotificationsActiveIcon size={18} />, label: 'Notifications', badge: notificationState.unreadCount || null },
     {
       key: 'profile',
       icon: <PermIdentityIcon size={18} />,
@@ -191,11 +197,9 @@ function VisitorDashboard({ onLogout }) {
     },
 
     {
-      key: 'settings',
-      icon: <SettingsIcon size={18} />,
-      label: 'Settings',
-      disabled: true,
-      comingSoon: true
+      key: 'platform-reviews',
+      icon: <RateReviewIcon size={18} />,
+      label: 'Platform Reviews'
     }
   ]
 
@@ -206,6 +210,8 @@ function VisitorDashboard({ onLogout }) {
 
   const renderContent = () => {
     switch (activePage) {
+      case 'notifications':
+        return <NotificationPanel state={notificationState} />
       case 'explore':
         return (
           <VisitorExploreTab
@@ -219,6 +225,8 @@ function VisitorDashboard({ onLogout }) {
             onSessionExpired={handleLogout}
           />
         )
+      case 'platform-reviews':
+        return <PlatformReviewsPage embedded />
 
       case 'profile':
       default:
@@ -249,6 +257,8 @@ function VisitorDashboard({ onLogout }) {
 
   return (
     <DashboardLayout
+      notificationCount={notificationState.unreadCount}
+      onOpenNotifications={() => setActivePage('notifications')}
       roleBadge="Visitor"
       navItems={navItems}
       activeTab={activePage}

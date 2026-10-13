@@ -106,6 +106,16 @@ export default function VisitorExploreTab({ showToast }) {
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [selectedBooking, setSelectedBooking] = useState(null)
 
+  const selectedListingId = selectedDetail?.id
+  const selectedListingType = selectedDetail?.type
+  const updateReviewSummary = useCallback((summary) => {
+    setServices(current => current.map(item => {
+      if (item.id !== selectedListingId || item.type !== selectedListingType) return item
+      if (item.averageRating === summary.averageRating && item.reviewCount === summary.reviewCount) return item
+      return { ...item, ...summary }
+    }))
+  }, [selectedListingId, selectedListingType])
+
   const fetchExploreServices = useCallback(async () => {
     setLoading(true)
     setLoadError(null)
@@ -132,6 +142,7 @@ export default function VisitorExploreTab({ showToast }) {
     if (serviceType !== 'all' && s.type.toLowerCase() !== serviceType) return false
     if (category !== 'all' && s.category !== category) return false
     if (location !== 'all' && !(s.location && s.location.toLowerCase().includes(location.toLowerCase()))) return false
+
 
     if (priceRange !== 'all') {
       const p = Number(s.price)
@@ -218,6 +229,7 @@ export default function VisitorExploreTab({ showToast }) {
           <option value="price_asc">Price: Low to High</option>
           <option value="price_desc">Price: High to Low</option>
         </select>
+
       </div>
 
       {loading && <LoadingSpinner label="Loading explore listings…" fullPage />}
@@ -268,6 +280,22 @@ export default function VisitorExploreTab({ showToast }) {
 
                   <h3 className="vd-service-card__title">{item.title}</h3>
 
+                  <div className="vd-service-card__rating">
+                    {Number(item.reviewCount ?? 0) > 0 ? (
+                      <span className="vd-rating-pill" aria-label={`Rating ${Number(item.averageRating).toFixed(1)} out of 5 stars from ${item.reviewCount} reviews`}>
+                        <span className="vd-rating-star">★</span>
+                        <strong className="vd-rating-score">{Number(item.averageRating).toFixed(1)}</strong>
+                        <span className="vd-rating-sep">·</span>
+                        <span className="vd-rating-count">{item.reviewCount} {item.reviewCount === 1 ? 'review' : 'reviews'}</span>
+                      </span>
+                    ) : (
+                      <span className="vd-rating-empty" aria-label="No reviews yet">
+                        <span className="vd-rating-star vd-rating-star--empty">★</span>
+                        <span>No reviews yet</span>
+                      </span>
+                    )}
+                  </div>
+
                   <div className="vd-service-card__body">
                     <div className="vd-service-card__body-left">
                       <p className="vd-service-card__desc">{item.description}</p>
@@ -291,7 +319,6 @@ export default function VisitorExploreTab({ showToast }) {
 
                     <ServiceCardImages item={item} />
                   </div>
-
                   <div className="vd-service-card__footer">
                     <div className="vd-service-card__actions">
                       <button
@@ -352,6 +379,7 @@ export default function VisitorExploreTab({ showToast }) {
       {selectedDetail && (
         <VisitorServiceDetailModal
           item={selectedDetail}
+          onSummaryChange={updateReviewSummary}
           onClose={() => setSelectedDetail(null)}
           onOpenBooking={(it) => setSelectedBooking(it)}
         />

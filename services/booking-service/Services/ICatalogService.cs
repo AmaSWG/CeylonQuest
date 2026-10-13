@@ -40,4 +40,8 @@ public interface ICatalogService
     // Provider-owned accommodation listings
     Task<List<CatalogProviderListingResponse>>
         GetMyAccommodationListingsAsync(string accessToken);
+
+    Task<List<CatalogReportProviderResponse>> GetReportProvidersAsync(
+        string accessToken,
+        CancellationToken cancellationToken = default);
 }

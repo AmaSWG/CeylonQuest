@@ -5,6 +5,7 @@ import {
 
 import StatusBadge from '../../../components/common/StatusBadge'
 import EmptyState from '../../../components/common/EmptyState'
+import AttendanceActions from '../../../components/AttendanceActions'
 
 
 /* =========================================================
@@ -774,6 +775,7 @@ export default function ProviderBookingsTab({
                         >
                           View Details
                         </button>
+                        <AttendanceActions booking={booking} onSaved={onRetry} />
 
                       </td>
 

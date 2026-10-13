@@ -2,8 +2,11 @@ using System;
 
 namespace ProviderCatalogService.Models;
 
-public class AccommodationListing
+public class AccommodationListing : IListingRating
 {
+    public long RatingSum { get; set; }
+    public int ReviewCount { get; set; }
+    public decimal AverageRating { get; set; }
     public Guid Id { get; set; }
 
     public Guid ProviderId { get; set; }
@@ -29,6 +32,13 @@ public class AccommodationListing
     public string Description { get; set; } = string.Empty;
 
     public bool IsActive { get; set; } = true;
+
+    public bool IsRemoved { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public string Status => IsRemoved
+        ? "Removed"
+        : IsActive ? "Active" : "Inactive";
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

@@ -2,8 +2,11 @@ using System;
 
 namespace ProviderCatalogService.Models;
 
-public class RestaurantListing
+public class RestaurantListing : IListingRating
 {
+    public long RatingSum { get; set; }
+    public int ReviewCount { get; set; }
+    public decimal AverageRating { get; set; }
     public Guid Id { get; set; }
 
     public Guid ProviderId { get; set; }
@@ -35,6 +38,13 @@ public class RestaurantListing
     public int SeatingCapacity { get; set; } = 20;
 
     public bool IsActive { get; set; } = true;
+
+    public bool IsRemoved { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public string Status => IsRemoved
+        ? "Removed"
+        : IsActive ? "Active" : "Inactive";
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

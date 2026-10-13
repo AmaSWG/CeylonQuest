@@ -8,6 +8,7 @@ using IdentityService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace IdentityService.Controllers;
 
@@ -45,14 +46,14 @@ public class AdminController : ControllerBase
 
         var stats = new AdminStatsResponse
         {
-            TotalUsers           = totalUsers,
-            TotalVisitors        = totalVisitors,
-            TotalProviders       = totalProviders,
-            TotalAdmins          = totalAdmins,
-            PendingApplications  = pending.Count,
+            TotalUsers = totalUsers,
+            TotalVisitors = totalVisitors,
+            TotalProviders = totalProviders,
+            TotalAdmins = totalAdmins,
+            PendingApplications = pending.Count,
             ApprovedApplications = totalProviders,
             RejectedApplications = 0,
-            TotalServices        = totalServices
+            TotalServices = totalServices
         };
 
         return Ok(stats);
@@ -77,15 +78,15 @@ public class AdminController : ControllerBase
             .OrderByDescending(u => u.CreatedAt)
             .Select(u => new AdminUserResponse
             {
-                Id          = u.Id,
-                FirstName   = u.FirstName,
-                LastName    = u.LastName,
-                Email       = u.Email,
+                Id = u.Id,
+                FirstName = u.FirstName,
+                LastName = u.LastName,
+                Email = u.Email,
                 PhoneNumber = u.PhoneNumber,
                 Nationality = u.Nationality,
-                Role        = u.Role.ToString(),
-                IsActive    = u.IsActive,
-                CreatedAt   = u.CreatedAt
+                Role = u.Role.ToString(),
+                IsActive = u.IsActive,
+                CreatedAt = u.CreatedAt
             })
             .ToListAsync();
 
@@ -93,20 +94,68 @@ public class AdminController : ControllerBase
     }
 
     [HttpPut("users/{id:guid}/status")]
-    public async Task<IActionResult> UpdateUserStatus(Guid id, [FromBody] UpdateUserStatusRequest request)
+    public async Task<IActionResult> UpdateUserStatus(
+    Guid id,
+    [FromBody] UpdateUserStatusRequest request)
     {
+        var administratorClaim =
+            User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+            User.FindFirstValue("sub") ??
+            User.FindFirstValue("nameid");
+
+        if (!Guid.TryParse(administratorClaim, out var administratorId))
+        {
+            return Unauthorized(new
+            {
+                message = "A valid administrator identity is required."
+            });
+        }
+
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id);
+
         if (user is null)
         {
             return NotFound(new { message = "User not found." });
         }
 
+        var previousStatus = user.IsActive;
+        var statusChanged = previousStatus != request.IsActive;
+
         user.IsActive = request.IsActive;
+
         if (request.IsActive)
         {
             user.RequiresPasswordChange = false;
         }
-        await _db.SaveChangesAsync();
+
+        if (statusChanged)
+        {
+            _db.AdminAuditLogs.Add(new AdminAuditLog
+            {
+                ActionType = request.IsActive
+                    ? "UserReactivated"
+                    : "UserSuspended",
+                TimestampUtc = DateTime.UtcNow,
+                AdministratorId = administratorId,
+                TargetId = user.Id,
+                TargetType = "User",
+                PreviousStatus = previousStatus ? "Active" : "Inactive",
+                NewStatus = request.IsActive ? "Active" : "Inactive"
+            });
+        }
+
+        try
+        {
+            // EF saves the user change and audit entry in the same transaction.
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict(new
+            {
+                message = "User status changed during this request. Refresh and try again."
+            });
+        }
 
         return Ok(new
         {
@@ -115,7 +164,6 @@ public class AdminController : ControllerBase
             isActive = user.IsActive
         });
     }
-
     [HttpGet("provider-applications")]
     public async Task<IActionResult> GetProviderApplications([FromQuery] string? status)
     {
@@ -150,19 +198,19 @@ public class AdminController : ControllerBase
 
             return new AdminProviderApplicationResponse
             {
-                Id                    = u.Id,
-                FirstName             = u.FirstName,
-                LastName              = u.LastName,
-                Email                 = u.Email ?? string.Empty,
-                PhoneNumber           = u.PhoneNumber,
-                BusinessName          = string.IsNullOrWhiteSpace(u.FirstName) ? "Tourism Service Provider" : $"{u.FirstName} {u.LastName}".Trim(),
-                ServiceType           = "Tourism Services",
-                Location              = string.IsNullOrWhiteSpace(u.Nationality) ? "Sri Lanka" : u.Nationality,
-                Description           = "Verified Tourism Service Provider",
+                Id = u.Id,
+                FirstName = u.FirstName,
+                LastName = u.LastName,
+                Email = u.Email ?? string.Empty,
+                PhoneNumber = u.PhoneNumber,
+                BusinessName = string.IsNullOrWhiteSpace(u.FirstName) ? "Tourism Service Provider" : $"{u.FirstName} {u.LastName}".Trim(),
+                ServiceType = "Tourism Services",
+                Location = string.IsNullOrWhiteSpace(u.Nationality) ? "Sri Lanka" : u.Nationality,
+                Description = "Verified Tourism Service Provider",
                 LegalDocumentFileName = cleanDocName,
-                Status                = "Approved",
-                RejectionReason       = null,
-                CreatedAt             = u.CreatedAt
+                Status = "Approved",
+                RejectionReason = null,
+                CreatedAt = u.CreatedAt
             };
         }).ToList();
 
@@ -240,13 +288,13 @@ public class AdminController : ControllerBase
             var ext = System.IO.Path.GetExtension(fname).ToLowerInvariant();
             var contentType = ext switch
             {
-                ".pdf"  => "application/pdf",
-                ".png"  => "image/png",
-                ".jpg"  => "image/jpeg",
+                ".pdf" => "application/pdf",
+                ".png" => "image/png",
+                ".jpg" => "image/jpeg",
                 ".jpeg" => "image/jpeg",
                 ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                ".doc"  => "application/msword",
-                _       => "application/octet-stream"
+                ".doc" => "application/msword",
+                _ => "application/octet-stream"
             };
 
             return File(bytesOnDisk, contentType, cleanName);
@@ -306,19 +354,19 @@ public class AdminController : ControllerBase
 
                 list.Add(new AdminProviderApplicationResponse
                 {
-                    Id                    = appId,
-                    FirstName             = "",
-                    LastName              = "",
-                    Email                 = emailLower,
-                    PhoneNumber           = "",
-                    BusinessName          = bName,
-                    ServiceType           = sType,
-                    Location              = loc,
-                    Description           = desc,
+                    Id = appId,
+                    FirstName = "",
+                    LastName = "",
+                    Email = emailLower,
+                    PhoneNumber = "",
+                    BusinessName = bName,
+                    ServiceType = sType,
+                    Location = loc,
+                    Description = desc,
                     LegalDocumentFileName = cleanDocName,
-                    Status                = "Pending",
-                    RejectionReason       = null,
-                    CreatedAt             = subAt
+                    Status = "Pending",
+                    RejectionReason = null,
+                    CreatedAt = subAt
                 });
             }
             catch { }
@@ -339,9 +387,9 @@ public class AdminController : ControllerBase
 
         var filters = new ReportQueryParams
         {
-            DateFrom          = dateFrom,
-            DateTo            = dateTo,
-            Role              = role,
+            DateFrom = dateFrom,
+            DateTo = dateTo,
+            Role = role,
             ApplicationStatus = applicationStatus
         };
 

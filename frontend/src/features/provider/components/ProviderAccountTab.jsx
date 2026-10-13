@@ -9,6 +9,7 @@ import {
 } from '../../../components/Icons'
 import { apiUrl } from '../../../api/client'
 import LoadingSpinner from '../../../components/common/LoadingSpinner'
+import './ProviderAccountTab.css'
 
 function initials(first, last) {
   return `${(first || '').charAt(0)}${(last || '').charAt(0)}`.toUpperCase() || 'P'

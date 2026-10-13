@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import './DashboardLayout.css'
-import { LogoutIcon, MenuIcon, CloseIcon } from './Icons'
+import { LogoutIcon, MenuIcon, CloseIcon, NotificationsActiveIcon } from './Icons'
 import { apiUrl } from '../api/client'
 
 function initials(first, last) {
@@ -23,6 +23,8 @@ export default function DashboardLayout({
   onSelectTab,
   userProfile,
   onLogout,
+  notificationCount = 0,
+  onOpenNotifications,
   children
 }) {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -146,6 +148,14 @@ export default function DashboardLayout({
 
       {/* Main Content Area */}
       <main className="cq-dashboard-main">
+        {onOpenNotifications && <div className="cq-notification-toolbar">
+          <button type="button" className="cq-notification-bell" onClick={onOpenNotifications}
+            aria-label={`Notifications, ${notificationCount} unread`}>
+            <NotificationsActiveIcon size={22} />
+            <span>Notifications</span>
+            {notificationCount > 0 && <span className="cq-notification-bell__badge">{notificationCount > 99 ? '99+' : notificationCount}</span>}
+          </button>
+        </div>}
         {children}
       </main>
 

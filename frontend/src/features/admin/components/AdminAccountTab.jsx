@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   PermIdentityIcon,
   EmailIcon,
@@ -37,6 +37,14 @@ function formatDateTime(iso) {
   return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+function LoadingState({ label = 'Loading…' }) {
+  return (
+    <div className="ad-loading-state" role="status">
+      <div className="ad-loading-spinner" />
+      <span>{label}</span>
+    </div>
+  )
+}
 
 export default function AdminAccountTab({ token, onLogout, showToast, onProfileUpdate }) {
   const [profile, setProfile] = useState(null)
@@ -253,6 +261,7 @@ export default function AdminAccountTab({ token, onLogout, showToast, onProfileU
         onConfirm={handleRemoveAvatar}
         onCancel={() => setShowRemoveConfirm(false)}
         loading={avatarUploading}
+        loadingText="Updating…"
       />
       <div className="ad-page-header">
         <div className="ad-page-header__left">
@@ -463,4 +472,4 @@ export default function AdminAccountTab({ token, onLogout, showToast, onProfileU
 }
 
 // ── 8. Reports Tab ───────────────────────────────────────────────────────────
-
+

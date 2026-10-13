@@ -4,9 +4,13 @@ namespace ProviderCatalogService.DTOs;
 
 public class RestaurantListingResponse
 {
+    public decimal AverageRating { get; set; }
+    public int ReviewCount { get; set; }
     public Guid Id { get; set; }
 
     public Guid ProviderId { get; set; }
+
+    public Guid? ProviderUserId { get; set; }
 
     public string ProviderBusinessName { get; set; } = string.Empty;
 
@@ -42,4 +46,7 @@ public class RestaurantListingResponse
     public DateTime CreatedAt { get; set; }
 
     public string? Images { get; set; }
+
+    public bool IsRemoved { get; set; }
+    public string Status { get; set; } = string.Empty;
 }
