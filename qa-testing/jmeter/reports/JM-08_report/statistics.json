@@ -1,0 +1,34 @@
+{
+  "JM-08-SubmitReviews Sampler" : {
+    "transaction" : "JM-08-SubmitReviews Sampler",
+    "sampleCount" : 10,
+    "errorCount" : 10,
+    "errorPct" : 100.0,
+    "meanResTime" : 435.6,
+    "medianResTime" : 425.0,
+    "minResTime" : 379.0,
+    "maxResTime" : 515.0,
+    "pct1ResTime" : 512.9,
+    "pct2ResTime" : 515.0,
+    "pct3ResTime" : 515.0,
+    "throughput" : 2.2361359570661894,
+    "receivedKBytesPerSec" : 0.809944166480322,
+    "sentKBytesPerSec" : 1.9981097663237923
+  },
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 10,
+    "errorCount" : 10,
+    "errorPct" : 100.0,
+    "meanResTime" : 435.6,
+    "medianResTime" : 425.0,
+    "minResTime" : 379.0,
+    "maxResTime" : 515.0,
+    "pct1ResTime" : 512.9,
+    "pct2ResTime" : 515.0,
+    "pct3ResTime" : 515.0,
+    "throughput" : 2.2361359570661894,
+    "receivedKBytesPerSec" : 0.809944166480322,
+    "sentKBytesPerSec" : 1.9981097663237923
+  }
+}

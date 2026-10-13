@@ -1,0 +1,34 @@
+{
+  "JM-01-ListNotifications Sampler" : {
+    "transaction" : "JM-01-ListNotifications Sampler",
+    "sampleCount" : 50,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 1589.0199999999998,
+    "medianResTime" : 1450.0,
+    "minResTime" : 475.0,
+    "maxResTime" : 3664.0,
+    "pct1ResTime" : 3210.0,
+    "pct2ResTime" : 3375.4499999999994,
+    "pct3ResTime" : 3664.0,
+    "throughput" : 4.862394242925216,
+    "receivedKBytesPerSec" : 59.122725311193236,
+    "sentKBytesPerSec" : 3.6610409778274824
+  },
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 50,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 1589.0199999999998,
+    "medianResTime" : 1450.0,
+    "minResTime" : 475.0,
+    "maxResTime" : 3664.0,
+    "pct1ResTime" : 3210.0,
+    "pct2ResTime" : 3375.4499999999994,
+    "pct3ResTime" : 3664.0,
+    "throughput" : 4.862394242925216,
+    "receivedKBytesPerSec" : 59.122725311193236,
+    "sentKBytesPerSec" : 3.6610409778274824
+  }
+}

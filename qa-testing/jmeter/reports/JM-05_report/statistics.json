@@ -1,0 +1,34 @@
+{
+  "JM-05-MarkAllAsRead Sampler" : {
+    "transaction" : "JM-05-MarkAllAsRead Sampler",
+    "sampleCount" : 20,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 385.55,
+    "medianResTime" : 343.5,
+    "minResTime" : 308.0,
+    "maxResTime" : 715.0,
+    "pct1ResTime" : 584.0,
+    "pct2ResTime" : 708.4499999999999,
+    "pct3ResTime" : 715.0,
+    "throughput" : 4.14765657403567,
+    "receivedKBytesPerSec" : 0.7817360535047698,
+    "sentKBytesPerSec" : 3.167448672749896
+  },
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 20,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 385.55,
+    "medianResTime" : 343.5,
+    "minResTime" : 308.0,
+    "maxResTime" : 715.0,
+    "pct1ResTime" : 584.0,
+    "pct2ResTime" : 708.4499999999999,
+    "pct3ResTime" : 715.0,
+    "throughput" : 4.14765657403567,
+    "receivedKBytesPerSec" : 0.7817360535047698,
+    "sentKBytesPerSec" : 3.167448672749896
+  }
+}
