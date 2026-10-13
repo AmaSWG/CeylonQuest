@@ -22,6 +22,8 @@ import AdminReportsTab from '../components/AdminReportsTab'
 import AdminNotificationsTab from '../components/AdminNotificationsTab'
 import AdminAccountTab from '../components/AdminAccountTab'
 import AdminAttendanceDisputesTab from '../components/AdminAttendanceDisputesTab'
+import AdminListingManagementTab from '../components/AdminListingManagementTab'
+import { getAdminUsers } from '../../../api/adminManagementApi'
 
 function Toast({ message, title, onClose }) {
   const isError = typeof message === 'string' && (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') || (title && title.toLowerCase().includes('error')));
@@ -64,6 +66,8 @@ function AdminDashboard({ onLogout }) {
   })
 
   const [users, setUsers] = useState([])
+  const [usersLoading, setUsersLoading] = useState(true)
+  const [usersError, setUsersError] = useState('')
   const [applications, setApplications] = useState([])
   const [bookings, setBookings] = useState([])
 
@@ -103,15 +107,22 @@ function AdminDashboard({ onLogout }) {
   }, [fetchUserProfile])
 
   const fetchUsers = useCallback(async () => {
-    if (!token) return
+    setUsersLoading(true)
+    setUsersError('')
+
     try {
-      const resp = await fetch(apiUrl('/api/admin/users'), {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (resp.ok) {
-        setUsers(await resp.json())
+      const data = await getAdminUsers(token)
+
+      if (!Array.isArray(data)) {
+        throw new Error('The user API returned an invalid response.')
       }
-    } catch {}
+
+      setUsers(data)
+    } catch (error) {
+      setUsersError(error.message || 'Failed to load users.')
+    } finally {
+      setUsersLoading(false)
+    }
   }, [token])
 
   const fetchApplications = useCallback(async () => {
@@ -187,6 +198,7 @@ function AdminDashboard({ onLogout }) {
     { key: 'overview',      icon: <DashboardIcon size={18} />,          label: 'Overview' },
     { key: 'applications',  icon: <DocumentScannerIcon size={18} />,    label: 'Provider Applications', badge: pendingAppsCount > 0 ? pendingAppsCount : null },
     { key: 'users',         icon: <GroupIcon size={18} />,              label: 'User Management' },
+    { key: 'listings',       icon: <WorkIcon size={18} />,               label: 'Listing Management',},
     { key: 'providers',     icon: <WorkIcon size={18} />,               label: 'Provider Management' },
     { key: 'attendance-disputes', icon: <DocumentScannerIcon size={18} />, label: 'Attendance Disputes' },
     { key: 'reports',       icon: <BarChartIcon size={18} />,            label: 'Reports & Analytics' },
@@ -231,6 +243,16 @@ function AdminDashboard({ onLogout }) {
           onLogout={handleLogout}
           users={users}
           onRefresh={fetchUsers}
+          onUsersChange={setUsers}
+          usersLoading={usersLoading}
+          usersError={usersError}
+          showToast={showToast}
+        />
+      )}
+
+      {activeTab === 'listings' && (
+        <AdminListingManagementTab
+          token={token}
           showToast={showToast}
         />
       )}

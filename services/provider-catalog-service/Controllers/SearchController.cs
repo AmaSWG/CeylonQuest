@@ -91,7 +91,7 @@ public class SearchController : ControllerBase
             var expQuery = _db.ActivityListings
                 .AsNoTracking()
                 .Include(a => a.Provider)
-                .Where(a => a.IsActive);
+                .Where(a => a.IsActive && !a.IsRemoved);
 
             // Apply the keyword search across the most relevant text fields
             if (!string.IsNullOrEmpty(keyword))
@@ -158,7 +158,7 @@ public class SearchController : ControllerBase
             var restQuery = _db.RestaurantListings
                 .AsNoTracking()
                 .Include(r => r.Provider)
-                .Where(r => r.IsActive);
+                .Where(r => r.IsActive && !r.IsRemoved);
 
             // Apply the keyword search across the most relevant text fields
             if (!string.IsNullOrEmpty(keyword))
@@ -222,7 +222,7 @@ public class SearchController : ControllerBase
             var accQuery = _db.AccommodationListings
                 .AsNoTracking()
                 .Include(a => a.Provider)
-                .Where(a => a.IsActive);
+                .Where(a => a.IsActive && !a.IsRemoved);
 
             // Apply the keyword search across the most relevant text fields
             if (!string.IsNullOrEmpty(keyword))

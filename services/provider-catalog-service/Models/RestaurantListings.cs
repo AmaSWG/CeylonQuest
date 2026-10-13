@@ -39,6 +39,13 @@ public class RestaurantListing : IListingRating
 
     public bool IsActive { get; set; } = true;
 
+    public bool IsRemoved { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public string Status => IsRemoved
+        ? "Removed"
+        : IsActive ? "Active" : "Inactive";
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public string? Images { get; set; }

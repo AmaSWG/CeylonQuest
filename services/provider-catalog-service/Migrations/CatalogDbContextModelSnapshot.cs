@@ -59,6 +59,12 @@ namespace ProviderCatalogService.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<bool>("IsRemoved")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Location")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -100,6 +106,8 @@ namespace ProviderCatalogService.Migrations
 
                     b.HasIndex("ProviderId");
 
+                    b.HasIndex("IsRemoved", "IsActive");
+
                     b.ToTable("AccommodationListings");
                 });
 
@@ -135,6 +143,12 @@ namespace ProviderCatalogService.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsRemoved")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Location")
                         .IsRequired()
@@ -187,6 +201,8 @@ namespace ProviderCatalogService.Migrations
                     b.HasIndex("IsActive", "CreatedAt");
 
                     b.HasIndex("IsActive", "Price");
+
+                    b.HasIndex("IsRemoved", "IsActive");
 
                     b.ToTable("ActivityListings");
                 });
@@ -242,6 +258,50 @@ namespace ProviderCatalogService.Migrations
                     b.HasKey("BookingId");
 
                     b.ToTable("BookingCapacityReleases");
+                });
+
+            modelBuilder.Entity("ProviderCatalogService.Models.ListingRemovalAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("AdministratorId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ListingId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("ListingType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("NewStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("PreviousStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<DateTime>("RemovedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RemovedAtUtc");
+
+                    b.HasIndex("ListingType", "ListingId");
+
+                    b.ToTable("ListingRemovalAudits");
                 });
 
             modelBuilder.Entity("ProviderCatalogService.Models.Provider", b =>
@@ -394,6 +454,12 @@ namespace ProviderCatalogService.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<bool>("IsRemoved")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Location")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -443,6 +509,8 @@ namespace ProviderCatalogService.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ProviderId");
+
+                    b.HasIndex("IsRemoved", "IsActive");
 
                     b.ToTable("RestaurantListings");
                 });

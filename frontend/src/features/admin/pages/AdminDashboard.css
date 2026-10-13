@@ -518,6 +518,10 @@
   background: #faf8f3;
 }
 
+.ad-table.ad-listings-table tbody td {
+  text-align: left;
+}
+
 /* ── Badges ── */
 .ad-badge {
   display: inline-flex;

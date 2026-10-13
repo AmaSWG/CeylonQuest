@@ -37,4 +37,7 @@ public class ActivityListingResponse
 
     public DateTime? ValidUntil { get; set; }
     public string? Images { get; set; }
+
+    public bool IsRemoved { get; set; }
+    public string Status { get; set; } = string.Empty;
 }

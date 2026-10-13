@@ -1,4 +1,5 @@
 using Confluent.Kafka;
+using Confluent.Kafka.Admin;
 using Microsoft.Extensions.Options;
 using NotificationService.Data;
 using NotificationService.Models;
@@ -10,7 +11,7 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
     IServiceScopeFactory scopes, ILogger<NotificationEventConsumer> logger) : BackgroundService
 {
     public static readonly IReadOnlyList<string> Topics =
-        new[] { "booking.created", "payment.completed", "booking.canceled", "review.submitted" };
+        new[] { "booking.created", "payment.completed", "booking.canceled", "review.submitted", "review.eligibility-granted" };
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
         Task.Run(() => RunAsync(stoppingToken), stoppingToken);
@@ -42,6 +43,7 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
         {
             try
             {
+                await EnsureTopicsAsync(config, ct);
                 using var consumer = new ConsumerBuilder<string, string>(config).Build();
                 consumer.Subscribe(Topics);
                 logger.LogInformation("Notification consumer subscribed to {Topics}", string.Join(", ", Topics));
@@ -126,6 +128,44 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
         string payload,
         Exception error,
         CancellationToken ct)
+    private async Task EnsureTopicsAsync(ConsumerConfig consumerConfig, CancellationToken ct)
+    {
+        if (!configuration.GetValue("Notifications:ProvisionTopics", true)) return;
+
+        // Use the same broker and credentials as the consumer, without group settings.
+        var adminConfig = new AdminClientConfig
+        {
+            BootstrapServers = consumerConfig.BootstrapServers,
+            SecurityProtocol = consumerConfig.SecurityProtocol,
+            SaslMechanism = consumerConfig.SaslMechanism,
+            SaslUsername = consumerConfig.SaslUsername,
+            SaslPassword = consumerConfig.SaslPassword
+        };
+        using var admin = new AdminClientBuilder(adminConfig).Build();
+        var partitions = configuration.GetValue("Notifications:TopicPartitions", -1);
+        var replication = configuration.GetValue<short>("Notifications:TopicReplicationFactor", -1);
+        try
+        {
+            await admin.CreateTopicsAsync(Topics.Select(topic => new TopicSpecification
+            {
+                Name = topic, NumPartitions = partitions, ReplicationFactor = replication
+            }), new CreateTopicsOptions { RequestTimeout = TimeSpan.FromSeconds(30) }).WaitAsync(ct);
+        }
+        catch (CreateTopicsException ex) when (ex.Results.All(result =>
+            result.Error.Code is ErrorCode.NoError or ErrorCode.TopicAlreadyExists))
+        {
+            // Existing topics and concurrent startup by another instance are safe.
+        }
+        catch (CreateTopicsException ex)
+        {
+            logger.LogError(ex, "Cannot provision notification topics. Grant Kafka topic CREATE permission " +
+                "or provision all required topics during deployment and set Notifications:ProvisionTopics=false");
+            throw;
+        }
+        logger.LogInformation("Notification Kafka topics are provisioned");
+    }
+
+    private async Task RecordFailureAsync(string topic, string payload, Exception error, CancellationToken ct)
     {
         try
         {

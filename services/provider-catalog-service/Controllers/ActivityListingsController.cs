@@ -38,6 +38,7 @@ public class ActivityListingsController : ControllerBase
         Location = a.Location,
         MaxParticipants = a.MaxParticipants,
         IsActive = a.IsActive,
+        IsRemoved = a.IsRemoved,
         CreatedAt = a.CreatedAt,
         Duration = a.Duration,
         AvailableDays = a.AvailableDays,
@@ -135,6 +136,7 @@ public class ActivityListingsController : ControllerBase
                 Location = l.Location,
                 MaxParticipants = l.MaxParticipants,
                 IsActive = l.IsActive,
+                IsRemoved = l.IsRemoved,
                 CreatedAt = l.CreatedAt,
                 Duration = l.Duration,
                 AvailableDays = l.AvailableDays,
@@ -247,6 +249,7 @@ public class ActivityListingsController : ControllerBase
                 : 1;
 
         listing.IsActive = request.IsActive;
+
 
         listing.Duration =
             request.Duration?.Trim()
@@ -392,7 +395,7 @@ public class ActivityListingsController : ControllerBase
         var query = _db.ActivityListings
             .Include(l => l.Provider)
             .AsNoTracking()
-            .Where(l => l.IsActive);
+            .Where(l => l.IsActive && !l.IsRemoved);
 
         // Search by title or description
         if (!string.IsNullOrWhiteSpace(search))
@@ -462,7 +465,7 @@ public class ActivityListingsController : ControllerBase
             .AsNoTracking()
             .FirstOrDefaultAsync(l =>
                 l.Id == id &&
-                l.IsActive);
+                l.IsActive && !l.IsRemoved);
 
         if (listing is null)
         {
