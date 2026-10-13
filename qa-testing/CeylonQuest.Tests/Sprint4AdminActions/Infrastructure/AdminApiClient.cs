@@ -176,6 +176,33 @@ public sealed class AdminApiClient
     {
         return await _http.GetAsync($"{AdminTestConfig.CatalogApiBaseUrl}/api/catalog/activity-listings/public?search={Uri.EscapeDataString(keyword)}");
     }
+    public async Task<HttpResponseMessage> GetAdminAuditLogsRawAsync(string? token, string? queryParams = null)
+    {
+        var url = $"{AdminTestConfig.IdentityApiBaseUrl}/api/admin/audit-logs" +
+            (string.IsNullOrWhiteSpace(queryParams) ? "" : $"?{queryParams.TrimStart('?')}");
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        if (!string.IsNullOrEmpty(token))
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return await _http.SendAsync(req);
+    }
+
+    public async Task<AdminAuditLogsResponse> GetAdminAuditLogsAsync(string token, string? queryParams = null)
+    {
+        using var resp = await GetAdminAuditLogsRawAsync(token, queryParams);
+        resp.EnsureSuccessStatusCode();
+        var content = await resp.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<AdminAuditLogsResponse>(content, JsonOpts) ?? new();
+    }
+
+    public async Task<HttpResponseMessage> GetCatalogAuditLogsRawAsync(string? token, string? queryParams = null)
+    {
+        var url = $"{AdminTestConfig.CatalogApiBaseUrl}/api/catalog/admin/audit-logs" +
+            (string.IsNullOrWhiteSpace(queryParams) ? "" : $"?{queryParams.TrimStart('?')}");
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        if (!string.IsNullOrEmpty(token))
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return await _http.SendAsync(req);
+    }
 }
 
 public record AdminUserRecord(
@@ -200,3 +227,26 @@ public record AdminListingRecord(
     bool IsRemoved,
     string Status
 );
+
+public record AdminAuditEntryRecord(
+    Guid Id,
+    string ActionType,
+    DateTime TimestampUtc,
+    Guid AdministratorId,
+    Guid TargetId,
+    string TargetType,
+    string PreviousStatus,
+    string NewStatus,
+    string? Reason
+);
+
+public record AdminAuditLogsResponse(
+    List<AdminAuditEntryRecord> Items,
+    int TotalCount,
+    int Page,
+    int PageSize,
+    int TotalPages
+)
+{
+    public AdminAuditLogsResponse() : this(new(), 0, 1, 25, 0) { }
+}

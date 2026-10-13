@@ -321,9 +321,43 @@ public sealed class AdminActionsUiTests
         Assert.Equal(System.Net.HttpStatusCode.NotFound, detailResp.StatusCode);
     }
 
-    [Fact(DisplayName = "TC-13.1-UI-09: S4 audit trail", Skip = "Audit view UI is not implemented in the Admin Dashboard.")]
-    public void Ui09_AuditTrailViewDisplaysRecords()
+    [Fact(DisplayName = "TC-13.1-UI-09: S4 audit trail")]
+    public async Task Ui09_AuditTrailViewDisplaysRecords()
     {
+        // 1. Ensure at least one audit record exists by reactivating a user
+        var suspended = await _f.Data.CreateSuspendedVisitorAsync("QA-UI09-Audit");
+        var (adminToken, _) = await _f.Api.LoginAsync(AdminTestConfig.AdminEmail, AdminTestConfig.AdminPassword);
+        using var reactivateResp = await _f.Api.UpdateUserStatusRawAsync(adminToken, suspended.Id.ToString(), true);
+        Assert.Equal(System.Net.HttpStatusCode.OK, reactivateResp.StatusCode);
+
+        // 2. Log in as admin and navigate to Audit Trail tab
+        LoginAs(AdminTestConfig.AdminEmail, AdminTestConfig.AdminPassword);
+        NavigateToAdminTab("audit-trail");
+
+        // 3. Verify page header & audit container
+        Wait.Until(d => d.FindElements(By.CssSelector(".admin-audit")).Count > 0);
+        var header = Driver.FindElement(By.CssSelector(".ad-page-header h1"));
+        Assert.Equal("Audit Trail", header.Text.Trim());
+
+        // 4. Verify audit table renders with entries
+        Wait.Until(d => d.FindElements(By.CssSelector(".admin-audit__table tbody tr")).Count > 0 ||
+                        d.FindElements(By.CssSelector(".ad-empty")).Count > 0);
+
+        var rows = Driver.FindElements(By.CssSelector(".admin-audit__table tbody tr"));
+        Assert.NotEmpty(rows);
+
+        // 5. Test filter by Action Type
+        var actionSelect = Driver.FindElement(By.CssSelector("select[name='actionType']"));
+        actionSelect.FindElement(By.CssSelector("option[value='UserReactivated']")).Click();
+
+        var applyBtn = Driver.FindElement(By.CssSelector(".admin-audit__actions button[type='submit']"));
+        applyBtn.Click();
+
+        Wait.Until(d =>
+        {
+            var r = d.FindElements(By.CssSelector(".admin-audit__table tbody tr"));
+            return r.Count > 0 && r[0].Text.Contains("User Reactivated", StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     [Fact(DisplayName = "TC-13.1-UI-10: access control")]

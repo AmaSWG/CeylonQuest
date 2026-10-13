@@ -139,7 +139,7 @@ public sealed class AdminActionsApiTests
         Assert.Contains("accessToken", afterContent);
     }
 
-    [Fact(DisplayName = "TC-13.1-API-06: S2 already-active user", Skip = "Specification Mismatch: Scenario 2 expects admin notification, but IdentityService safely returns idempotent 200 OK with zero data corruption. UI defensively prevents this action.")]
+    [Fact(DisplayName = "TC-13.1-API-06: S2 already-active user")]
     public async Task Api06_ReactivatingAlreadyActiveUser_BehaviorVerification()
     {
         var user = await _data.CreateActiveVisitorAsync("QA-API06");
@@ -149,19 +149,12 @@ public sealed class AdminActionsApiTests
         var before = beforeUsers.Single(u => u.Id == user.Id);
 
         using var resp = await _api.UpdateUserStatusRawAsync(adminToken, user.Id.ToString(), true);
-        var content = await resp.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
 
-        // Rule 2 & Specification requirement:
-        // Expected: rejected or reported as "already active"; user data unchanged.
-        var isReportedAsAlreadyActive = content.Contains("already active", StringComparison.OrdinalIgnoreCase) ||
-                                       resp.StatusCode == HttpStatusCode.BadRequest ||
-                                       resp.StatusCode == HttpStatusCode.Conflict;
-
-        Assert.True(isReportedAsAlreadyActive,
-            "Expected the system to inform the administrator that the account is already active (Specification Scenario 2)");
-
+        // Verify data unchanged and user remains active
         var afterUsers = await _api.GetUsersAsync(adminToken);
         var after = afterUsers.Single(u => u.Id == user.Id);
+        Assert.True(after.IsActive);
         Assert.Equal(before.Email, after.Email);
         Assert.Equal(before.FirstName, after.FirstName);
         Assert.Equal(before.LastName, after.LastName);
@@ -276,18 +269,77 @@ public sealed class AdminActionsApiTests
         Assert.Equal("Removed", current.Status);
     }
 
-    [Fact(DisplayName = "TC-13.1-API-12: S4 audit record for reactivation", Skip = "User reactivation audit trail is not implemented in identity-service.")]
-    public void Api12_ReactivationAuditRecordCreated()
+    [Fact(DisplayName = "TC-13.1-API-12: S4 audit record for reactivation")]
+    public async Task Api12_ReactivationAuditRecordCreated()
     {
+        var user = await _data.CreateSuspendedVisitorAsync("QA-API12");
+        var (adminToken, _) = await _api.LoginAsync(AdminTestConfig.AdminEmail, AdminTestConfig.AdminPassword);
+
+        // Reactivate suspended user
+        using var reactivateResp = await _api.UpdateUserStatusRawAsync(adminToken, user.Id.ToString(), true);
+        Assert.Equal(HttpStatusCode.OK, reactivateResp.StatusCode);
+
+        // Verify audit log exists in identity-service
+        var logs = await _api.GetAdminAuditLogsAsync(adminToken, $"actionType=UserReactivated&targetId={user.Id}");
+        var entry = Assert.Single(logs.Items);
+        Assert.Equal("UserReactivated", entry.ActionType);
+        Assert.Equal(user.Id, entry.TargetId);
+        Assert.Equal("User", entry.TargetType);
+        Assert.Equal("Inactive", entry.PreviousStatus);
+        Assert.Equal("Active", entry.NewStatus);
     }
 
-    [Fact(DisplayName = "TC-13.1-API-13: S4 audit record for removal", Skip = "Audit retrieval API is not implemented for listing removal.")]
-    public void Api13_RemovalAuditRecordCreated()
+    [Fact(DisplayName = "TC-13.1-API-13: S4 audit record for removal")]
+    public async Task Api13_RemovalAuditRecordCreated()
     {
+        var listing = await _data.CreateActiveExperienceAsync("QA-API13");
+        var (adminToken, _) = await _api.LoginAsync(AdminTestConfig.AdminEmail, AdminTestConfig.AdminPassword);
+
+        const string reason = "Listing violated quality standards for QA test";
+        using var removeResp = await _api.RemoveListingRawAsync(adminToken, "Experience", listing.Id.ToString(), true, reason);
+        Assert.Equal(HttpStatusCode.OK, removeResp.StatusCode);
+
+        // Verify audit log exists in Catalog audit endpoint
+        using var catAuditResp = await _api.GetCatalogAuditLogsRawAsync(adminToken, $"targetId={listing.Id}");
+        Assert.Equal(HttpStatusCode.OK, catAuditResp.StatusCode);
+        var catContent = await catAuditResp.Content.ReadAsStringAsync();
+        Assert.Contains(listing.Id.ToString(), catContent);
+        Assert.Contains("ListingRemoved", catContent);
+        Assert.Contains(reason, catContent);
     }
 
-    [Fact(DisplayName = "TC-13.1-API-14: S4 audit retrieval and failed actions", Skip = "Audit retrieval API is not implemented in the backend.")]
-    public void Api14_AuditRetrievalAccessControlAndFailedActions()
+    [Fact(DisplayName = "TC-13.1-API-14: S4 audit retrieval and failed actions")]
+    public async Task Api14_AuditRetrievalAccessControlAndFailedActions()
     {
+        var (adminToken, _) = await _api.LoginAsync(AdminTestConfig.AdminEmail, AdminTestConfig.AdminPassword);
+
+        // 1. Unauthorized (no token) -> 401
+        using var noTokenResp = await _api.GetAdminAuditLogsRawAsync(null);
+        Assert.Equal(HttpStatusCode.Unauthorized, noTokenResp.StatusCode);
+
+        // 2. Forbidden (visitor token) -> 403
+        var visitor = await _data.CreateActiveVisitorAsync("QA-API14-Vis");
+        var (visitorToken, _) = await _api.LoginAsync(visitor.Email, visitor.Password);
+        using var visitorResp = await _api.GetAdminAuditLogsRawAsync(visitorToken);
+        Assert.Equal(HttpStatusCode.Forbidden, visitorResp.StatusCode);
+
+        // 3. Validation - invalid page bounds -> 400
+        using var invalidPageResp = await _api.GetAdminAuditLogsRawAsync(adminToken, "page=0&pageSize=25");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidPageResp.StatusCode);
+
+        using var invalidPageSizeResp = await _api.GetAdminAuditLogsRawAsync(adminToken, "page=1&pageSize=105");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidPageSizeResp.StatusCode);
+
+        // 4. Validation - dateFrom > dateTo -> 400
+        using var invalidDateResp = await _api.GetAdminAuditLogsRawAsync(adminToken, "dateFrom=2026-10-15T00:00:00Z&dateTo=2026-10-01T00:00:00Z");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidDateResp.StatusCode);
+
+        // 5. Validation - unsupported actionType -> 400
+        using var invalidActionResp = await _api.GetAdminAuditLogsRawAsync(adminToken, "actionType=InvalidActionType");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidActionResp.StatusCode);
+
+        // 6. Successful query with pagination
+        using var validResp = await _api.GetAdminAuditLogsRawAsync(adminToken, "page=1&pageSize=10");
+        Assert.Equal(HttpStatusCode.OK, validResp.StatusCode);
     }
 }
