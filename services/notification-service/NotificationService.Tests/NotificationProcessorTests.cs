@@ -93,11 +93,151 @@ public class NotificationProcessorTests
         Assert.Empty(db.Notifications); Assert.Empty(db.ProcessedEvents);
     }
     [Fact]
+    public async Task BookingProducerReviewContract_MapsUtcTimestampAndComment()
+    {
+        await using var db = Database(); var payload = Event("review.submitted");
+        payload["SubmittedAtUtc"] = payload["SubmittedAt"]!.DeepClone(); payload.Remove("SubmittedAt");
+        await Processor(db).ProcessAsync("review.submitted", payload.ToJsonString(), default);
+        var notification = Assert.Single(db.Notifications);
+        Assert.Contains("Excellent", notification.Message);
+        Assert.Equal(DateTimeKind.Utc, notification.CreatedAtUtc.Kind);
+    }
+    [Fact]
+    public async Task AttendanceInvitation_NotifiesOnlyVisitor_AndDeduplicatesReplay()
+    {
+        await using var db = Database(); var payload = Event("review.eligibility-granted");
+        payload["VerifiedAtUtc"] = "2026-10-11T10:00:00Z"; payload["ListingTitle"] = "Cooking class";
+        var processor = Processor(db);
+        await processor.ProcessAsync("review.eligibility-granted", payload.ToJsonString(), default);
+        await processor.ProcessAsync("review.eligibility-granted", payload.ToJsonString(), default);
+        var notification = Assert.Single(db.Notifications);
+        Assert.Equal(Guid.Parse(payload["VisitorId"]!.GetValue<string>()), notification.RecipientUserId);
+        Assert.Contains("My Bookings", notification.Message); Assert.Contains("Cooking class", notification.Message);
+        Assert.Single(db.ProcessedEvents);
+    }
+    [Fact]
     public void FailureKeys_AreStable_AndDistinguishTopicsAndPayloads()
     {
         var key = NotificationEventProcessor.PayloadKey("booking.created","{}");
         Assert.Equal(key,NotificationEventProcessor.PayloadKey("booking.created","{}"));
         Assert.NotEqual(key,NotificationEventProcessor.PayloadKey("payment.completed","{}"));
         Assert.NotEqual(key,NotificationEventProcessor.PayloadKey("booking.created","null"));
+    }
+
+    [Theory]
+    [InlineData("SubmittedAt")]
+    [InlineData("SubmittedAtUtc")]
+    public async Task ReviewTimestampNames_CreateOneProviderNotification(
+        string timestampProperty)
+    {
+        await using var db = Database();
+        var payload = Event("review.submitted");
+
+        var submittedAt = new DateTime(
+            2026, 10, 12, 10, 0, 0, DateTimeKind.Utc);
+
+        // Supply only one timestamp name in each test.
+        payload.Remove("SubmittedAt");
+        payload[timestampProperty] = submittedAt.ToString("O");
+
+        var providerId = Guid.Parse(
+            payload["ProviderUserId"]!.GetValue<string>());
+        var visitorId = Guid.Parse(
+            payload["VisitorId"]!.GetValue<string>());
+
+        var processor = Processor(db);
+        var json = payload.ToJsonString();
+
+        await processor.ProcessAsync("review.submitted", json, default);
+
+        var notification = Assert.Single(db.Notifications);
+
+        Assert.Equal(providerId, notification.RecipientUserId);
+        Assert.Equal("New review", notification.Title);
+        Assert.Equal<int?>(5, notification.Rating);
+        Assert.Equal(submittedAt, notification.OccurredAtUtc);
+        Assert.Contains("5/5 stars", notification.Message);
+        Assert.Contains("Excellent", notification.Message);
+        Assert.DoesNotContain(
+            db.Notifications,
+            n => n.RecipientUserId == visitorId);
+        Assert.Single(db.ProcessedEvents);
+
+        // Kafka replay must not create another notification.
+        await processor.ProcessAsync("review.submitted", json, default);
+
+        Assert.Single(db.Notifications);
+        Assert.Single(db.ProcessedEvents);
+    }
+
+    [Theory]
+    [InlineData("SubmittedAt", false)]
+    [InlineData("SubmittedAtUtc", false)]
+    [InlineData("SubmittedAt", true)]
+    [InlineData("SubmittedAtUtc", true)]
+    public async Task ReviewMissingOrDefaultTimestamp_IsRejected(
+    string timestampProperty,
+        bool includeDefaultTimestamp)
+    {
+        await using var db = Database();
+        var payload = Event("review.submitted");
+
+        payload.Remove("SubmittedAt");
+
+        if (includeDefaultTimestamp)
+        {
+            payload[timestampProperty] = "0001-01-01T00:00:00";
+        }
+
+        await Assert.ThrowsAsync<JsonException>(() =>
+            Processor(db).ProcessAsync(
+                "review.submitted", payload.ToJsonString(), default));
+
+        Assert.Empty(db.Notifications);
+        Assert.Empty(db.ProcessedEvents);
+    }
+
+    [Fact]
+    public async Task BookingServiceReviewPayload_CreatesProviderNotification()
+    {
+        await using var db = Database();
+
+        var providerId = Guid.NewGuid();
+        var visitorId = Guid.NewGuid();
+        var submittedAt = new DateTime(
+            2026, 10, 12, 10, 0, 0, DateTimeKind.Utc);
+
+        var producerEvent = new BookingService.Events.ReviewSubmittedEvent(
+            EventId: Guid.NewGuid(),
+            EventVersion: 1,
+            ReviewId: Guid.NewGuid(),
+            BookingId: Guid.NewGuid(),
+            BookingType: "Experience",
+            ListingId: Guid.NewGuid(),
+            ListingTitle: "Test experience",
+            VisitorId: visitorId,
+            ProviderId: Guid.NewGuid(),
+            Rating: 5,
+            SubmittedAtUtc: submittedAt,
+            ProviderUserId: providerId,
+            ReviewText: "Excellent");
+
+        var payload = JsonSerializer.Serialize(producerEvent);
+        var processor = Processor(db);
+
+        await processor.ProcessAsync("review.submitted", payload, default);
+        await processor.ProcessAsync("review.submitted", payload, default);
+
+        var notification = Assert.Single(db.Notifications);
+
+        Assert.Equal(providerId, notification.RecipientUserId);
+        Assert.Equal(submittedAt, notification.OccurredAtUtc);
+        Assert.Equal<int?>(5, notification.Rating);
+        Assert.Equal<Guid?>(producerEvent.ReviewId, notification.ReviewId);
+        Assert.Contains("Excellent", notification.Message);
+        Assert.DoesNotContain(
+            db.Notifications,
+            n => n.RecipientUserId == visitorId);
+        Assert.Single(db.ProcessedEvents);
     }
 }

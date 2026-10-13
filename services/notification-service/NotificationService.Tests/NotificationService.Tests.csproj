@@ -15,4 +15,8 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" PrivateAssets="all" />
     <ProjectReference Include="../NotificationService.csproj" />
   </ItemGroup>
+  <ItemGroup>
+  <Compile Include="../../booking-service/Events/ReviewSubmittedEvent.cs"
+           Link="Contracts/BookingReviewSubmittedEvent.cs" />
+  </ItemGroup>
 </Project>

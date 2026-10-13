@@ -32,11 +32,19 @@ public class NotificationController(NotificationHandler service) : ControllerBas
         return Ok(new { unreadCount = await service.UnreadAsync(user, ct) });
     }
 
-    [HttpPatch("{id:guid}/read")]
-    public async Task<IActionResult> Read(Guid id, CancellationToken ct)
+    [HttpPatch("{id}/read")]
+    public async Task<IActionResult> Read(string id, CancellationToken ct)
     {
-        if (UserId is not Guid user) return Unauthorized();
-        var result = await service.ReadAsync(user, id, ct);
+        if (!Guid.TryParse(id, out var notificationId))
+            return BadRequest(new
+            {
+                message = "Notification ID must be a valid GUID."
+            });
+
+        if (UserId is not Guid user)
+            return Unauthorized();
+
+        var result = await service.ReadAsync(user, notificationId, ct);
         return result is null ? NotFound() : Ok(result);
     }
 
