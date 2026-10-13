@@ -1,0 +1,149 @@
+.admin-audit {
+    width: 100%;
+    min-width: 0;
+}
+
+.admin-audit__filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.admin-audit__filters label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: #666;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.admin-audit__filters input,
+.admin-audit__filters select {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 9px 14px;
+    border: 1px solid #d8d4c9;
+    border-radius: 9px;
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 400;
+    background: #fff;
+    color: #333;
+}
+
+.admin-audit__filters input:focus,
+.admin-audit__filters select:focus {
+    outline: none;
+    border-color: #168aad;
+    box-shadow: 0 0 0 3px rgba(22, 138, 173, 0.12);
+}
+
+.admin-audit__actions,
+.admin-audit__pagination {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.admin-audit__actions {
+    align-self: end;
+}
+
+.admin-audit button:disabled {
+    cursor: default;
+    opacity: 0.5;
+}
+
+.admin-audit__count {
+    margin: 0 0 16px;
+    color: #666;
+    font-size: 13.5px;
+}
+
+.admin-audit .admin-audit__card-body {
+    padding: 0;
+}
+
+.admin-audit .admin-audit__table {
+    border: none;
+    border-radius: 0;
+}
+
+.admin-audit__caption {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.admin-audit__id {
+    font-family: monospace;
+    font-size: 12px;
+    min-width: 180px;
+    overflow-wrap: anywhere;
+}
+
+.admin-audit__id strong {
+    color: #123b5d;
+}
+
+.admin-audit .ad-table td:last-child {
+    min-width: 180px;
+    max-width: 320px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.admin-audit__pagination {
+    justify-content: flex-end;
+    margin-top: 20px;
+    color: #666;
+    font-size: 13px;
+}
+
+.admin-audit [role="alert"] {
+    color: #b42318;
+}
+
+/* Equal width for all six columns. */
+.admin-audit .ad-table {
+  table-layout: fixed;
+  min-width: 960px;
+}
+
+.admin-audit .ad-table th,
+.admin-audit .ad-table td {
+  width: 16.6667%;
+  text-align: left;
+  vertical-align: middle;
+}
+
+/* Let long names, IDs, and reasons wrap inside their column. */
+.admin-audit .ad-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.admin-audit .ad-table td.admin-audit__id,
+.admin-audit .ad-table td:last-child {
+  min-width: 0;
+  max-width: none;
+}
+
+.admin-audit .ad-table td:last-child {
+  white-space: pre-wrap;
+}
+
+.admin-audit__filters input,
+.admin-audit__filters select {
+  height: 40px;
+  box-sizing: border-box;
+}

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import ConfirmModal from '../../../components/ConfirmModal'
+import { ManageSearchIcon } from '../../../components/Icons'
+import './AdminListingManagementTab.css'
 import {
   getAdminListings,
   removeAdminListing,
@@ -133,9 +135,11 @@ export default function AdminListingManagementTab({ token, showToast }) {
         </div>
       </div>
 
-      <div className="ad-filter-bar">
+      <div className="ad-filter-bar ad-listing-filters">
         <div className="ad-search-wrap">
+          <span className="ad-search-icon" aria-hidden="true"><ManageSearchIcon size={18} /></span>
           <input
+            id="admin-listing-search"
             className="ad-search-input"
             aria-label="Search listings"
             placeholder="Search listing, provider, or listing ID"
@@ -144,7 +148,10 @@ export default function AdminListingManagementTab({ token, showToast }) {
           />
         </div>
 
+        <div className="ad-listing-filters__right">
         <select
+          id="admin-listing-status"
+          className="ad-listing-filter-select"
           aria-label="Listing status"
           value={statusFilter}
           onChange={event => setStatusFilter(event.target.value)}
@@ -154,8 +161,9 @@ export default function AdminListingManagementTab({ token, showToast }) {
           <option value="Inactive">Inactive</option>
           <option value="Removed">Removed</option>
         </select>
-
         <select
+          id="admin-listing-category"
+          className="ad-listing-filter-select"
           aria-label="Listing category"
           value={categoryFilter}
           onChange={event => setCategoryFilter(event.target.value)}
@@ -165,6 +173,7 @@ export default function AdminListingManagementTab({ token, showToast }) {
           <option value="Restaurant">Restaurant</option>
           <option value="Accommodation">Accommodation</option>
         </select>
+        </div>
 
         <button
           type="button"

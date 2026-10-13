@@ -107,8 +107,42 @@ public class AttendanceController(BookingDbContext db, ICatalogService catalog, 
 
     [HttpGet("api/admin-bookings/attendance-disputes")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> Disputes(CancellationToken ct)
-        => Ok(await db.AttendanceDisputes.AsNoTracking().OrderByDescending(d => d.CreatedAtUtc).ToListAsync(ct));
+    public async Task<IActionResult> Disputes(CancellationToken ct, [FromServices] IIdentityService identity)
+    {
+        var disputes = await db.AttendanceDisputes.AsNoTracking().OrderByDescending(d => d.CreatedAtUtc).ToListAsync(ct);
+        var names = new Dictionary<Guid, string>();
+        var results = new List<object>();
+        foreach (var dispute in disputes)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!names.ContainsKey(dispute.VisitorId))
+            {
+                try
+                {
+                    var visitor = await identity.GetBookingCustomerAsync(dispute.VisitorId, AccessToken);
+                    names[dispute.VisitorId] = string.IsNullOrWhiteSpace(visitor?.FullName) ? "Visitor unavailable" : visitor.FullName;
+                }
+                catch (HttpRequestException) { names[dispute.VisitorId] = "Visitor unavailable"; }
+            }
+            IPayableBooking? booking = dispute.BookingType switch
+            {
+                "Experience" => await db.Bookings.AsNoTracking().FirstOrDefaultAsync(b => b.Id == dispute.BookingId, ct),
+                "Restaurant" => await db.RestaurantReservations.AsNoTracking().FirstOrDefaultAsync(b => b.Id == dispute.BookingId, ct),
+                "Accommodation" => await db.AccommodationBookings.AsNoTracking().FirstOrDefaultAsync(b => b.Id == dispute.BookingId, ct),
+                _ => null
+            };
+            results.Add(new {
+                dispute.Id, dispute.BookingId, dispute.BookingType, dispute.VisitorId,
+                ServiceName = booking?.ListingTitle ?? "Service unavailable",
+                VisitorName = names[dispute.VisitorId],
+                dispute.OriginalAttendanceStatus, dispute.OriginalVerifiedByUserId,
+                dispute.OriginalVerifiedAtUtc, dispute.Reason, dispute.CreatedAtUtc,
+                dispute.Resolution, dispute.ResolvedAtUtc, dispute.ResolvedByUserId,
+                dispute.ResolvedAttendanceStatus
+            });
+        }
+        return Ok(results);
+    }
 
     [HttpPatch("api/admin-bookings/attendance-disputes/{id:guid}")]
     [Authorize(Roles = "Admin")]

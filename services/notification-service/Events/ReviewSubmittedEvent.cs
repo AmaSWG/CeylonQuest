@@ -16,12 +16,14 @@ public class ReviewSubmittedEvent
 
     public string ReviewText { get; set; } = "";
     
-    public DateTime SubmittedAt { get; set; }
-    
-    // Accept the timestamp name published by booking-service.
-    public DateTime SubmittedAtUtc
+    public DateTime SubmittedAtUtc { get; set; }
+
+    private DateTime _legacySubmittedAt;
+
+    // Booking-service emits SubmittedAtUtc; older producers emitted SubmittedAt.
+    public DateTime SubmittedAt
     {
-        get => SubmittedAt;
-        set => SubmittedAt = value;
+        get => SubmittedAtUtc != default ? SubmittedAtUtc : _legacySubmittedAt;
+        set => _legacySubmittedAt = value;
     }
 }

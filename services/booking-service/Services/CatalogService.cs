@@ -7,15 +7,15 @@ namespace BookingService.Services;
 
 public class CatalogService : ICatalogService
 {
-        public async Task<List<CatalogAdminListingResponse>> GetAdminListingsAsync(string accessToken)
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get, "/api/catalog/reports/admin-listings");
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-            using var response = await _httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<List<CatalogAdminListingResponse>>()
-                ?? throw new System.Text.Json.JsonException("Missing admin catalog response.");
-        }
+    public async Task<List<CatalogAdminListingResponse>> GetAdminListingsAsync(string accessToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/catalog/reports/admin-listings");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        using var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<List<CatalogAdminListingResponse>>()
+            ?? throw new System.Text.Json.JsonException("Missing admin catalog response.");
+    }
 
     private readonly HttpClient _httpClient;
 
@@ -266,5 +266,29 @@ public class CatalogService : ICatalogService
         return await response.Content
                    .ReadFromJsonAsync<List<CatalogProviderListingResponse>>()
                ?? new List<CatalogProviderListingResponse>();
+    }
+
+    public async Task<List<CatalogReportProviderResponse>> GetReportProvidersAsync(
+    string accessToken,
+    CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/api/catalog/reports/admin-providers");
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await _httpClient.SendAsync(
+            request,
+            cancellationToken);
+
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content
+            .ReadFromJsonAsync<List<CatalogReportProviderResponse>>(
+                cancellationToken: cancellationToken)
+            ?? throw new System.Text.Json.JsonException(
+                "Missing report provider response.");
     }
 }

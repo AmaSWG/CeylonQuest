@@ -33,32 +33,81 @@ public class ProviderPerformanceReportService
                 "Admin access token is required.", nameof(accessToken));
         }
 
+        var catalogProviders = await _catalog.GetReportProvidersAsync(
+     accessToken,
+     cancellationToken);
+
         var listings = await _catalog.GetAdminListingsAsync(accessToken);
         cancellationToken.ThrowIfCancellationRequested();
 
+        var listingsByProvider = listings
+            .GroupBy(l => l.ProviderId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var providers = new Dictionary<Guid, ProviderPerformanceReportRow>();
+
+        foreach (var catalogProvider in catalogProviders)
+        {
+            if (query.ProviderId.HasValue &&
+                catalogProvider.ProviderId != query.ProviderId.Value)
+            {
+                continue;
+            }
+
+            var categories = listingsByProvider.TryGetValue(
+                catalogProvider.ProviderId,
+                out var providerListings)
+                ? providerListings
+                    .Select(l => l.BookingType)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(c => c)
+                    .ToList()
+                : new List<string>();
+
+            // Providers without listings use their registered service category.
+            if (categories.Count == 0)
+            {
+                var category = MapServiceTypeToCategory(
+                    catalogProvider.ServiceType);
+
+                if (category != null)
+                {
+                    categories.Add(category);
+                }
+            }
+
+            if (query.Category != null &&
+                !categories.Contains(
+                    query.Category,
+                    StringComparer.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            providers.Add(
+                catalogProvider.ProviderId,
+                new ProviderPerformanceReportRow
+                {
+                    ProviderId = catalogProvider.ProviderId,
+                    ProviderName = catalogProvider.ProviderName,
+                    Categories = query.Category == null
+                        ? categories
+                        : categories
+                            .Where(c => c.Equals(
+                                query.Category,
+                                StringComparison.OrdinalIgnoreCase))
+                            .ToList()
+                });
+        }
+
         var selectedListings = listings
-            .Where(l =>
-                !query.ProviderId.HasValue ||
-                l.ProviderId == query.ProviderId.Value)
+            .Where(l => providers.ContainsKey(l.ProviderId))
             .Where(l =>
                 query.Category == null ||
                 l.BookingType.Equals(
-                    query.Category, StringComparison.OrdinalIgnoreCase))
+                    query.Category,
+                    StringComparison.OrdinalIgnoreCase))
             .ToList();
-
-        var providers = selectedListings
-            .GroupBy(l => l.ProviderId)
-            .ToDictionary(
-                g => g.Key,
-                g => new ProviderPerformanceReportRow
-                {
-                    ProviderId = g.Key,
-                    ProviderName = g.First().ProviderName,
-                    Categories = g.Select(l => l.BookingType)
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .OrderBy(c => c)
-                        .ToList()
-                });
 
         if (providers.Count == 0)
         {
@@ -298,6 +347,17 @@ public class ProviderPerformanceReportService
                 .ThenBy(p => p.ProviderName, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(p => p.ProviderId)
                 .ToList()
+        };
+
+    }
+    private static string? MapServiceTypeToCategory(string serviceType)
+    {
+        return serviceType.Trim().ToLowerInvariant() switch
+        {
+            "hotel" or "accommodation" => "Accommodation",
+            "restaurant" => "Restaurant",
+            "tour" or "activity" or "experience" => "Experience",
+            _ => null
         };
     }
 }

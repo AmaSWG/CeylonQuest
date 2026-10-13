@@ -1523,6 +1523,25 @@
   margin-top: 3px;
 }
 
+.pd-recent-notification-blocks {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.pd-recent-notification-blocks .pd-notif-preview-item {
+  flex: 0 0 240px;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex-direction: column;
+  padding: 16px;
+  border: 1px solid #ede8dc;
+  border-radius: 12px;
+  background: #fff;
+  overflow-wrap: anywhere;
+}
+
 .pd-notif-preview-item {
   display: flex;
   gap: 12px;
