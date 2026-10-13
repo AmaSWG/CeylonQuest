@@ -44,7 +44,9 @@ async function request(path, { auth = false, body, signal, method } = {}) {
       ? 'Your session has expired. Please sign in again.'
       : response.status === 403
         ? 'You are not authorized to perform this action.'
-        : 'Reviews could not be loaded. Please try again.'
+        : response.status === 404
+          ? 'Requested resource or endpoint was not found (404).'
+          : 'Request could not be completed. Please try again.'
 
     const error = new Error(
       validation || data?.detail || data?.message || fallback
@@ -94,6 +96,9 @@ export function submitReview(body) {
 }
 export function verifyAttendance(booking, status) {
   return request(`/api/provider-bookings/${normalizeBookingType(booking.bookingType)}/${booking.id}/attendance`, { auth: true, method: 'PATCH', body: { status } })
+}
+export function verifyReviewAttendance(reviewId) {
+  return request(`/api/provider-bookings/reviews/${reviewId}/verify-attendance`, { auth: true, method: 'POST' })
 }
 export function disputeAttendance(booking, reason) {
   return request(`/api/user-bookings/${normalizeBookingType(booking.bookingType)}/${booking.id}/attendance-dispute`, { auth: true, body: { reason } })

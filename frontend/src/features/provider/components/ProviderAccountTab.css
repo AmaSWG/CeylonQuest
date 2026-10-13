@@ -1,0 +1,190 @@
+.pd-account-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pd-account-view .pd-account-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.pd-account-view .pd-card {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  min-width: 0;
+  border: 1px solid #ede8dc;
+  box-shadow: 0 4px 20px rgba(18, 59, 93, 0.08);
+  border-radius: 16px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.pd-account-view .pd-card::before {
+  content: '';
+  display: block;
+  height: 6px;
+  background: linear-gradient(90deg, #d6a85f, #168aad);
+}
+
+.pd-account-view .pd-card__header {
+  padding: 24px 36px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.pd-account-view .pd-card__header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #123b5d;
+}
+
+.pd-account-view .pd-card__body {
+  padding: 32px 36px 36px;
+}
+
+.pd-account-view .pd-account-profile-summary {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.pd-account-view .pd-avatar-large {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 86px;
+  height: 86px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #123b5d, #168aad);
+  color: #fff;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 14px rgba(18, 59, 93, 0.16);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.pd-account-view .pd-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pd-account-view .pd-account-info-list {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.pd-account-view .pd-account-info-list > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.pd-account-view .pd-info-label {
+  color: #123b5d;
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 140px;
+}
+
+.pd-account-view .pd-info-val {
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pd-account-view .pd-form {
+  display: grid;
+  gap: 18px;
+}
+
+.pd-account-view .pd-form-group {
+  display: grid;
+  gap: 6px;
+}
+
+.pd-account-view .pd-form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  text-align: left;
+}
+
+.pd-account-view .pd-form-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #1e293b;
+  font: inherit;
+  font-size: 14px;
+}
+
+.pd-account-view .pd-form-input:focus-visible {
+  outline: 2px solid #168aad;
+  outline-offset: 2px;
+}
+
+.pd-account-view .pd-btn-primary {
+  justify-self: end;
+  padding: 9px 22px;
+  border: 0;
+  border-radius: 8px;
+  background: #168aad;
+  color: #fff;
+  font-size: 13.5px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pd-account-view .pd-btn-primary:hover:not(:disabled) {
+  background: #0f766e;
+}
+
+.pd-account-view .pd-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (max-width: 900px) {
+  .pd-account-view .pd-account-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .pd-account-view .pd-account-profile-summary {
+    flex-direction: column;
+  }
+
+  .pd-account-view .pd-avatar-large {
+    flex-basis: auto;
+    width: 86px;
+  }
+
+  .pd-account-view .pd-card__body {
+    padding: 20px;
+  }
+
+  .pd-account-view .pd-card__header {
+    padding: 20px;
+  }
+
+  .pd-account-view .pd-account-info-list > div {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}

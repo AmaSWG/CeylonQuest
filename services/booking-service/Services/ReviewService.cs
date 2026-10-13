@@ -90,7 +90,7 @@ public class ReviewService(
             VisitorId = visitorId,
             ListingId = booking.ListingId,
             ProviderId = providerId.Value,
-            AttendanceVerified = true,
+            AttendanceVerified = booking.AttendanceStatus == AttendanceStatus.Attended,
             Rating = request.Rating,
             Comment = request.Comment.Trim(),
             ReviewerDisplayName = reviewerDisplayName,
@@ -145,7 +145,8 @@ public class ReviewService(
     private static ReviewResponse ToResponse(ListingReview r)
         => new(r.Id, r.ListingId, r.BookingType, r.Rating, r.Comment,
             DateTime.SpecifyKind(r.CreatedAtUtc, DateTimeKind.Utc), r.ReviewerDisplayName, r.AttendanceVerified, r.ProviderResponse, r.ProviderRespondedAtUtc.HasValue
-                ? DateTime.SpecifyKind(r.ProviderRespondedAtUtc.Value, DateTimeKind.Utc) : null);
+                ? DateTime.SpecifyKind(r.ProviderRespondedAtUtc.Value, DateTimeKind.Utc) : null,
+            r.BookingId);
 
     public async Task<PlatformReviewResponse> CreatePlatformAsync(Guid visitorId, CreatePlatformReviewRequest request, CancellationToken token = default)
     {
@@ -245,12 +246,15 @@ public static DateTime? ScheduledEnd(IPayableBooking booking)
     => booking switch
     {
         Booking b => b.ScheduledEndAtUtc
-            ?? ReviewSchedule.SlotEnd(b.BookingDate, b.TimeSlot),
+            ?? ReviewSchedule.SlotEnd(b.BookingDate, b.TimeSlot)
+            ?? TimeZoneInfo.ConvertTimeToUtc(b.BookingDate.ToDateTime(new TimeOnly(23, 59)), TimeZoneInfo.FindSystemTimeZoneById("Asia/Colombo")),
 
         RestaurantReservation r => r.ScheduledEndAtUtc
-            ?? ReviewSchedule.SlotEnd(r.ReservationDate, r.TimeSlot),
+            ?? ReviewSchedule.SlotEnd(r.ReservationDate, r.TimeSlot)
+            ?? TimeZoneInfo.ConvertTimeToUtc(r.ReservationDate.ToDateTime(new TimeOnly(23, 59)), TimeZoneInfo.FindSystemTimeZoneById("Asia/Colombo")),
 
-        AccommodationBooking a => a.ScheduledEndAtUtc,
+        AccommodationBooking a => a.ScheduledEndAtUtc
+            ?? TimeZoneInfo.ConvertTimeToUtc(a.CheckOutDate.ToDateTime(new TimeOnly(12, 0)), TimeZoneInfo.FindSystemTimeZoneById("Asia/Colombo")),
 
         _ => null
     };
@@ -264,20 +268,16 @@ public static string? IneligibilityReason(
         return "You have already reviewed this booking.";
 
     if (booking.Status is not (BookingStatus.Confirmed or BookingStatus.Completed))
-        return "Only completed bookings can be reviewed.";
+        return "Only confirmed bookings can be reviewed.";
 
     var end = ScheduledEnd(booking);
     if (end == null)
-        return "The scheduled end time is unavailable. Please contact support.";
+        return "The scheduled date/time is unavailable. Please contact support.";
     if (end >= now)
-        return "You can review this booking after the service has ended.";
+        return "You can review this booking after the scheduled service date has passed.";
 
-    if (booking.AttendanceStatus != AttendanceStatus.Attended)
-        return booking.AttendanceStatus == AttendanceStatus.NoShow
-            ? "Attendance was recorded as NoShow. You can dispute this from My Bookings."
-            : "Review available after attendance confirmation.";
-    if (booking.Status != BookingStatus.Completed)
-        return "Only completed bookings can be reviewed.";
+    if (booking.AttendanceStatus == AttendanceStatus.NoShow)
+        return "Attendance was recorded as NoShow. You can dispute this from My Bookings.";
 
     return null;
 }

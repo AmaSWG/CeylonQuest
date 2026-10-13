@@ -3,6 +3,7 @@ import NotificationPanel from '../../../components/NotificationPanel'
 import { useState, useEffect, useCallback } from 'react'
 
 import './ProviderDashboard.css'
+import PlatformReviewsPage from '../../reviews/pages/PlatformReveiwPage'
 
 import {
   DashboardIcon,
@@ -13,7 +14,8 @@ import {
   PermIdentityIcon,
   BarChartIcon,
   CheckCircleIcon,
-  CancelIcon
+  CancelIcon,
+  RateReviewIcon
 } from '../../../components/Icons'
 
 import DashboardLayout from '../../../components/DashboardLayout'
@@ -59,8 +61,8 @@ function Toast({
   return (
     <div
       className={`pd-toast ${isError
-          ? 'pd-toast--error'
-          : 'pd-toast--success'
+        ? 'pd-toast--error'
+        : 'pd-toast--success'
         }`}
       role="alert"
       aria-live="polite"
@@ -595,11 +597,17 @@ function ProviderDashboard({ onLogout }) {
     },
 
     {
+      key: 'platform-reviews',
+      icon:
+        <RateReviewIcon size={18} />,
+      label: 'Platform Reviews'
+    },
+    {
       key: 'account',
       icon:
         <PermIdentityIcon size={18} />,
       label: 'Account'
-    }
+    },
   ]
 
 
@@ -705,6 +713,10 @@ function ProviderDashboard({ onLogout }) {
             fetchProviderBookings
           }
         />
+      )}
+
+      {activeTab === 'platform-reviews' && (
+        <PlatformReviewsPage embedded />
       )}
 
 

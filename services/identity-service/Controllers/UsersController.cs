@@ -264,7 +264,7 @@ public class UsersController : ControllerBase
     // =====================================================
 
     [HttpGet("{userId:guid}/booking-profile")]
-    [Authorize(Roles = "Provider")]
+    [Authorize(Roles = "Provider,Admin")]
     public async Task<IActionResult> GetBookingCustomerProfile(
         Guid userId)
     {

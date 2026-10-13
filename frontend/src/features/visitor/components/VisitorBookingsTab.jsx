@@ -4,7 +4,6 @@ import { formatSriLankaTime, canRetryPaymentAt, refundPreview } from '../../../a
 import ConfirmModal from '../../../components/ConfirmModal'
 import './VisitorBookingsTab.css'
 import ListingReviews from '../../../components/ListingReviews'
-import AttendanceDisputeAction from '../../../components/AttendanceDisputeAction'
 import { normalizeBookingType } from '../../../api/reviewApi'
 
 export default function VisitorBookingsTab({ onSessionExpired }) {
@@ -32,7 +31,17 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
     const [reviewTarget, setReviewTarget] = useState(null)
     const reviewPanelRef = useRef(null)
     useEffect(() => {
-        if (reviewTarget) reviewPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        if (!reviewTarget) return
+        const dialog = reviewPanelRef.current
+        const previousFocus = document.activeElement
+        const previousOverflow = document.body.style.overflow
+        dialog?.showModal()
+        document.body.style.overflow = 'hidden'
+        return () => {
+            dialog?.close()
+            document.body.style.overflow = previousOverflow
+            previousFocus?.focus()
+        }
     }, [reviewTarget])
 
     // =========================================================
@@ -244,8 +253,27 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
         )
     }
 
+    const isPastBooking = (booking) => {
+        if (!booking) return false
+        if (booking.scheduledEndAtUtc) {
+            return new Date(booking.scheduledEndAtUtc).getTime() <= (now || Date.now())
+        }
+        const dateStr = booking.checkOutDate || booking.date
+        if (!dateStr) return false
+        const endOfDay = new Date(`${dateStr}T23:59:59`)
+        return endOfDay.getTime() <= (now || Date.now())
+    }
+
+    const canReviewBooking = (booking) => {
+        if (!booking) return false
+        if (isCancelled(booking)) return false
+        const status = String(booking.status || '').toLowerCase()
+        const isConfirmedOrCompleted = status === 'confirmed' || status === 'completed'
+        return (isConfirmedOrCompleted && isPastBooking(booking)) || Boolean(booking.canReview)
+    }
+
     const canCancel = (booking) => {
-        return !isCancelled(booking) && !isCompleted(booking)
+        return !isCancelled(booking) && !isCompleted(booking) && !isPastBooking(booking)
     }
 
     const canDelete = (booking) => {
@@ -954,6 +982,20 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                             View Details
                                                         </button>
 
+                                                        {booking.reviewId ? (
+                                                            <span className="vb-reviewed-pill" title="You have reviewed this booking">
+                                                                Reviewed ✓
+                                                            </span>
+                                                        ) : canReviewBooking(booking) ? (
+                                                            <button
+                                                                type="button"
+                                                                className="vb-review-btn"
+                                                                onClick={() => setReviewTarget(booking)}
+                                                            >
+                                                                Review
+                                                            </button>
+                                                        ) : null}
+
                                                         {canRetryPayment(booking) && (
                                                             <button type="button" className="vb-payment-retry-btn" disabled={Boolean(retryingBookingId)} onClick={() => retryPayment(booking)}>Retry Payment</button>
                                                         )}
@@ -987,15 +1029,8 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                                                 {deletingBookingId === booking.id
                                                                     ? 'Deleting...'
                                                                     : 'Delete'}
-                                                                     </button>
+                                                                </button>
                                                         )}
-
-                                                        <div>
-                                                            <span>Attendance: {booking.attendanceStatus || 'Pending'}</span>
-                                                            {(booking.canReview || booking.reviewId) && <button type="button" className="vb-view-btn" onClick={() => setReviewTarget(booking)}>{booking.reviewId ? 'Review Submitted ? View Reviews' : 'Write Review'}</button>}
-                                                            {!booking.canReview && !booking.reviewId && booking.status !== 'Cancelled' && <p>{booking.reviewIneligibilityReason}</p>}
-                                                            <AttendanceDisputeAction booking={booking} onSaved={() => fetchBookings(true)} />
-                                                        </div>
 
                                                     </div>
                                                 </td>
@@ -1576,6 +1611,20 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
                                             Close
                                         </button>
 
+                                        {(canReviewBooking(selectedBooking) || selectedBooking.reviewId) && (
+                                            <button
+                                                type="button"
+                                                className={selectedBooking.reviewId ? "vb-view-btn" : "vb-review-btn"}
+                                                onClick={() => {
+                                                    const target = selectedBooking
+                                                    closeDetails()
+                                                    setReviewTarget(target)
+                                                }}
+                                            >
+                                                {selectedBooking.reviewId ? 'View Reviews' : 'Write Review'}
+                                            </button>
+                                        )}
+
                                         {canRetryPayment(selectedBooking) && (
                                             <button
                                                 type="button"
@@ -1679,20 +1728,40 @@ export default function VisitorBookingsTab({ onSessionExpired }) {
             )}
 
             {reviewTarget && (
-                <section ref={reviewPanelRef} aria-label={`Reviews for ${reviewTarget.serviceName}`}>
-                    <button type="button" className="vb-view-btn" onClick={() => setReviewTarget(null)}>
-                        Close reviews
-                    </button>
-                    <h2>{reviewTarget.serviceName}</h2>
+                <dialog
+                    ref={reviewPanelRef}
+                    className="vb-review-modal"
+                    aria-labelledby="vb-review-modal-title"
+                    onCancel={() => setReviewTarget(null)}
+                    onClick={(event) => {
+                        if (event.target === event.currentTarget) {
+                            const bounds = event.currentTarget.getBoundingClientRect()
+                            if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) setReviewTarget(null)
+                        }
+                    }}
+                >
+                    <div className="vb-review-modal__header">
+                        <div>
+                            <p>Share your experience</p>
+                            <h2 id="vb-review-modal-title">{reviewTarget.serviceName}</h2>
+                        </div>
+                        <button type="button" className="vb-review-modal__close" aria-label="Close reviews" onClick={() => setReviewTarget(null)} autoFocus>
+                            ×
+                        </button>
+                    </div>
                     <ListingReviews
                         key={`${reviewTarget.bookingType}-${reviewTarget.serviceId}`}
                         listingId={reviewTarget.serviceId}
                         bookingType={normalizeBookingType(reviewTarget.bookingType)}
                         preferredBookingId={reviewTarget.id}
-                        allowSubmission={!reviewTarget.reviewId}
-                        onSubmitted={() => fetchBookings(true)}
+                        allowSubmission={true}
+                        submitOnly={true}
+                        onSubmitted={() => {
+                            fetchBookings(true)
+                            setTimeout(() => setReviewTarget(null), 1200)
+                        }}
                     />
-                </section>
+                </dialog>
             )}
 
             <ConfirmModal

@@ -13,18 +13,27 @@ export default function PlatformReviewCard({ review }) {
     timeZone: 'Asia/Colombo',
   }).format(new Date(review.createdAtUtc))
 
+  const initial = (review.reviewerName || 'U').trim().charAt(0).toUpperCase()
+
   return (
     <article className="platform-review-card">
       <div className="platform-review-author">
-        {avatarUrl && (
+        {avatarUrl ? (
           <img
             className="platform-review-avatar"
             src={avatarUrl}
-            alt=""
+            alt={review.reviewerName || 'Reviewer'}
           />
+        ) : (
+          <div className="platform-review-avatar-placeholder" aria-hidden="true">
+            {initial}
+          </div>
         )}
 
-        <strong>{review.reviewerName}</strong>
+        <div className="platform-review-author-info">
+          <strong>{review.reviewerName || 'Anonymous Traveler'}</strong>
+          <span className="platform-review-author-verified">Verified Community Member</span>
+        </div>
       </div>
 
       <div
@@ -33,13 +42,15 @@ export default function PlatformReviewCard({ review }) {
       >
         <span aria-hidden="true">
           {'★'.repeat(review.rating)}
-          {'☆'.repeat(5 - review.rating)}
+          <span className="platform-review-stars-empty">{'★'.repeat(5 - review.rating)}</span>
         </span>
       </div>
 
       <p className="platform-review-content">{review.content}</p>
 
-      <time dateTime={review.createdAtUtc}>{date}</time>
+      <div className="platform-review-card-footer">
+        <time dateTime={review.createdAtUtc}>{date}</time>
+      </div>
     </article>
   )
 }

@@ -3,14 +3,15 @@ import NotificationPanel from '../../../components/NotificationPanel'
 import { useState, useEffect, useCallback } from 'react'
 
 import './VisitorDashboard.css'
+import PlatformReviewsPage from '../../reviews/pages/PlatformReveiwPage'
 
 import {
   NotificationsActiveIcon,
   PermIdentityIcon,
   CalendarMonthIcon,
-  SettingsIcon,
   PublicIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  RateReviewIcon
 } from '../../../components/Icons'
 
 import DashboardLayout from '../../../components/DashboardLayout'
@@ -196,11 +197,9 @@ function VisitorDashboard({ onLogout }) {
     },
 
     {
-      key: 'settings',
-      icon: <SettingsIcon size={18} />,
-      label: 'Settings',
-      disabled: true,
-      comingSoon: true
+      key: 'platform-reviews',
+      icon: <RateReviewIcon size={18} />,
+      label: 'Platform Reviews'
     }
   ]
 
@@ -226,6 +225,8 @@ function VisitorDashboard({ onLogout }) {
             onSessionExpired={handleLogout}
           />
         )
+      case 'platform-reviews':
+        return <PlatformReviewsPage embedded />
 
       case 'profile':
       default:

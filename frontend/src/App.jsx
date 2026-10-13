@@ -89,7 +89,16 @@ function App() {
   }
 
   if (page === 'platform-reviews') {
-    return <PlatformReviewsPage />
+    return (
+      <PlatformReviewsPage
+        onHome={() => {
+          window.history.pushState({}, '', '/')
+          setPage('home')
+        }}
+        onLogin={() => setPage('login')}
+        onRegister={() => setPage('registration')}
+      />
+    )
   }
 
   if (page === 'provider-application') {
@@ -211,29 +220,14 @@ function App() {
 
   if (page === 'visitor-dashboard') {
     return (
-      <>
-        <div style={{ padding: '12px 20px', background: '#eef7f1' }}>
-          <a href="/?page=platform-reviews">
-            Read or write a platform review
-          </a>
-        </div>
-
         <VisitorDashboard onLogout={handleLogout} />
-      </>
+      
     )
   }
 
   if (page === 'provider-dashboard') {
     return (
-      <>
-        <div style={{ padding: '12px 20px', background: '#eef7f1' }}>
-          <a href="/?page=platform-reviews">
-            Read or write a platform review
-          </a>
-        </div>
-
         <ProviderDashboard onLogout={handleLogout} />
-      </>
     )
   }
 
@@ -246,6 +240,7 @@ function App() {
       <HomePage
         onLogin={() => setPage('login')}
         onRegister={() => setPage('registration')}
+        onViewReviews={() => setPage('platform-reviews')}
       />
     )
   }

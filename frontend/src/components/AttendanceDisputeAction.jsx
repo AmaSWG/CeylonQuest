@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { disputeAttendance } from '../api/reviewApi'
 
-export default function AttendanceDisputeAction({ booking, onSaved }) {
+export default function AttendanceDisputeAction({ booking, onSaved, emptyFallback = null }) {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [saving, setSaving] = useState(false)
@@ -23,7 +23,7 @@ export default function AttendanceDisputeAction({ booking, onSaved }) {
     catch (err) { setError(err.message) }
     finally { busy.current = false; setSaving(false) }
   }
-  if (!eligible) return null
+  if (!eligible) return emptyFallback
   return <div className="cq-attendance-dispute">
     {!message && <button type="button" className="vb-view-btn" onClick={() => setOpen(v => !v)}>Report incorrect attendance</button>}
     {message && <p role="status">{message}</p>}

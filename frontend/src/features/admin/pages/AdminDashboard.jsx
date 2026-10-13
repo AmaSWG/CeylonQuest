@@ -6,7 +6,6 @@ import {
   GroupIcon,
   WorkIcon,
   BarChartIcon,
-  NotificationsActiveIcon,
   PermIdentityIcon,
   CheckCircleIcon,
   CancelIcon
@@ -192,7 +191,6 @@ function AdminDashboard({ onLogout }) {
     onLogout && onLogout()
   }, [onLogout])
 
-  const unreadNotifCount = notifications.filter(n => !n.read).length
   const pendingAppsCount = applications.filter(a => a.status === 'Pending').length
 
   const navItems = [
@@ -204,7 +202,6 @@ function AdminDashboard({ onLogout }) {
     { key: 'providers', icon: <WorkIcon size={18} />, label: 'Provider Management' },
     { key: 'attendance-disputes', icon: <DocumentScannerIcon size={18} />, label: 'Attendance Disputes' },
     { key: 'reports', icon: <BarChartIcon size={18} />, label: 'Reports & Analytics' },
-    { key: 'notifications', icon: <NotificationsActiveIcon size={18} />, label: 'Notifications', badge: unreadNotifCount > 0 ? unreadNotifCount : null },
     { key: 'account', icon: <PermIdentityIcon size={18} />, label: 'Account' },
   ]
 
