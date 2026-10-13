@@ -121,11 +121,52 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
         }
     }
 
+<<<<<<< Updated upstream
     private async Task<int?> RecordFailureAsync(
         string topic,
         string payload,
         Exception error,
         CancellationToken ct)
+=======
+    private async Task EnsureTopicsAsync(ConsumerConfig consumerConfig, CancellationToken ct)
+    {
+        if (!configuration.GetValue("Notifications:ProvisionTopics", true)) return;
+
+        // Use the same broker and credentials as the consumer, without group settings.
+        var adminConfig = new AdminClientConfig
+        {
+            BootstrapServers = consumerConfig.BootstrapServers,
+            SecurityProtocol = consumerConfig.SecurityProtocol,
+            SaslMechanism = consumerConfig.SaslMechanism,
+            SaslUsername = consumerConfig.SaslUsername,
+            SaslPassword = consumerConfig.SaslPassword
+        };
+        using var admin = new AdminClientBuilder(adminConfig).Build();
+        var partitions = configuration.GetValue("Notifications:TopicPartitions", -1);
+        var replication = configuration.GetValue<short>("Notifications:TopicReplicationFactor", -1);
+        try
+        {
+            await admin.CreateTopicsAsync(Topics.Select(topic => new TopicSpecification
+            {
+                Name = topic, NumPartitions = partitions, ReplicationFactor = replication
+            }), new CreateTopicsOptions { RequestTimeout = TimeSpan.FromSeconds(30) }).WaitAsync(ct);
+        }
+        catch (CreateTopicsException ex) when (ex.Results.All(result =>
+            result.Error.Code is ErrorCode.NoError or ErrorCode.TopicAlreadyExists))
+        {
+            // Existing topics and concurrent startup by another instance are safe.
+        }
+        catch (CreateTopicsException ex)
+        {
+            logger.LogError(ex, "Cannot provision notification topics. Grant Kafka topic CREATE permission " +
+                "or provision all required topics during deployment and set Notifications:ProvisionTopics=false");
+            throw;
+        }
+        logger.LogInformation("Notification Kafka topics are provisioned");
+    }
+
+    private async Task<int?> RecordFailureAsync(string topic, string payload, Exception error, CancellationToken ct)
+>>>>>>> Stashed changes
     {
         try
         {
@@ -148,6 +189,7 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
 
                 db.FailedEvents.Add(failure);
             }
+<<<<<<< Updated upstream
 
             failure.Error = error.ToString();
             failure.AttemptCount++;
@@ -170,5 +212,15 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
 
             return null;
         }
+=======
+            failure.Error = error.Message; failure.AttemptCount++;
+            failure.LastAttemptAtUtc = DateTime.UtcNow; failure.Resolved = false;
+            await db.SaveChangesAsync(ct);
+            return failure.AttemptCount;
+        }
+
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex) { logger.LogError(ex, "Cannot persist failure record; Kafka offset remains uncommitted"); return null; }
+>>>>>>> Stashed changes
     }
 }
