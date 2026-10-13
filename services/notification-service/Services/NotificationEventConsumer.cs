@@ -19,11 +19,16 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
     private async Task RunAsync(CancellationToken ct)
     {
         var s = settings.Value;
+        var maxProcessingAttempts = Math.Max(
+            1,
+            configuration.GetValue<int?>(
+                "Notifications:MaxProcessingAttempts") ?? 5);
         var config = new ConsumerConfig
         {
             BootstrapServers = s.BootstrapServers,
             GroupId = configuration["Notifications:ConsumerGroupId"] ?? "payment-notification-service",
-            EnableAutoCommit = false, EnableAutoOffsetStore = false,
+            EnableAutoCommit = false,
+            EnableAutoOffsetStore = false,
             AutoOffsetReset = AutoOffsetReset.Earliest
         };
         if (!string.IsNullOrWhiteSpace(s.SecurityProtocol))
@@ -52,7 +57,7 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
                         await using var scope = scopes.CreateAsyncScope();
                         await scope.ServiceProvider.GetRequiredService<NotificationEventProcessor>()
                             .ProcessAsync(record.Topic, payload, ct);
-                        
+
                         logger.LogInformation(
                         "Successfully processed notification event: Topic={Topic}, Partition={Partition}, Offset={Offset}",
                         record.Topic,
@@ -62,11 +67,34 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
                     catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
                     catch (Exception ex)
                     {
-                        logger.LogError(ex, "Failed notification event {Topic}/{Partition}/{Offset}; offset remains uncommitted",
-                            record.Topic, record.Partition.Value, record.Offset.Value);
-                        await RecordFailureAsync(record.Topic, payload, ex, ct);
-                        // Recreate the consumer from committed offsets. Never process a later
-                        // record on this partition and commit past the failed record.
+                        var attemptCount = await RecordFailureAsync(
+                            record.Topic, payload, ex, ct);
+
+                        if (attemptCount.HasValue &&
+                            attemptCount.Value >= maxProcessingAttempts)
+                        {
+                            logger.LogError(
+                                ex,
+                                "Quarantining notification event {Topic}/{Partition}/{Offset} " +
+                                "after {Attempts} attempts. Payload retained in FailedEvents.",
+                                record.Topic,
+                                record.Partition.Value,
+                                record.Offset.Value,
+                                attemptCount.Value);
+
+                            consumer.Commit(record);
+                            continue;
+                        }
+
+                        logger.LogError(
+                            ex,
+                            "Failed notification event {Topic}/{Partition}/{Offset}; " +
+                            "offset remains uncommitted. Persisted attempt count: {Attempts}",
+                            record.Topic,
+                            record.Partition.Value,
+                            record.Offset.Value,
+                            attemptCount);
+
                         throw;
                     }
                     logger.LogInformation(
@@ -80,11 +108,17 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
 
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
             catch (Exception ex)
-            
             {
                 logger.LogError(ex, "Notification consumer restarting after failure");
-                try { await Task.Delay(TimeSpan.FromSeconds(Math.Max(1, s.RetryDelaySeconds)), ct); }
-                catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
+                try
+                {
+                    await Task.Delay(
+                        TimeSpan.FromSeconds(Math.Max(1, s.RetryDelaySeconds)), ct);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    break;
+                }
             }
         }
     }
@@ -126,25 +160,50 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
         logger.LogInformation("Notification Kafka topics are provisioned");
     }
 
-    private async Task RecordFailureAsync(string topic, string payload, Exception error, CancellationToken ct)
+    private async Task<int?> RecordFailureAsync(string topic, string payload, Exception error, CancellationToken ct)
     {
         try
         {
             await using var scope = scopes.CreateAsyncScope();
-            var db = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
+            var db = scope.ServiceProvider
+                .GetRequiredService<NotificationDbContext>();
+
             var key = NotificationEventProcessor.PayloadKey(topic, payload);
-            var failure = await db.FailedEvents.FindAsync(new object[] { key }, ct);
+            var failure = await db.FailedEvents.FindAsync(
+                new object[] { key }, ct);
+
             if (failure == null)
             {
-                failure = new FailedEvent { EventKey = key, Topic = topic, Payload = payload };
+                failure = new FailedEvent
+                {
+                    EventKey = key,
+                    Topic = topic,
+                    Payload = payload
+                };
+
                 db.FailedEvents.Add(failure);
             }
-            failure.Error = error.Message; failure.AttemptCount++;
-            failure.LastAttemptAtUtc = DateTime.UtcNow; failure.Resolved = false;
-            await db.SaveChangesAsync(ct);
-        }
 
-        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-        catch (Exception ex) { logger.LogError(ex, "Cannot persist failure record; Kafka offset remains uncommitted"); }
+            failure.Error = error.ToString();
+            failure.AttemptCount++;
+            failure.LastAttemptAtUtc = DateTime.UtcNow;
+            failure.Resolved = false;
+
+            await db.SaveChangesAsync(ct);
+
+            return failure.AttemptCount;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Cannot persist failure record; Kafka offset remains uncommitted");
+
+            return null;
+        }
     }
 }
