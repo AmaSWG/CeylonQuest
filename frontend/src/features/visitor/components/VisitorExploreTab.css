@@ -118,12 +118,62 @@
   margin: 14px 20px 4px;
 }
 
+.vd-service-card__rating {
+  margin: 0 20px 6px;
+  display: flex;
+  align-items: center;
+  text-align: left;
+}
+
+.vd-rating-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.vd-rating-star {
+  color: #f59e0b;
+  font-size: 14px;
+}
+
+.vd-rating-score {
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.vd-rating-sep {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.vd-rating-count {
+  color: #64748b;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.vd-rating-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #94a3b8;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.vd-rating-star--empty {
+  color: #cbd5e1;
+}
+
 .vd-service-card__body {
-  padding: 12px 20px 16px;
+  padding: 8px 20px 16px;
   display: flex;
   flex-direction: row;
   gap: 24px;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
 }
 

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { getReviews } from '../../../api/reviewApi'
+import { getReviews, verifyReviewAttendance, verifyAttendance } from '../../../api/reviewApi'
 import StarRating from '../../../components/StarRating'
 import ProviderReviewResponse from '../../../components/ProviderReviewResponse'
+import '../../../components/ListingReviews.css'
+import './ProviderReviewsTab.css'
 
 export default function ProviderReviewsTab({ services = [], bookingType }) {
   const [selectedId, setSelectedId] = useState('')
@@ -10,6 +12,8 @@ export default function ProviderReviewsTab({ services = [], bookingType }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [verifyingReviewId, setVerifyingReviewId] = useState(null)
+  const [attendanceFeedback, setAttendanceFeedback] = useState({})
 
   const listingId = services.some(item => item.id === selectedId)
     ? selectedId
@@ -51,8 +55,48 @@ export default function ProviderReviewsTab({ services = [], bookingType }) {
     )
   }
 
+  async function handleConfirmAttendance(review) {
+    setVerifyingReviewId(review.id)
+    setAttendanceFeedback(prev => ({ ...prev, [review.id]: null }))
+    try {
+      try {
+        await verifyReviewAttendance(review.id)
+      } catch (err) {
+        if (review.bookingId) {
+          await verifyAttendance({ id: review.bookingId, bookingType: review.bookingType || bookingType }, 'Attended')
+        } else {
+          throw err
+        }
+      }
+
+      setData(current => {
+        if (!current) return current
+        return {
+          ...current,
+          items: current.items.map(item =>
+            item.id === review.id ? { ...item, attendanceVerified: true } : item
+          )
+        }
+      })
+      setAttendanceFeedback(prev => ({
+        ...prev,
+        [review.id]: { text: 'Attendance confirmed successfully!', isError: false }
+      }))
+    } catch (err) {
+      const message = err.status === 404
+        ? 'Verification endpoint not found (404). Please restart booking-service to apply changes.'
+        : (err.message || 'Failed to confirm attendance.')
+      setAttendanceFeedback(prev => ({
+        ...prev,
+        [review.id]: { text: message, isError: true }
+      }))
+    } finally {
+      setVerifyingReviewId(null)
+    }
+  }
+
   return (
-    <div className="pd-notifications-view">
+    <div className="pd-notifications-view pd-reviews-view">
       <div className="pd-page-header">
         <div className="pd-page-header__left">
           <h1>Reviews &amp; Ratings</h1>
@@ -60,20 +104,8 @@ export default function ProviderReviewsTab({ services = [], bookingType }) {
         </div>
       </div>
 
-      <section
-        aria-labelledby="provider-reviews-title"
-        style={{
-          background: '#fff',
-          border: '1px solid #e0e8e3',
-          borderRadius: 14,
-          padding: 24,
-          textAlign: 'left'
-        }}
-      >
-        <h2
-          id="provider-reviews-title"
-          style={{ margin: '0 0 20px', color: '#123b5d' }}
-        >
+      <section className="pd-reviews-card" aria-labelledby="provider-reviews-title">
+        <h2 id="provider-reviews-title" className="pd-reviews-title">
           Customer Reviews &amp; Ratings
         </h2>
 
@@ -81,39 +113,30 @@ export default function ProviderReviewsTab({ services = [], bookingType }) {
           <p>No listings available.</p>
         ) : (
           <>
-            <label
-              htmlFor="provider-review-listing"
-              style={{ display: 'block', marginBottom: 8 }}
-            >
-              Select listing
-            </label>
+            <div className="pd-reviews-selector-group">
+              <label htmlFor="provider-review-listing" className="pd-reviews-label">
+                Select listing
+              </label>
 
-            <select
-              id="provider-review-listing"
-              value={listingId || ''}
-              onChange={event => {
-                setSelectedId(event.target.value)
-                setPage(1)
-              }}
-              style={{
-                width: '100%',
-                maxWidth: 440,
-                padding: '10px 12px',
-                border: '1px solid #c9dcd3',
-                borderRadius: 8,
-                marginBottom: 20,
-                font: 'inherit'
-              }}
-            >
-              {services.map(listing => (
-                <option key={listing.id} value={listing.id}>
-                  {listing.title ||
-                    listing.name ||
-                    listing.roomType ||
-                    'Listing'}
-                </option>
-              ))}
-            </select>
+              <select
+                id="provider-review-listing"
+                className="pd-reviews-select"
+                value={listingId || ''}
+                onChange={event => {
+                  setSelectedId(event.target.value)
+                  setPage(1)
+                }}
+              >
+                {services.map(listing => (
+                  <option key={listing.id} value={listing.id}>
+                    {listing.title ||
+                      listing.name ||
+                      listing.roomType ||
+                      'Listing'}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {loading && <p role="status">Loading reviews…</p>}
 
@@ -122,7 +145,7 @@ export default function ProviderReviewsTab({ services = [], bookingType }) {
                 <p style={{ color: '#b42318' }}>{error}</p>
                 <button
                   type="button"
-                  className="pd-btn-secondary"
+                  className="pd-btn-read-toggle"
                   onClick={() => setRefresh(value => value + 1)}
                 >
                   Retry
@@ -132,95 +155,107 @@ export default function ProviderReviewsTab({ services = [], bookingType }) {
 
             {!loading && !error && data && (
               <>
-                <p style={{ color: '#527063', marginBottom: 20 }}>
-                  <strong>
+                <div className="pd-reviews-summary-bar">
+                  <span className="pd-reviews-summary-score">
                     {Number(data.averageRating).toFixed(2)} / 5
-                  </strong>
-                  {' · '}
-                  {data.reviewCount} review
-                  {data.reviewCount === 1 ? '' : 's'}
-                </p>
+                  </span>
+                  <span>·</span>
+                  <span>
+                    {data.reviewCount} review{data.reviewCount === 1 ? '' : 's'}
+                  </span>
+                </div>
 
                 {data.items.length === 0 ? (
                   <p>No customer reviews for this listing yet.</p>
                 ) : (
-                  <div style={{ display: 'grid', gap: 14 }}>
+                  <div className="pd-reviews-grid">
                     {data.items.map(review => {
                       const isRead = readReviewIds.includes(review.id)
+                      const feedback = attendanceFeedback[review.id]
 
                       return (
                         <article
                           key={review.id}
-                          style={{
-                            background: isRead ? '#fff' : '#f0faf4',
-                            border: '1px solid #e0e8e3',
-                            borderLeft: `4px solid ${isRead ? '#e0e8e3' : '#23825d'}`,
-                            borderRadius: 12,
-                            padding: 20,
-                            textAlign: 'left',
-                            overflowWrap: 'anywhere'
-                          }}
+                          className={`pd-review-item ${isRead ? 'pd-review-item--read' : 'pd-review-item--unread'}`}
                         >
-                          <div
-                            style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              flexWrap: 'wrap',
-                              gap: 12
-                            }}
-                          >
-                            <strong style={{ color: '#123b5d', fontSize: 17 }}>
+                          <div className="pd-review-item__header">
+                            <strong className="pd-review-reviewer">
                               {review.reviewerDisplayName || 'Customer'}
                             </strong>
 
-                            <span style={{ color: '#527063', fontSize: 13 }}>
-                              {isRead ? 'Read' : 'Unread'}
-                              {' · '}
-                              {new Date(review.createdAtUtc).toLocaleDateString(
-                                'en-GB',
-                                {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  year: 'numeric',
-                                  timeZone: 'Asia/Colombo'
-                                }
-                              )}
-                            </span>
+                            <div className="pd-review-item__meta">
+                              <span className={`pd-read-status-badge ${isRead ? 'pd-read-status-badge--read' : 'pd-read-status-badge--unread'}`}>
+                                {isRead ? 'Read' : 'Unread'}
+                              </span>
+                              <span>·</span>
+                              <time dateTime={review.createdAtUtc}>
+                                {new Date(review.createdAtUtc).toLocaleDateString(
+                                  'en-GB',
+                                  {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    timeZone: 'Asia/Colombo'
+                                  }
+                                )}
+                              </time>
+                            </div>
                           </div>
 
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 10,
-                              margin: '12px 0'
-                            }}
-                          >
+                          <div className="pd-review-rating-row">
                             <StarRating value={review.rating} />
-                            <strong>{review.rating} / 5</strong>
+                            <span className="pd-review-rating-score">{review.rating} / 5</span>
                           </div>
 
-                          <p
-                            style={{
-                              margin: '0 0 16px',
-                              lineHeight: 1.6,
-                              color: '#23443a',
-                              whiteSpace: 'pre-wrap'
-                            }}
-                          >
+                          <div className="cq-review-badges">
+                            <span className="cq-badge cq-badge--verified-customer" title="Verified Customer with a valid booking">
+                              ✓ Verified Customer
+                            </span>
+                            {review.attendanceVerified && (
+                              <span className="cq-badge cq-badge--attendance-verified" title="Attendance verified by provider">
+                                ✓ Attendance Verified
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="pd-review-comment">
                             {review.comment}
                           </p>
 
-                          <button
-                            type="button"
-                            className="pd-btn-secondary"
-                            aria-label={`Mark review by ${review.reviewerDisplayName || 'Customer'
-                              } as ${isRead ? 'unread' : 'read'}`}
-                            onClick={() => toggleReviewRead(review.id)}
-                          >
-                            {isRead ? 'Mark as unread' : 'Mark as read'}
-                          </button>
+                          <div className="pd-review-actions-bar">
+                            {!review.attendanceVerified ? (
+                              <button
+                                type="button"
+                                className="pd-btn-confirm-attendance"
+                                disabled={verifyingReviewId === review.id}
+                                onClick={() => handleConfirmAttendance(review)}
+                                title="Confirm this customer attended the scheduled booking"
+                              >
+                                {verifyingReviewId === review.id ? 'Confirming...' : '✓ Confirm Attendance'}
+                              </button>
+                            ) : (
+                              <span className="pd-attendance-confirmed-tag">
+                                ✓ Attendance Confirmed
+                              </span>
+                            )}
+
+                            <button
+                              type="button"
+                              className="pd-btn-read-toggle"
+                              aria-label={`Mark review by ${review.reviewerDisplayName || 'Customer'} as ${isRead ? 'unread' : 'read'}`}
+                              onClick={() => toggleReviewRead(review.id)}
+                            >
+                              {isRead ? 'Mark as unread' : 'Mark as read'}
+                            </button>
+
+                            {feedback && (
+                              <span className={`pd-attendance-feedback ${feedback.isError ? 'pd-attendance-feedback--error' : 'pd-attendance-feedback--success'}`}>
+                                {feedback.text}
+                              </span>
+                            )}
+                          </div>
+
+                          <ProviderReviewResponse review={review} onSaved={() => setRefresh(v => v + 1)} />
                         </article>
                       )
                     })}
@@ -234,25 +269,25 @@ export default function ProviderReviewsTab({ services = [], bookingType }) {
                       alignItems: 'center',
                       flexWrap: 'wrap',
                       gap: 12,
-                      marginTop: 20
+                      marginTop: 24
                     }}
                   >
                     <button
                       type="button"
-                      className="pd-btn-secondary"
+                      className="pd-btn-read-toggle"
                       disabled={page === 1}
                       onClick={() => setPage(value => value - 1)}
                     >
                       Previous
                     </button>
 
-                    <span>
+                    <span style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
                       Page {page} of {data.totalPages}
                     </span>
 
                     <button
                       type="button"
-                      className="pd-btn-secondary"
+                      className="pd-btn-read-toggle"
                       disabled={page >= data.totalPages}
                       onClick={() => setPage(value => value + 1)}
                     >

@@ -69,12 +69,50 @@ public class AttendanceController(BookingDbContext db, ICatalogService catalog, 
         if (UserId == Guid.Empty) return Unauthorized();
         try
         {
+            var now = clock.GetUtcNow().UtcDateTime;
             var booking = await Booking(bookingType, bookingId, ct);
             if (booking == null) return NotFound();
             if (!await Owns(bookingType, booking.ListingId)) return Forbid();
-            var now = clock.GetUtcNow().UtcDateTime;
-            AttendanceRules.Verify(booking, Enum.Parse<AttendanceStatus>(request.Status), UserId, now);
+            var status = Enum.Parse<AttendanceStatus>(request.Status);
+            AttendanceRules.Verify(booking, status, UserId, now);
+            if (status == AttendanceStatus.Attended)
+            {
+                var existingReview = await db.ListingReviews.FirstOrDefaultAsync(
+                    r => r.BookingId == bookingId && r.BookingType == bookingType, ct);
+                if (existingReview != null) existingReview.AttendanceVerified = true;
+            }
             if (!await db.ListingReviews.AnyAsync(r => r.BookingId == bookingId && r.BookingType == bookingType, ct)) Invite(booking, now);
+            return await Save(ct);
+        }
+        catch (ReviewException ex) { return Problem(statusCode: ex.StatusCode, detail: ex.Message); }
+        catch (HttpRequestException) { return Problem(statusCode: 503, detail: "Listing ownership could not be verified. Please retry."); }
+    }
+
+    /// <summary>Confirm participant attendance directly from a review.</summary>
+    [HttpPost("api/provider-bookings/reviews/{reviewId:guid}/verify-attendance")]
+    [Authorize(Roles = "Provider")]
+    public async Task<IActionResult> VerifyReviewAttendance(Guid reviewId, CancellationToken ct)
+    {
+        if (UserId == Guid.Empty) return Unauthorized();
+        try
+        {
+            var review = await db.ListingReviews.FirstOrDefaultAsync(r => r.Id == reviewId, ct);
+            if (review == null) return NotFound("Review not found.");
+            if (!await Owns(review.BookingType, review.ListingId)) return Forbid();
+
+            review.AttendanceVerified = true;
+
+            var booking = await Booking(review.BookingType, review.BookingId, ct);
+            if (booking != null)
+            {
+                var now = clock.GetUtcNow().UtcDateTime;
+                booking.Status = BookingStatus.Completed;
+                booking.AttendanceStatus = AttendanceStatus.Attended;
+                booking.AttendanceVerifiedByUserId = UserId;
+                booking.AttendanceVerifiedAtUtc = now;
+                booking.UpdatedAt = now;
+            }
+
             return await Save(ct);
         }
         catch (ReviewException ex) { return Problem(statusCode: ex.StatusCode, detail: ex.Message); }
@@ -166,6 +204,12 @@ public class AttendanceController(BookingDbContext db, ICatalogService catalog, 
         booking.AttendanceVerifiedByUserId = UserId; booking.AttendanceVerifiedAtUtc = now; booking.UpdatedAt = now;
         dispute.Resolution = request.Resolution.Trim(); dispute.ResolvedByUserId = UserId;
         dispute.ResolvedAtUtc = now; dispute.ResolvedAttendanceStatus = status;
+        if (status == AttendanceStatus.Attended)
+        {
+            var existingReview = await db.ListingReviews.FirstOrDefaultAsync(
+                r => r.BookingId == booking.Id && r.BookingType == dispute.BookingType, ct);
+            if (existingReview != null) existingReview.AttendanceVerified = true;
+        }
         if (changed && !await db.ListingReviews.AnyAsync(r => r.BookingId == booking.Id && r.BookingType == dispute.BookingType, ct)) Invite(booking, now);
         return await Save(ct);
     }

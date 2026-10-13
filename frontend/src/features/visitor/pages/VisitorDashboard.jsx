@@ -11,7 +11,8 @@ import {
   CalendarMonthIcon,
   SettingsIcon,
   PublicIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  RateReviewIcon
 } from '../../../components/Icons'
 
 import DashboardLayout from '../../../components/DashboardLayout'
@@ -198,7 +199,7 @@ function VisitorDashboard({ onLogout }) {
 
     {
       key: 'platform-reviews',
-      icon: <CalendarMonthIcon size={18} />,
+      icon: <RateReviewIcon size={18} />,
       label: 'Platform Reviews'
     },
 

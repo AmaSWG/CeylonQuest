@@ -89,7 +89,16 @@ function App() {
   }
 
   if (page === 'platform-reviews') {
-    return <PlatformReviewsPage />
+    return (
+      <PlatformReviewsPage
+        onHome={() => {
+          window.history.pushState({}, '', '/')
+          setPage('home')
+        }}
+        onLogin={() => setPage('login')}
+        onRegister={() => setPage('registration')}
+      />
+    )
   }
 
   if (page === 'provider-application') {
@@ -231,6 +240,7 @@ function App() {
       <HomePage
         onLogin={() => setPage('login')}
         onRegister={() => setPage('registration')}
+        onViewReviews={() => setPage('platform-reviews')}
       />
     )
   }

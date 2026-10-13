@@ -10,7 +10,8 @@ public record ReviewResponse(
     string ReviewerDisplayName = "Visitor",
     bool AttendanceVerified = false,
     string? ProviderResponse = null,
-    DateTime? ProviderRespondedAtUtc = null);
+    DateTime? ProviderRespondedAtUtc = null,
+    Guid? BookingId = null);
 public record ReviewSummaryResponse(
     Guid ListingId,
     string? BookingType,

@@ -14,7 +14,8 @@ import {
   PermIdentityIcon,
   BarChartIcon,
   CheckCircleIcon,
-  CancelIcon
+  CancelIcon,
+  RateReviewIcon
 } from '../../../components/Icons'
 
 import DashboardLayout from '../../../components/DashboardLayout'
@@ -598,7 +599,7 @@ function ProviderDashboard({ onLogout }) {
     {
       key: 'platform-reviews',
       icon:
-        <CalendarMonthIcon size={18} />,
+        <RateReviewIcon size={18} />,
       label: 'Platform Reviews'
     },
     {

@@ -2,9 +2,6 @@ import { NotificationsActiveIcon } from './Icons'
 import { formatSriLankaTime } from '../api/bookingPayment'
 import './NotificationPanel.css'
 
-const labels = { 'booking.created': 'Booking created', 'payment.completed': 'Payment completed',
-  'booking.canceled': 'Booking canceled', 'review.submitted': 'New review' }
-
 export default function NotificationPanel({ state }) {
   const { items, unreadCount, totalCount, pageSize, page, setPage, loading, error, busy, refresh, markRead, markAllRead } = state
   return <section className="cq-notifications" aria-label="Notifications">
@@ -17,10 +14,15 @@ export default function NotificationPanel({ state }) {
     {!loading && !error && items.length === 0 && <div className="cq-notifications__empty"><NotificationsActiveIcon size={32} /><h2>No notifications yet</h2><p>Your updates will appear here.</p></div>}
     <div className="cq-notifications__list">
       {items.map(item => <article key={item.id} className={`cq-notifications__item ${item.isRead ? '' : 'cq-notifications__item--unread'}`}>
-        <div className="cq-notifications__meta"><span>{labels[item.eventType] || 'Notification'}</span><span>{item.isRead ? 'Read' : 'Unread'}</span></div>
-        <h2>{item.title}</h2><p>{item.message}</p>
-        <div className="cq-notifications__meta"><time>{formatSriLankaTime(item.createdAtUtc)}</time>
-          {!item.isRead && <button type="button" disabled={busy} onClick={() => markRead(item.id)}>Mark as read</button>}
+        <h2>{item.title}</h2>
+        <p>{item.message}</p>
+        <div className="cq-notifications__meta">
+          <time>{formatSriLankaTime(item.createdAtUtc)}</time>
+          {item.isRead ? (
+            <span className="cq-notifications__status">Read</span>
+          ) : (
+            <button type="button" disabled={busy} onClick={() => markRead(item.id)}>Mark as read</button>
+          )}
         </div>
       </article>)}
     </div>

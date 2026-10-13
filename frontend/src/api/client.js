@@ -35,4 +35,10 @@ export function bookingUrl(path) {
   return `${BOOKING_BASE}${path}`
 }
 
-export { API_BASE, CATALOG_BASE, BOOKING_BASE }
+const NOTIFICATION_BASE = (import.meta.env.VITE_NOTIFICATION_API_BASE_URL || '').replace(/\/$/, '')
+
+export function notificationUrl(path) {
+  return `${NOTIFICATION_BASE}${path}`
+}
+
+export { API_BASE, CATALOG_BASE, BOOKING_BASE, NOTIFICATION_BASE} 
