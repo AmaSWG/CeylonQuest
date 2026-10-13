@@ -41,6 +41,9 @@ public class NotificationEventProcessor(NotificationDbContext db, IRecipientReso
                 var canceled = Parse<BookingCanceledEvent>(payload);
                 return EventKey(topic, canceled.EventId, $"{canceled.BookingId}:{canceled.CanceledAt:O}");
             
+            case "review.eligibility-granted":
+                var invitation = Parse<ReviewEligibilityGrantedEvent>(payload);
+                return EventKey(topic, invitation.EventId, invitation.BookingId.ToString());
             case "review.submitted":
                 var review = Parse<ReviewSubmittedEvent>(payload);
                 return EventKey(topic, review.EventId, review.ReviewId.ToString());
@@ -63,6 +66,9 @@ public class NotificationEventProcessor(NotificationDbContext db, IRecipientReso
         int? rating = null;
         string? currency = null, refundStatus = null;
         string title, message;
+        string? providerTitle = null;
+        string? providerMessage = null;
+        Guid? providerRecipientId = null;
         DateTime occurred;
         Guid[] recipients;
         BookingContext? contextToAdd = null;
@@ -72,17 +78,45 @@ public class NotificationEventProcessor(NotificationDbContext db, IRecipientReso
 
                 var created = Parse<BookingCreatedEvent>(payload);
 
-                Require(created.BookingId != Guid.Empty && created.VisitorId != Guid.Empty &&
+                 Require(created.BookingId != Guid.Empty && created.VisitorId != Guid.Empty &&
                     created.ListingId != Guid.Empty && created.CreatedAt != default &&
                     !string.IsNullOrWhiteSpace(created.BookingDate), "Invalid booking.created event.");
-                booking = created.BookingId; listing = created.ListingId; occurred = created.CreatedAt;
-                
-                var provider = await resolver.ProviderAsync(created.ListingId, created.ProviderUserId, ct);
+
+                booking = created.BookingId;
+                listing = created.ListingId;
+                occurred = created.CreatedAt;
+
+                var provider = await resolver.ProviderAsync(
+                    created.ListingId,
+                    created.ProviderUserId,
+                    ct
+                );
+
                 recipients = [created.VisitorId, provider];
+
+                // Visitor notification
                 title = "Booking created";
-                message = $"Your booking for {created.ListingType} at {created.ProviderBusinessName} has been successfully created for {created.BookingDate} " +
+
+                message = $"Your booking for {created.ListingTitle} at {created.ProviderBusinessName} " +
+                    $"has been successfully created for {created.BookingDate} " +
                     $"from {created.TimeSlot}, for {created.ParticipantCount} participant(s).";
-                contextToAdd = new() { BookingId = booking, VisitorId = created.VisitorId, ProviderUserId = provider };
+
+                // Provider notification
+                providerRecipientId = provider;
+
+                providerTitle = "New booking received";
+
+                providerMessage = $"You have received a new booking for your {created.ListingTitle} " +
+                    $"on {created.BookingDate} from {created.TimeSlot}, " +
+                    $"for {created.ParticipantCount} participant(s).";
+
+                contextToAdd = new()
+                {
+                    BookingId = booking,
+                    VisitorId = created.VisitorId,
+                    ProviderUserId = provider
+                };
+
                 break;
 
             case "payment.completed":
@@ -112,7 +146,7 @@ public class NotificationEventProcessor(NotificationDbContext db, IRecipientReso
                 recipients = [users.VisitorId, users.ProviderUserId];
                 refund = canceled.RefundAmount; refundStatus = canceled.RefundStatus; currency = canceled.Currency;
                 title = "Booking canceled";
-                message = $"Your {canceled.ListingType} booking for {canceled.BookingDate} " +
+                message = $"Your {canceled.ListingTitle} booking for {canceled.BookingDate} " +
                     $"from {canceled.TimeSlot} has been successfully canceled.\n " +
                     $"Reason: {canceled.Reason ?? "Not supplied"}.";
                 if (refund.HasValue || refundStatus != null)
@@ -120,9 +154,19 @@ public class NotificationEventProcessor(NotificationDbContext db, IRecipientReso
                         $"Refund status: {refundStatus ?? "Not supplied"}.";
                 break;
 
+            case "review.eligibility-granted":
+                var invitation = Parse<ReviewEligibilityGrantedEvent>(payload);
+                Require(invitation.EventId != Guid.Empty && invitation.BookingId != Guid.Empty && invitation.ListingId != Guid.Empty
+                    && invitation.VisitorId != Guid.Empty && invitation.VerifiedAtUtc != default, "Invalid review eligibility event.");
+                booking = invitation.BookingId; listing = invitation.ListingId; occurred = invitation.VerifiedAtUtc;
+                recipients = [invitation.VisitorId];
+                title = "Your booking is ready to review";
+                message = $"Attendance for {invitation.ListingTitle} has been confirmed. Share your feedback from My Bookings.";
+                break;
             case "review.submitted":
 
                 var submitted = Parse<ReviewSubmittedEvent>(payload);
+                if (submitted.SubmittedAt == default) submitted.SubmittedAt = submitted.SubmittedAtUtc;
                 Require(submitted.ReviewId != Guid.Empty && submitted.BookingId != Guid.Empty &&
                     submitted.ListingId != Guid.Empty && submitted.Rating is >= 1 and <= 5 &&
                     submitted.SubmittedAt != default, "Invalid review.submitted event.");
@@ -145,13 +189,33 @@ public class NotificationEventProcessor(NotificationDbContext db, IRecipientReso
         if (contextToAdd != null && !await db.BookingContexts.AnyAsync(x => x.BookingId == booking, ct))
             db.BookingContexts.Add(contextToAdd);
         foreach (var recipient in recipients.Distinct())
+        {
+            bool isProviderNotification =
+                topic == "booking.created" &&
+                providerRecipientId.HasValue &&
+                recipient == providerRecipientId.Value;
+
             db.Notifications.Add(new Notification
             {
-                RecipientUserId = recipient, EventKey = key, EventType = topic,
-                Title = title, Message = message, BookingId = booking, ListingId = listing,
-                PaymentId = payment, ReviewId = review, Amount = amount, Currency = currency,
-                Rating = rating, RefundAmount = refund, RefundStatus = refundStatus, OccurredAtUtc = occurred
+                RecipientUserId = recipient,
+                EventKey = key,
+                EventType = topic,
+
+                Title = isProviderNotification ? providerTitle! : title,
+                Message = isProviderNotification ? providerMessage! : message,
+
+                BookingId = booking,
+                ListingId = listing,
+                PaymentId = payment,
+                ReviewId = review,
+                Amount = amount,
+                Currency = currency,
+                Rating = rating,
+                RefundAmount = refund,
+                RefundStatus = refundStatus,
+                OccurredAtUtc = occurred
             });
+        }   
         db.ProcessedEvents.Add(new() { EventKey = key, Topic = topic });
         var failureKey = PayloadKey(topic, payload);
         var failure = await db.FailedEvents.FindAsync(new object[] { failureKey }, ct);
