@@ -53,7 +53,7 @@ export default function OverviewTab({ stats, users = [], applications = [], book
 
       {/* Metrics Cards */}
       <div className="ad-metrics-grid">
-        <div className="ad-metric-card" className="ad-cursor-pointer" onClick={() => onNavigate('users')}>
+        <div className="ad-metric-card ad-cursor-pointer" onClick={() => onNavigate('users')}>
           <div className="ad-metric-icon ad-metric-icon--blue"><GroupIcon size={24} /></div>
           <div className="ad-metric-info">
             <div className="ad-metric-title">Total Registered Users</div>
@@ -62,7 +62,7 @@ export default function OverviewTab({ stats, users = [], applications = [], book
           </div>
         </div>
 
-        <div className="ad-metric-card" className="ad-cursor-pointer" onClick={() => onNavigate('providers')}>
+        <div className="ad-metric-card ad-cursor-pointer" onClick={() => onNavigate('providers')}>
           <div className="ad-metric-icon ad-metric-icon--teal"><WorkIcon size={24} /></div>
           <div className="ad-metric-info">
             <div className="ad-metric-title">Service Providers</div>
@@ -71,7 +71,7 @@ export default function OverviewTab({ stats, users = [], applications = [], book
           </div>
         </div>
 
-        <div className="ad-metric-card" className="ad-cursor-pointer" onClick={() => onNavigate('applications')}>
+        <div className="ad-metric-card ad-cursor-pointer" onClick={() => onNavigate('applications')}>
           <div className="ad-metric-icon ad-metric-icon--gold"><DocumentScannerIcon size={24} /></div>
           <div className="ad-metric-info">
             <div className="ad-metric-title">Provider Applications</div>

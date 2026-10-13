@@ -20,7 +20,8 @@ export default function ListingReviews({
   onSummaryChange,
   allowSubmission = false,
   allowResponse = false,
-  onSubmitted
+  onSubmitted,
+  submitOnly = false
 }) {
   const [page, setPage] = useState(1)
   const [rating, setRating] = useState('')
@@ -37,6 +38,11 @@ export default function ListingReviews({
   const authToken = localStorage.getItem('authToken')
 
   useEffect(() => {
+    if (submitOnly) {
+      setLoading(false)
+      return
+    }
+
     const controller = new AbortController()
 
     queueMicrotask(() => {
@@ -62,7 +68,7 @@ export default function ListingReviews({
       })
 
     return () => controller.abort()
-  }, [listingId, bookingType, page, rating, refresh])
+  }, [listingId, bookingType, page, rating, refresh, submitOnly])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -111,15 +117,66 @@ export default function ListingReviews({
     }
   }, [data, onSummaryChange])
 
-  const eligibleBookings = (eligibility?.eligibleBookings ?? []).filter(b => !preferredBookingId || b.bookingId === preferredBookingId)
+  const rawEligible = eligibility?.eligibleBookings ?? []
+  const filteredEligible = rawEligible.filter(b => !preferredBookingId || b.bookingId === preferredBookingId)
+  const eligibleBookings = filteredEligible.length > 0
+    ? filteredEligible
+    : (preferredBookingId && rawEligible.length > 0)
+      ? rawEligible
+      : (preferredBookingId && allowSubmission)
+        ? [{ bookingId: preferredBookingId, bookingDate: 'Completed booking' }]
+        : []
+
+  if (submitOnly) {
+    return (
+      <section className="cq-reviews cq-reviews--submit-only" aria-label="Submit review">
+        {success && <p role="status" className="cq-review-success">{success}</p>}
+        {submissionError && <p role="alert" className="cq-review-error">{submissionError}</p>}
+
+        {!authToken ? (
+          <p>Sign in as a visitor to submit a review.</p>
+        ) : eligibilityLoading ? (
+          <p role="status">Preparing review form…</p>
+        ) : eligibilityError ? (
+          <div role="alert">
+            <p>{eligibilityError}</p>
+            <button type="button" onClick={() => setRefresh(v => v + 1)}>
+              Check again
+            </button>
+          </div>
+        ) : eligibleBookings.length > 0 ? (
+          <ReviewForm
+            key={`${listingId}-${refresh}`}
+            bookingType={bookingType}
+            bookings={eligibleBookings}
+            preferredBookingId={preferredBookingId}
+            onSubmitted={submitted}
+            onConflict={(message) => {
+              setSuccess('')
+              setSubmissionError(message)
+              setEligibility(null)
+              setEligibilityLoading(true)
+              setRefresh(value => value + 1)
+            }}
+          />
+        ) : (
+          <p>{eligibility?.message || 'You are not eligible to review yet.'}</p>
+        )}
+      </section>
+    )
+  }
 
   return (
     <section className="cq-reviews" aria-label="Visitor reviews">
       <h2>Customer Reviews &amp; Ratings</h2>
 
-      <label>
-        Filter reviews by rating: {' '}
+      <div className="cq-review-filter-bar">
+        <label htmlFor="cq-rating-filter" className="cq-review-filter-label">
+          Filter reviews by rating:
+        </label>
         <select
+          id="cq-rating-filter"
+          className="cq-review-filter-select"
           value={rating}
           onChange={event => {
             setRating(event.target.value)
@@ -135,7 +192,7 @@ export default function ListingReviews({
             </option>
           ))}
         </select>
-      </label>
+      </div>
 
       {data && (
         <p className="cq-review-summary">
@@ -197,7 +254,16 @@ export default function ListingReviews({
                     </time>
                   </div>
                   <StarRating value={review.rating} />
-                  <span className="cq-verified-booking" title={review.attendanceVerified ? "Attendance confirmed by provider" : "Submitted against a completed booking"}>Verified Booking</span>
+                  <div className="cq-review-badges">
+                    <span className="cq-badge cq-badge--verified-customer" title="Verified Customer with a valid booking">
+                      ✓ Verified Customer
+                    </span>
+                    {review.attendanceVerified && (
+                      <span className="cq-badge cq-badge--attendance-verified" title="Attendance verified by provider">
+                        ✓ Attendance Verified
+                      </span>
+                    )}
+                  </div>
                   <p className="cq-review-comment">{review.comment}</p>
                   {review.providerResponse && <blockquote className="cq-provider-response"><strong>Provider response</strong><p>{review.providerResponse}</p>{review.providerRespondedAtUtc && <time dateTime={review.providerRespondedAtUtc}>{dateFormatter.format(new Date(review.providerRespondedAtUtc))}</time>}</blockquote>}
                   {allowResponse && <ProviderReviewResponse review={review} onSaved={() => setRefresh(v => v + 1)} />}

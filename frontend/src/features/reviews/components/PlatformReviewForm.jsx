@@ -79,7 +79,7 @@ export default function PlatformReviewForm({ onSubmitted }) {
         </p>
       )}
 
-      {success && <p role="status">{success}</p>}
+      {success && <p className="platform-review-success" role="status">{success}</p>}
 
       <button type="submit" disabled={busy}>
         {busy ? 'Submitting…' : 'Submit review'}

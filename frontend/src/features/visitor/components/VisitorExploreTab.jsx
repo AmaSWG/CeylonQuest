@@ -280,13 +280,24 @@ export default function VisitorExploreTab({ showToast }) {
 
                   <h3 className="vd-service-card__title">{item.title}</h3>
 
+                  <div className="vd-service-card__rating">
+                    {Number(item.reviewCount ?? 0) > 0 ? (
+                      <span className="vd-rating-pill" aria-label={`Rating ${Number(item.averageRating).toFixed(1)} out of 5 stars from ${item.reviewCount} reviews`}>
+                        <span className="vd-rating-star">★</span>
+                        <strong className="vd-rating-score">{Number(item.averageRating).toFixed(1)}</strong>
+                        <span className="vd-rating-sep">·</span>
+                        <span className="vd-rating-count">{item.reviewCount} {item.reviewCount === 1 ? 'review' : 'reviews'}</span>
+                      </span>
+                    ) : (
+                      <span className="vd-rating-empty" aria-label="No reviews yet">
+                        <span className="vd-rating-star vd-rating-star--empty">★</span>
+                        <span>No reviews yet</span>
+                      </span>
+                    )}
+                  </div>
+
                   <div className="vd-service-card__body">
                     <div className="vd-service-card__body-left">
-                      <p aria-label="Visitor rating">
-                          {Number(item.reviewCount ?? 0) > 0
-                          ? `★ ${Number(item.averageRating).toFixed(2)} · ${item.reviewCount} reviews`
-                          : 'No reviews yet'}
-                      </p>
                       <p className="vd-service-card__desc">{item.description}</p>
                       <div className="vd-service-card__tags">
                         {item.location && (

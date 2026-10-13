@@ -8,7 +8,7 @@ import HomeFooter from '../components/HomeFooter'
 import './HomePage.css'
 
 
-function HomePage({ onLogin, onRegister }) {
+function HomePage({ onLogin, onRegister, onViewReviews }) {
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
@@ -28,7 +28,7 @@ function HomePage({ onLogin, onRegister }) {
       <HomeHero onRegister={onRegister} />
 
       <HomeFeatures />
-      <HomePlatformReviews />
+      <HomePlatformReviews onViewReviews={onViewReviews} />
 
       <HomeCtaBanner
         onLogin={onLogin}

@@ -1,80 +1,416 @@
-.platform-reviews {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  font-size: 14px;
+/* =====================================================
+   PlatformReviews.css — CeylonQuest Platform Reviews
+   Matches Landing Page & Portal design system:
+     Sand background : #f7f3e8
+     Deep Ocean Navy : #123b5d
+     Gold Accent     : #d6a85f
+     Forest Accent   : #14532d
+     Card Background : #ffffff
+   ===================================================== */
+
+/* ── Landing Page Section ── */
+.home-platform-reviews-section {
+  padding: 88px 32px;
+  background-color: #f7f3e8;
+  position: relative;
 }
 
-.platform-review-form h2,
-.platform-reviews-heading h2 {
-  font-size: 22px;
-}
-
-.platform-review-form small {
-  font-size: calc(16px * 0.833333 - 2px);
-}
-
-@media (max-width: 1024px) {
-  .platform-review-form h2,
-  .platform-reviews-heading h2 {
-    font-size: 18px;
-  }
-}
-
-.platform-reviews-page-header {
-  margin-bottom: 24px;
+.home-platform-reviews-inner {
+  max-width: 1100px;
+  margin: 0 auto;
   text-align: left;
 }
 
-.platform-reviews-page-header h1 {
-  margin: 0 0 6px;
-  color: #102b4e;
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: -0.4px;
-}
-
-.platform-reviews-page-header p {
-  margin: 0;
-  color: #6b7280;
-  font-size: 14px;
+.platform-reviews-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #d6a85f;
+  margin: 0 0 12px;
+  text-align: left;
 }
 
 .platform-reviews-heading {
   display: flex;
   justify-content: space-between;
-  align-items: left;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.platform-review-grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  align-items: flex-end;
   gap: 20px;
-  margin: 24px 0;
+  flex-wrap: wrap;
+  margin-bottom: 44px;
 }
 
-.platform-review-card {
-  width: min(320px, 100%);
-  box-sizing: border-box;
-  padding: 22px;
-  border: 1px solid #dce5df;
-  border-radius: 16px;
-  background: #fff;
-  color: #203a2b;
-  overflow-wrap: anywhere;
+.platform-reviews-title {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 800;
+  color: #123b5d !important;
+  letter-spacing: -1.2px;
+  margin: 0;
+  line-height: 1.15;
+  text-align: left;
 }
 
-.platform-review-author {
+.platform-reviews-view-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  background: #ffffff;
+  border: 1.5px solid #123b5d;
+  color: #123b5d;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(18, 59, 93, 0.05);
+}
+
+.platform-reviews-view-all:hover {
+  background: #123b5d;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(18, 59, 93, 0.14);
+}
+
+/* ── Standalone Platform Reviews Page ── */
+.platform-reviews-page {
+  min-height: 100vh;
+  background-color: #f7f3e8;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: #123b5d;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+/* Dedicated Header/Navbar */
+.platform-reviews-nav {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(247, 243, 232, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(18, 59, 93, 0.08);
+  padding: 0 32px;
+  box-shadow: 0 2px 16px rgba(18, 59, 93, 0.05);
+}
+
+.platform-reviews-nav__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.platform-reviews-nav__brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.platform-reviews-nav__brand img {
+  height: 58px;
+  width: auto;
+  object-fit: contain;
+  transition: transform 0.2s ease;
+}
+
+.platform-reviews-nav__brand img:hover {
+  transform: scale(1.04);
+}
+
+.platform-reviews-nav__actions {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.platform-review-author strong {
+.platform-reviews-nav__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 9px;
+  border: 1px solid rgba(18, 59, 93, 0.15);
+  background: #ffffff;
+  color: #123b5d;
   font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.platform-reviews-nav__back:hover {
+  background: #123b5d;
+  color: #ffffff;
+  border-color: #123b5d;
+}
+
+.platform-reviews-nav__login {
+  background: none;
+  border: none;
+  color: #123b5d;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 9px;
+  transition: background 0.2s ease;
+}
+
+.platform-reviews-nav__login:hover {
+  background: rgba(18, 59, 93, 0.08);
+}
+
+.platform-reviews-nav__cta {
+  background: #123b5d;
+  color: #ffffff;
+  border: none;
+  font-size: 14.5px;
+  font-weight: 600;
+  padding: 9px 20px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.platform-reviews-nav__cta:hover {
+  background: #0a2236;
+  transform: translateY(-1px);
+}
+
+.platform-reviews-nav__role-badge {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #123b5d;
+  background: rgba(18, 59, 93, 0.08);
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+/* Page Main Container */
+.platform-reviews-main {
+  flex: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 48px 32px 88px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.platform-reviews-page-header {
+  margin-bottom: 32px;
+  text-align: left;
+}
+
+.platform-reviews-page-header h1 {
+  margin: 0 0 10px;
+  color: #123b5d !important;
+  font-size: clamp(32px, 4vw, 44px);
+  font-weight: 800;
+  letter-spacing: -1.2px;
+  line-height: 1.15;
+}
+
+.platform-reviews-subtitle {
+  margin: 0;
+  color: #527063;
+  font-size: 16px;
+  line-height: 1.5;
+  max-width: 720px;
+}
+
+/* ── Auth Invitation Card ── */
+.platform-reviews-auth-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: #ffffff;
+  border: 1px solid rgba(18, 59, 93, 0.08);
+  border-left: 5px solid #d6a85f;
+  border-radius: 16px;
+  padding: 24px 30px;
+  margin-bottom: 36px;
+  box-shadow: 0 4px 18px rgba(18, 59, 93, 0.05);
+  flex-wrap: wrap;
+}
+
+.platform-reviews-auth-badge {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #b45309;
+  background: #fef3c7;
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+
+.platform-reviews-auth-info h3 {
+  margin: 0 0 6px;
+  color: #123b5d !important;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.platform-reviews-auth-info p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.platform-reviews-auth-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.platform-reviews-auth-login-btn {
+  padding: 10px 22px;
+  background: #123b5d;
+  color: #ffffff;
+  border: none;
+  border-radius: 9px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.platform-reviews-auth-login-btn:hover {
+  background: #0a2236;
+  transform: translateY(-1px);
+}
+
+.platform-reviews-auth-register-btn {
+  padding: 10px 20px;
+  background: #f7f3e8;
+  color: #123b5d;
+  border: 1px solid rgba(18, 59, 93, 0.2);
+  border-radius: 9px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.platform-reviews-auth-register-btn:hover {
+  background: #ffffff;
+  border-color: #123b5d;
+}
+
+.platform-reviews-role-banner {
+  background: #ffffff;
+  border: 1px solid rgba(18, 59, 93, 0.08);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 30px;
+  color: #527063;
+  font-size: 14px;
+}
+
+/* ── Filter Bar ── */
+.platform-review-filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.platform-review-filter-label {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #123b5d;
+}
+
+.platform-review-filter-select {
+  padding: 9px 16px;
+  border: 1px solid #c9dcd3;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #123b5d;
+  background-color: #ffffff;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.platform-review-filter-select:hover {
+  border-color: #123b5d;
+}
+
+.platform-review-filter-select:focus {
+  border-color: #123b5d;
+  box-shadow: 0 0 0 3px rgba(18, 59, 93, 0.12);
+}
+
+/* ── Review Cards Grid ── */
+.platform-review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin-bottom: 36px;
+}
+
+/* Review Card */
+.platform-review-card {
+  box-sizing: border-box;
+  padding: 26px 28px;
+  border: 1px solid rgba(18, 59, 93, 0.08);
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 4px 18px rgba(18, 59, 93, 0.05);
+  color: #1e293b;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.platform-review-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 34px rgba(18, 59, 93, 0.1);
+  border-color: rgba(214, 168, 95, 0.5);
+}
+
+.platform-review-author {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.platform-review-avatar-placeholder {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #123b5d 0%, #1e5a8a 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 17px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(18, 59, 93, 0.2);
 }
 
 .platform-review-avatar {
@@ -82,74 +418,273 @@
   height: 44px;
   border-radius: 50%;
   object-fit: cover;
+  border: 2px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.platform-review-author-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.platform-review-author-info strong {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #123b5d !important;
+  line-height: 1.3;
+}
+
+.platform-review-author-verified {
+  font-size: 12px;
+  color: #527063;
+  font-weight: 500;
 }
 
 .platform-review-stars {
-  color: #b77900;
+  color: #f59e0b;
   margin-top: 14px;
-  font-size: 16px;
+  font-size: 17px;
+  letter-spacing: 3px;
+  display: flex;
+  align-items: center;
+  user-select: none;
+}
+
+.platform-review-stars-empty {
+  color: #e2e8f0;
 }
 
 .platform-review-content {
+  margin: 14px 0 20px;
   white-space: pre-wrap;
-  line-height: 1.6;
-  font-size: 10px;
+  line-height: 1.65;
+  font-size: 14.5px;
+  color: #334155;
+  flex: 1;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.platform-review-card-footer {
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .platform-review-card time {
-  color: #59675e;
-  font-size: 8px;
+  color: #94a3b8;
+  font-size: 12.5px;
+  font-weight: 500;
 }
 
+/* ── Form Card ── */
 .platform-review-form {
   display: grid;
-  gap: 12px;
-  max-width: 650px;
-  padding: 24px;
-  margin: 24px auto;
-  border: 1px solid #dce5df;
-  border-radius: 16px;
-  background: #fff;
+  gap: 16px;
+  padding: 32px 36px;
+  margin: 0 0 40px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(18, 59, 93, 0.08);
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(18, 59, 93, 0.06);
+  text-align: left;
 }
 
-.platform-review-form textarea,
-.platform-reviews select {
-  padding: 10px;
-  border: 1px solid #a8b8ad;
-  border-radius: 8px;
-  font: inherit;
+.platform-review-form h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #123b5d !important;
+  letter-spacing: -0.4px;
 }
 
+.platform-review-form label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #123b5d;
+  margin-bottom: -4px;
+}
+
+.platform-review-form select,
 .platform-review-form textarea {
   width: 100%;
   box-sizing: border-box;
-  resize: vertical;
-}
-
-.platform-reviews button,
-.platform-reviews-link {
-  padding: 10px 16px;
-  border: 0;
-  border-radius: 8px;
-  background: #17643d;
-  color: #fff;
+  padding: 11px 15px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
   font: inherit;
-  cursor: pointer;
-  text-decoration: none;
+  font-size: 14px;
+  color: #1e293b;
+  outline: none;
+  transition: all 0.2s ease;
+  background: #ffffff;
 }
 
-.platform-reviews button:disabled {
-  opacity: 0.6;
-  cursor: default;
+.platform-review-form textarea:focus,
+.platform-review-form select:focus {
+  border-color: #123b5d;
+  box-shadow: 0 0 0 3px rgba(18, 59, 93, 0.12);
+}
+
+.platform-review-form small {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: -6px;
 }
 
 .platform-review-error {
-  color: #a11919;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 13.5px;
 }
 
+.platform-review-success {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  font-size: 13.5px;
+}
+
+.platform-review-form button[type="submit"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 26px;
+  border: none;
+  border-radius: 10px;
+  background: #123b5d;
+  color: #ffffff;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  justify-self: start;
+}
+
+.platform-review-form button[type="submit"]:hover:not(:disabled) {
+  background: #0a2236;
+  transform: translateY(-1px);
+}
+
+.platform-review-form button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Pagination ── */
 .platform-review-pagination {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 16px;
+  margin-top: 32px;
+}
+
+.platform-review-pagination button {
+  padding: 9px 20px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  background: #ffffff;
+  color: #123b5d;
+  border: 1.5px solid #123b5d;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 4px rgba(18, 59, 93, 0.05);
+}
+
+.platform-review-pagination button:hover:not(:disabled) {
+  background: #123b5d;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.platform-review-pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+  background: #ffffff;
+  transform: none;
+}
+
+.platform-review-page-indicator {
+  font-size: 13.5px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* ── States ── */
+.platform-reviews-loading-state,
+.platform-reviews-empty-state {
+  background: #ffffff;
+  border: 1px solid rgba(18, 59, 93, 0.08);
+  border-radius: 16px;
+  padding: 40px 24px;
+  text-align: center;
+  color: #527063;
+  font-size: 15px;
+  margin-bottom: 24px;
+}
+
+.platform-reviews-error-alert {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 16px 20px;
+  color: #991b1b;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.platform-review-retry-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: #991b1b;
+  color: #ffffff;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .home-platform-reviews-section {
+    padding: 60px 20px;
+  }
+
+  .platform-reviews-main {
+    padding: 32px 20px 60px;
+  }
+
+  .platform-review-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-reviews-auth-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .platform-reviews-auth-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }

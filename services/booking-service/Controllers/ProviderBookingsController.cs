@@ -407,6 +407,8 @@ public class ProviderBookingsController : ControllerBase
         {
             if (item.ScheduledEndAtUtc == null && item.BookingType != "Accommodation Booking")
                 item.ScheduledEndAtUtc = ReviewSchedule.SlotEnd(item.Date, item.Time);
+            else if (item.ScheduledEndAtUtc == null && item.BookingType == "Accommodation Booking" && item.CheckOutDate.HasValue)
+                item.ScheduledEndAtUtc = TimeZoneInfo.ConvertTimeToUtc(item.CheckOutDate.Value.ToDateTime(new TimeOnly(12, 0)), TimeZoneInfo.FindSystemTimeZoneById("Asia/Colombo"));
         }
         return Ok(result);
     }
