@@ -1,4 +1,5 @@
 using Confluent.Kafka;
+using Confluent.Kafka.Admin;
 using Microsoft.Extensions.Options;
 using NotificationService.Data;
 using NotificationService.Models;
@@ -10,7 +11,7 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
     IServiceScopeFactory scopes, ILogger<NotificationEventConsumer> logger) : BackgroundService
 {
     public static readonly IReadOnlyList<string> Topics =
-        new[] { "booking.created", "payment.completed", "booking.canceled", "review.submitted" };
+        new[] { "booking.created", "payment.completed", "booking.canceled", "review.submitted", "review.eligibility-granted" };
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
         Task.Run(() => RunAsync(stoppingToken), stoppingToken);
@@ -42,6 +43,7 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
         {
             try
             {
+                await EnsureTopicsAsync(config, ct);
                 using var consumer = new ConsumerBuilder<string, string>(config).Build();
                 consumer.Subscribe(Topics);
                 logger.LogInformation("Notification consumer subscribed to {Topics}", string.Join(", ", Topics));
@@ -121,13 +123,6 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
         }
     }
 
-<<<<<<< Updated upstream
-    private async Task<int?> RecordFailureAsync(
-        string topic,
-        string payload,
-        Exception error,
-        CancellationToken ct)
-=======
     private async Task EnsureTopicsAsync(ConsumerConfig consumerConfig, CancellationToken ct)
     {
         if (!configuration.GetValue("Notifications:ProvisionTopics", true)) return;
@@ -166,7 +161,6 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
     }
 
     private async Task<int?> RecordFailureAsync(string topic, string payload, Exception error, CancellationToken ct)
->>>>>>> Stashed changes
     {
         try
         {
@@ -189,7 +183,6 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
 
                 db.FailedEvents.Add(failure);
             }
-<<<<<<< Updated upstream
 
             failure.Error = error.ToString();
             failure.AttemptCount++;
@@ -212,15 +205,5 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
 
             return null;
         }
-=======
-            failure.Error = error.Message; failure.AttemptCount++;
-            failure.LastAttemptAtUtc = DateTime.UtcNow; failure.Resolved = false;
-            await db.SaveChangesAsync(ct);
-            return failure.AttemptCount;
-        }
-
-        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-        catch (Exception ex) { logger.LogError(ex, "Cannot persist failure record; Kafka offset remains uncommitted"); return null; }
->>>>>>> Stashed changes
     }
 }

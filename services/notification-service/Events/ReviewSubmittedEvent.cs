@@ -16,6 +16,7 @@ public class ReviewSubmittedEvent
 
     public string ReviewText { get; set; } = "";
     
+    public DateTime SubmittedAtUtc { get; set; }
     public DateTime SubmittedAt { get; set; }
     
     // Accept the timestamp name published by booking-service.

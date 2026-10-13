@@ -253,6 +253,7 @@ export default function AdminAccountTab({ token, onLogout, showToast, onProfileU
         onConfirm={handleRemoveAvatar}
         onCancel={() => setShowRemoveConfirm(false)}
         loading={avatarUploading}
+        loadingText="Updating…"
       />
       <div className="ad-page-header">
         <div className="ad-page-header__left">
@@ -463,4 +464,4 @@ export default function AdminAccountTab({ token, onLogout, showToast, onProfileU
 }
 
 // ── 8. Reports Tab ───────────────────────────────────────────────────────────
-
+

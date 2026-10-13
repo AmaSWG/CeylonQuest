@@ -7,4 +7,7 @@ public class CatalogAdminListingResponse
     public string ServiceName { get; set; } = string.Empty;
     public Guid ProviderId { get; set; }
     public string ProviderName { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+    public bool IsRemoved { get; set; }
+    public string Status { get; set; } = string.Empty;
 }

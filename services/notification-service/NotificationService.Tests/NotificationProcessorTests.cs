@@ -93,6 +93,29 @@ public class NotificationProcessorTests
         Assert.Empty(db.Notifications); Assert.Empty(db.ProcessedEvents);
     }
     [Fact]
+    public async Task BookingProducerReviewContract_MapsUtcTimestampAndComment()
+    {
+        await using var db = Database(); var payload = Event("review.submitted");
+        payload["SubmittedAtUtc"] = payload["SubmittedAt"]!.DeepClone(); payload.Remove("SubmittedAt");
+        await Processor(db).ProcessAsync("review.submitted", payload.ToJsonString(), default);
+        var notification = Assert.Single(db.Notifications);
+        Assert.Contains("Excellent", notification.Message);
+        Assert.Equal(DateTimeKind.Utc, notification.CreatedAtUtc.Kind);
+    }
+    [Fact]
+    public async Task AttendanceInvitation_NotifiesOnlyVisitor_AndDeduplicatesReplay()
+    {
+        await using var db = Database(); var payload = Event("review.eligibility-granted");
+        payload["VerifiedAtUtc"] = "2026-10-11T10:00:00Z"; payload["ListingTitle"] = "Cooking class";
+        var processor = Processor(db);
+        await processor.ProcessAsync("review.eligibility-granted", payload.ToJsonString(), default);
+        await processor.ProcessAsync("review.eligibility-granted", payload.ToJsonString(), default);
+        var notification = Assert.Single(db.Notifications);
+        Assert.Equal(Guid.Parse(payload["VisitorId"]!.GetValue<string>()), notification.RecipientUserId);
+        Assert.Contains("My Bookings", notification.Message); Assert.Contains("Cooking class", notification.Message);
+        Assert.Single(db.ProcessedEvents);
+    }
+    [Fact]
     public void FailureKeys_AreStable_AndDistinguishTopicsAndPayloads()
     {
         var key = NotificationEventProcessor.PayloadKey("booking.created","{}");
