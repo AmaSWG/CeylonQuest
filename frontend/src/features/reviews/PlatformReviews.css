@@ -688,3 +688,16 @@
     justify-content: flex-start;
   }
 }
+
+/* ── Embedded Dashboard Mode ── */
+.platform-reviews--embedded {
+  width: 100%;
+  max-width: 1100px;
+  text-align: left;
+  padding: 10px 0 40px;
+}
+
+.platform-reviews--embedded .platform-reviews-page-header {
+  margin-bottom: 28px;
+}
+
