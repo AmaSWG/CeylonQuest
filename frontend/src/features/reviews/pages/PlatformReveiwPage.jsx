@@ -25,6 +25,11 @@ export default function PlatformReviewsPage({
   const canSubmit = Boolean(token) && ['Visitor', 'Provider'].includes(role)
 
   useEffect(() => {
+    if (embedded) {
+      setLoading(false)
+      return
+    }
+
     const controller = new AbortController()
 
     getPlatformReviews({
@@ -50,7 +55,7 @@ export default function PlatformReviewsPage({
       })
 
     return () => controller.abort()
-  }, [rating, page, refresh])
+  }, [rating, page, refresh, embedded])
 
   function prepareReload() {
     setLoading(true)
@@ -105,14 +110,49 @@ export default function PlatformReviewsPage({
   const content = (
     <>
       <header className="platform-reviews-page-header">
-        <p className="platform-reviews-eyebrow">Community Voices</p>
-        <h1>Platform Reviews</h1>
+        {!embedded && <p className="platform-reviews-eyebrow">Community Voices</p>}
+        <h1>{embedded ? 'Platform Review' : 'Platform Reviews'}</h1>
         <p className="platform-reviews-subtitle">
-          Real experiences and ratings shared by CeylonQuest travelers and verified providers.
+          {embedded
+            ? 'Share your feedback and rating about your experience with CeylonQuest.'
+            : 'Real experiences and ratings shared by CeylonQuest travelers and verified providers.'}
         </p>
       </header>
 
-      {/* Public reviews feed */}
+      {/* Review Submission Form or Auth Callout */}
+      {canSubmit ? (
+        <PlatformReviewForm onSubmitted={handleSubmitted} />
+      ) : !token ? (
+        <div className="platform-reviews-auth-card">
+          <div className="platform-reviews-auth-info">
+            <span className="platform-reviews-auth-badge">Share Your Feedback</span>
+            <h3>Traveled or hosted with CeylonQuest?</h3>
+            <p>Sign in to your account to submit a review and share your experience with the community.</p>
+          </div>
+          <div className="platform-reviews-auth-actions">
+            <button
+              type="button"
+              className="platform-reviews-auth-login-btn"
+              onClick={handleLoginClick}
+            >
+              Log In to Review
+            </button>
+            <button
+              type="button"
+              className="platform-reviews-auth-register-btn"
+              onClick={handleRegisterClick}
+            >
+              Get Started
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="platform-reviews-role-banner">
+          <p>Platform review submission is currently open to active Visitors and Providers.</p>
+        </div>
+      )}
+
+      {/* Public reviews feed - only on standalone public page */}
       {!embedded && (
         <section className="platform-reviews-feed-section" aria-label="Customer Reviews">
           <div className="platform-review-filter-wrap">

@@ -9,7 +9,6 @@ import {
   NotificationsActiveIcon,
   PermIdentityIcon,
   CalendarMonthIcon,
-  SettingsIcon,
   PublicIcon,
   CheckCircleIcon,
   RateReviewIcon
@@ -201,14 +200,6 @@ function VisitorDashboard({ onLogout }) {
       key: 'platform-reviews',
       icon: <RateReviewIcon size={18} />,
       label: 'Platform Reviews'
-    },
-
-    {
-      key: 'settings',
-      icon: <SettingsIcon size={18} />,
-      label: 'Settings',
-      disabled: true,
-      comingSoon: true
     }
   ]
 
