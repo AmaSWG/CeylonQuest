@@ -1368,7 +1368,11 @@ export default function ListingsTab({
               <div className="pd-image-grid-preview">
                 {uploadedImages.map((url, idx) => (
                   <div key={idx} className="pd-image-thumb-wrap">
-                    <img src={url} alt={`Preview ${idx + 1}`} className="pd-image-thumb" />
+                    <img
+                      src={url?.startsWith('http') || url?.startsWith('blob:') ? url : catalogUrl(url)}
+                      alt={`Preview ${idx + 1}`}
+                      className="pd-image-thumb"
+                    />
                     <button
                       type="button"
                       className="pd-image-remove-btn"

@@ -39,7 +39,13 @@ const normalizeImgUrl = (url) => {
   if (!url) return ''
   if (url.includes('/provider-service-images/')) {
     const parts = url.split('/provider-service-images/')
-    return `/api/catalog/images/${parts[1]}`
+    return catalogUrl(`/api/catalog/images/${parts[1]}`)
+  }
+  if (url.startsWith('/api/catalog/images/')) {
+    return catalogUrl(url)
+  }
+  if (url.startsWith('/')) {
+    return catalogUrl(url)
   }
   return url
 }

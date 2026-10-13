@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import './VisitorServiceDetailModal.css'
 import ExperienceAvailabilityDetails from './ExperienceAvailabilityDetails'
 import ListingReviews from '../../../components/ListingReviews'
+import { catalogUrl } from '../../../api/client'
 import {
   CloseIcon,
   GroupIcon,
@@ -22,7 +23,13 @@ export default function VisitorServiceDetailModal({ item, onClose, onOpenBooking
     if (!url) return ''
     if (url.includes('/provider-service-images/')) {
       const parts = url.split('/provider-service-images/')
-      return `/api/catalog/images/${parts[1]}`
+      return catalogUrl(`/api/catalog/images/${parts[1]}`)
+    }
+    if (url.startsWith('/api/catalog/images/')) {
+      return catalogUrl(url)
+    }
+    if (url.startsWith('/')) {
+      return catalogUrl(url)
     }
     return url
   }
