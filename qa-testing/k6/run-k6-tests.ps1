@@ -14,7 +14,7 @@ param(
     [ValidateSet("Local", "AzureCloud")]
     [string]$Target = "Local",
 
-    [ValidateSet("Bookings", "Notifications", "All")]
+    [ValidateSet("Bookings", "Notifications", "Identity", "Catalog", "All")]
     [string]$Test = "Bookings",
 
     [int]$SlaMs = 2000,
@@ -50,10 +50,12 @@ if ($Target -eq "AzureCloud") {
     $BookingUrl = "https://ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net"
     $IdentityUrl = "https://ceylonquest-identity-fphphwe7cfbtadhu.southeastasia-01.azurewebsites.net"
     $NotifUrl = "https://jolly-field-0aaea8a00.7.azurestaticapps.net"
+    $CatalogUrl = "https://ceylonquest-provider-catalog-fecca6csaubwa2em.southeastasia-01.azurewebsites.net"
 } else {
     $BookingUrl = "http://localhost:5229"
     $IdentityUrl = "http://localhost:5278"
     $NotifUrl = "http://localhost:5278"
+    $CatalogUrl = "http://localhost:5141"
 }
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -71,7 +73,7 @@ function Run-Suite($testName, $scriptPath, $targetUrl, $token = "") {
     $env:AUTH_TOKEN = $token
     $env:SLA_MS = "$SlaMs"
 
-    & $k6Exe run --summary-export $summaryFile $scriptPath
+    & $k6Exe run -e TARGET_URL="$targetUrl" -e AUTH_TOKEN="$token" -e SLA_MS="$SlaMs" --summary-export $summaryFile $scriptPath
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host ">>> [PASS] $testName passed all performance thresholds!" -ForegroundColor Green
@@ -87,7 +89,6 @@ if ($Test -eq "Bookings" -or $Test -eq "All") {
 
 if ($Test -eq "Notifications" -or $Test -eq "All") {
     $notifScript = Join-Path $ScriptDir "test-notifications.js"
-    # Auto-login to obtain token
     $loginBody = @{ email = "piyumiyashodara@gmail.com"; password = "Piyumi@2003" } | ConvertTo-Json
     $token = ""
     try {
@@ -101,18 +102,28 @@ if ($Test -eq "Notifications" -or $Test -eq "All") {
     Run-Suite -testName "Notifications" -scriptPath $notifScript -targetUrl $NotifUrl -token $token
 }
 
+if ($Test -eq "Identity" -or $Test -eq "All") {
+    $identityScript = Join-Path $ScriptDir "test-identity.js"
+    Run-Suite -testName "Identity" -scriptPath $identityScript -targetUrl $IdentityUrl
+}
+
+if ($Test -eq "Catalog" -or $Test -eq "All") {
+    $catalogScript = Join-Path $ScriptDir "test-catalog.js"
+    Run-Suite -testName "Catalog" -scriptPath $catalogScript -targetUrl $CatalogUrl
+}
+
 Write-Host "`n=======================================================" -ForegroundColor Cyan
 Write-Host " k6 Test Execution Finished. Reports saved in: $ReportsDir" -ForegroundColor Cyan
 Write-Host "=======================================================" -ForegroundColor Cyan
 
 if ($OpenReport) {
     $reportToOpen = ""
-    if ($Test -eq "Bookings") {
-        $reportToOpen = Join-Path $ReportsDir "bookings-report.html"
-    } elseif ($Test -eq "Notifications") {
-        $reportToOpen = Join-Path $ReportsDir "notifications-report.html"
-    } else {
-        $reportToOpen = Join-Path $ReportsDir "bookings-report.html"
+    switch ($Test) {
+        "Bookings"      { $reportToOpen = Join-Path $ReportsDir "bookings-report.html" }
+        "Notifications" { $reportToOpen = Join-Path $ReportsDir "notifications-report.html" }
+        "Identity"      { $reportToOpen = Join-Path $ReportsDir "identity-report.html" }
+        "Catalog"       { $reportToOpen = Join-Path $ReportsDir "catalog-report.html" }
+        default         { $reportToOpen = Join-Path $ReportsDir "bookings-report.html" }
     }
 
     if (Test-Path $reportToOpen) {
