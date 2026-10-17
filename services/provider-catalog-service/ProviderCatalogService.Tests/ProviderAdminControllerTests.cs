@@ -20,6 +20,7 @@ using ProviderCatalogService.Services;
 using Shared.Kafka;
 using Shared.Storage;
 using Xunit;
+using Moq;
 
 namespace ProviderCatalogService.Tests;
 
@@ -95,9 +96,9 @@ public class ProviderAdminControllerTests
 
     private static ProviderAdminController CreateController(
         CatalogDbContext db,
-        FakeKafkaProducer kafka,
-        FakeEmailService email,
-        FakeBlobStorage blob)
+        IKafkaProducer kafka,
+        IEmailService email,
+        IBlobStorageService blob)
     {
         var inMemorySettings = new Dictionary<string, string?> {
             {"AzureStorage:VerificationFilesContainer", "provider-verification-files"}
@@ -114,6 +115,170 @@ public class ProviderAdminControllerTests
             HttpContext = new DefaultHttpContext { User = user }
         };
         return controller;
+    }
+
+    private static async Task<ProviderApplication> SeedApplication(CatalogDbContext db, ProviderStatus status = ProviderStatus.Pending)
+    {
+        var app = new ProviderApplication { Id = Guid.NewGuid(), Email = "tours@example.com",
+            BusinessName = "Island Tours", Status = status, Description = "Lagoon tours", Location = "Galle",
+            PhoneNumber = "0771234567", ServiceType = "Activity" };
+        db.ProviderApplications.Add(app);
+        await db.SaveChangesAsync();
+        return app;
+    }
+
+    [Theory]
+    [InlineData(true, ProviderStatus.Approved)]
+    [InlineData(false, ProviderStatus.Approved)]
+    [InlineData(true, ProviderStatus.Rejected)]
+    [InlineData(false, ProviderStatus.Rejected)]
+    [InlineData(true, (ProviderStatus)99)]
+    [InlineData(false, (ProviderStatus)99)]
+    public async Task Review_NonPendingStatus_RejectsWithoutSideEffects(bool approve, ProviderStatus status)
+    {
+        using var db = CreateDb();
+        var app = await SeedApplication(db, status);
+        var kafka = new Mock<IKafkaProducer>(MockBehavior.Strict);
+        var email = new Mock<IEmailService>(MockBehavior.Strict);
+        var blob = new Mock<IBlobStorageService>(MockBehavior.Strict);
+        var controller = CreateController(db, kafka.Object, email.Object, blob.Object);
+        var result = approve ? await controller.Approve(app.Id) : await controller.Reject(app.Id,
+            new RejectProviderApplicationRequest { RejectionReason = "Missing license" });
+        Assert.IsType<BadRequestObjectResult>(result);
+        db.ChangeTracker.Clear();
+        var saved = await db.ProviderApplications.SingleAsync();
+        Assert.Equal(status, saved.Status);
+        Assert.Null(saved.ReviewedAt);
+        Assert.Null(saved.RejectionReason);
+        Assert.Empty(db.Providers);
+        kafka.VerifyNoOtherCalls(); email.VerifyNoOtherCalls(); blob.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Review_MissingApplication_ReturnsNotFoundWithoutSideEffects(bool approve)
+    {
+        using var db = CreateDb();
+        var kafka = new Mock<IKafkaProducer>(MockBehavior.Strict);
+        var email = new Mock<IEmailService>(MockBehavior.Strict);
+        var blob = new Mock<IBlobStorageService>(MockBehavior.Strict);
+        var controller = CreateController(db, kafka.Object, email.Object, blob.Object);
+        Assert.IsType<NotFoundResult>(approve ? await controller.Approve(Guid.NewGuid()) :
+            await controller.Reject(Guid.NewGuid(), new RejectProviderApplicationRequest { RejectionReason = "Invalid" }));
+        Assert.Empty(db.ProviderApplications); Assert.Empty(db.Providers);
+        kafka.VerifyNoOtherCalls(); email.VerifyNoOtherCalls(); blob.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t\r\n ")]
+    public async Task Reject_BlankReason_LeavesApplicationPendingAndNeverSendsEmail(string? reason)
+    {
+        using var db = CreateDb();
+        var app = await SeedApplication(db);
+        var kafka = new Mock<IKafkaProducer>(MockBehavior.Strict);
+        var email = new Mock<IEmailService>(MockBehavior.Strict);
+        var blob = new Mock<IBlobStorageService>(MockBehavior.Strict);
+        var controller = CreateController(db, kafka.Object, email.Object, blob.Object);
+        Assert.IsType<BadRequestObjectResult>(await controller.Reject(app.Id,
+            new RejectProviderApplicationRequest { RejectionReason = reason! }));
+        db.ChangeTracker.Clear();
+        var saved = await db.ProviderApplications.SingleAsync();
+        Assert.Equal(ProviderStatus.Pending, saved.Status);
+        Assert.Null(saved.ReviewedAt); Assert.Null(saved.RejectionReason); Assert.Empty(db.Providers);
+        email.Verify(e => e.SendApplicationRejectionEmailAsync(It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        kafka.VerifyNoOtherCalls(); email.VerifyNoOtherCalls(); blob.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reject_ReasonIsTrimmed_PersistsBeforeEmailEvenWhenEmailFails(bool emailFails)
+    {
+        using var db = CreateDb();
+        var app = await SeedApplication(db);
+        var kafka = new Mock<IKafkaProducer>(MockBehavior.Strict);
+        var email = new Mock<IEmailService>(MockBehavior.Strict);
+        var blob = new Mock<IBlobStorageService>(MockBehavior.Strict);
+        var failure = new IOException("Simulated email outage");
+        var setup = email.Setup(e => e.SendApplicationRejectionEmailAsync(app.Email, app.BusinessName,
+            "Missing license", CancellationToken.None));
+        if (emailFails) setup.ThrowsAsync(failure); else setup.Returns(Task.CompletedTask);
+        var controller = CreateController(db, kafka.Object, email.Object, blob.Object);
+        var before = DateTime.UtcNow;
+        if (emailFails) Assert.Same(failure, await Assert.ThrowsAsync<IOException>(() => controller.Reject(app.Id,
+            new RejectProviderApplicationRequest { RejectionReason = "  Missing license  " })));
+        else Assert.IsType<OkObjectResult>(await controller.Reject(app.Id,
+            new RejectProviderApplicationRequest { RejectionReason = "  Missing license  " }));
+        db.ChangeTracker.Clear();
+        var saved = await db.ProviderApplications.SingleAsync();
+        Assert.Equal(ProviderStatus.Rejected, saved.Status);
+        Assert.Equal("Missing license", saved.RejectionReason);
+        Assert.InRange(saved.ReviewedAt!.Value, before, DateTime.UtcNow);
+        Assert.Empty(db.Providers);
+        email.Verify(e => e.SendApplicationRejectionEmailAsync(app.Email, app.BusinessName,
+            "Missing license", CancellationToken.None), Times.Once);
+        kafka.VerifyNoOtherCalls(); email.VerifyNoOtherCalls(); blob.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Approve_PersistsProfileAndEventPayload_AndRetryDoesNotRepublish(bool kafkaFails)
+    {
+        using var db = CreateDb();
+        var app = await SeedApplication(db);
+        var kafka = new Mock<IKafkaProducer>(MockBehavior.Strict);
+        var email = new Mock<IEmailService>(MockBehavior.Strict);
+        var blob = new Mock<IBlobStorageService>(MockBehavior.Strict);
+        object? payload = null;
+        var failure = new IOException("Simulated Kafka outage");
+        var publish = kafka.Setup(k => k.PublishAsync("provider.approved", app.Id.ToString(), It.IsAny<It.IsAnyType>(), CancellationToken.None))
+            .Callback(new InvocationAction(i => payload = i.Arguments[2]));
+        if (kafkaFails) publish.ThrowsAsync(failure); else publish.Returns(Task.CompletedTask);
+        var controller = CreateController(db, kafka.Object, email.Object, blob.Object);
+        if (kafkaFails) Assert.Same(failure, await Assert.ThrowsAsync<IOException>(() => controller.Approve(app.Id)));
+        else Assert.IsType<OkObjectResult>(await controller.Approve(app.Id));
+        db.ChangeTracker.Clear();
+        var saved = await db.ProviderApplications.SingleAsync();
+        var provider = await db.Providers.SingleAsync();
+        Assert.Equal(ProviderStatus.Approved, saved.Status);
+        Assert.Equal(app.Email, provider.Email); Assert.Equal(app.BusinessName, provider.BusinessName);
+        Assert.Equal(app.Description, provider.Description); Assert.Equal(app.Location, provider.Location);
+        Assert.Equal(app.PhoneNumber, provider.PhoneNumber); Assert.Equal(app.ServiceType, provider.ServiceType);
+        Assert.Null(provider.IdentityUserId);
+        var json = JsonSerializer.SerializeToElement(payload);
+        Assert.Equal(app.Id, json.GetProperty("ApplicationId").GetGuid());
+        Assert.Equal(app.Email, json.GetProperty("Email").GetString());
+        Assert.Equal(app.BusinessName, json.GetProperty("BusinessName").GetString());
+        Assert.Equal(saved.ReviewedAt, json.GetProperty("ApprovedAt").GetDateTime());
+        Assert.IsType<BadRequestObjectResult>(await controller.Approve(app.Id));
+        Assert.Single(db.Providers);
+        kafka.Verify(k => k.PublishAsync("provider.approved", app.Id.ToString(), It.IsAny<It.IsAnyType>(), CancellationToken.None), Times.Once);
+        kafka.VerifyNoOtherCalls(); email.VerifyNoOtherCalls(); blob.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Approve_ExistingProvider_ReturnsConflictWithoutPublishingOrChangingApplication()
+    {
+        using var db = CreateDb();
+        var app = await SeedApplication(db);
+        db.Providers.Add(new Provider { Id = Guid.NewGuid(), Email = app.Email });
+        await db.SaveChangesAsync();
+        var kafka = new Mock<IKafkaProducer>(MockBehavior.Strict);
+        var email = new Mock<IEmailService>(MockBehavior.Strict);
+        var blob = new Mock<IBlobStorageService>(MockBehavior.Strict);
+        Assert.IsType<ConflictObjectResult>(await CreateController(db, kafka.Object, email.Object, blob.Object).Approve(app.Id));
+        db.ChangeTracker.Clear();
+        Assert.Equal(ProviderStatus.Pending, (await db.ProviderApplications.SingleAsync()).Status);
+        Assert.Null((await db.ProviderApplications.SingleAsync()).ReviewedAt);
+        Assert.Single(db.Providers);
+        kafka.Verify(k => k.PublishAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<It.IsAnyType>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        kafka.VerifyNoOtherCalls(); email.VerifyNoOtherCalls(); blob.VerifyNoOtherCalls();
     }
 
     /// <summary>

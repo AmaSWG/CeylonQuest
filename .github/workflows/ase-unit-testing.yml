@@ -1,0 +1,59 @@
+name: ASE Unit Testing and Mocking
+
+on:
+  push:
+    branches: ["feature/**", main, development]
+  pull_request:
+    branches: [main, development]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: booking
+            project: services/booking-service/BookingService.Tests/BookingService.Tests.csproj
+          - service: identity
+            project: services/identity-service/identity-service.Tests/IdentityService.Tests.csproj
+          - service: provider-catalog
+            project: services/provider-catalog-service/ProviderCatalogService.Tests/ProviderCatalogService.Tests.csproj
+          - service: notification
+            project: services/notification-service/NotificationService.Tests/NotificationService.Tests.csproj
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore test project and dependencies
+        run: dotnet restore "${{ matrix.project }}" --property:Configuration=Release
+
+      - name: Build test project and dependencies
+        run: dotnet build "${{ matrix.project }}" --no-restore --configuration Release
+
+      - name: Run xUnit tests
+        run: >-
+          dotnet test "${{ matrix.project }}"
+          --no-build --no-restore --configuration Release
+          --logger "trx;LogFileName=${{ matrix.service }}-tests.trx"
+          --results-directory "${{ github.workspace }}/test-results/${{ matrix.service }}"
+          --verbosity normal
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ase-test-results-${{ matrix.service }}
+          path: test-results/${{ matrix.service }}/
+          if-no-files-found: warn

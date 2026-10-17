@@ -39,11 +39,18 @@ public class ReviewTests
         Assert.Contains("already reviewed", reviewed.Message);
     }
 
-    [Theory, MemberData(nameof(IneligibleCases))]
+    [Theory, MemberData(nameof(StatusAndEndCases))]
     public async Task Eligibility_UsesSameStatusAndEndRulesAsSubmission(string type, string status, int offset)
     {
         await using var db = Db(); var booking = Seed(db, type, status, offset);
         var eligibility = await Service(db).GetEligibilityAsync(booking.VisitorId, booking.ListingId, type);
+        if (status == "Confirmed" && offset < 0)
+        {
+            Assert.Equal(booking.Id, Assert.Single(eligibility.EligibleBookings).BookingId);
+            Assert.Equal(Now.AddHours(offset), eligibility.EligibleBookings.Single().ScheduledEndAtUtc);
+            Assert.Null(eligibility.Message);
+            return;
+        }
         Assert.Empty(eligibility.EligibleBookings);
         Assert.False(string.IsNullOrWhiteSpace(eligibility.Message));
     }
@@ -121,7 +128,7 @@ public class ReviewTests
         Assert.Equal(5, summary.AverageRating); Assert.Equal(1, summary.ReviewCount);
     }
 
-    public static IEnumerable<object[]> IneligibleCases()
+    public static IEnumerable<object[]> StatusAndEndCases()
     {
         foreach (var type in new[] { "Experience", "Restaurant", "Accommodation" })
         {
@@ -130,10 +137,25 @@ public class ReviewTests
             yield return new object[] { type, "Completed", 1 };
         }
     }
-    [Theory, MemberData(nameof(IneligibleCases))]
-    public async Task NoncompletedOrNotEnded_IsRejectedWithoutReviewOrEvent(string type, string status, int offset)
+    [Theory, MemberData(nameof(StatusAndEndCases))]
+    public async Task Submission_EnforcesBookingStatusAndScheduledEnd(string type, string status, int offset)
     {
         await using var db = Db(); var booking = Seed(db, type, status, offset);
+        if (status == "Confirmed" && offset < 0)
+        {
+            var response = await Service(db).CreateAsync(booking.VisitorId, Request(booking));
+            var saved = Assert.Single(db.ListingReviews);
+            Assert.Equal(response.Id, saved.Id);
+            Assert.Equal(booking.Id, saved.BookingId);
+            Assert.Equal(booking.VisitorId, saved.VisitorId);
+            Assert.Equal(type, saved.BookingType);
+            Assert.Equal(5, saved.Rating);
+            Assert.Equal("Great service!", saved.Comment);
+            var evt = JsonSerializer.Deserialize<ReviewSubmittedEvent>(Assert.Single(db.ReviewOutboxMessages).Payload)!;
+            Assert.Equal(saved.Id, evt.ReviewId);
+            Assert.Equal(BookingStatus.Confirmed, booking.Status);
+            return;
+        }
         var ex = await Assert.ThrowsAsync<ReviewException>(() => Service(db).CreateAsync(booking.VisitorId, Request(booking)));
         Assert.Equal(409, ex.StatusCode); Assert.Empty(db.ListingReviews); Assert.Empty(db.ReviewOutboxMessages);
     }
@@ -175,14 +197,26 @@ public class ReviewTests
     }
 
     [Fact]
-    public async Task UnknownEnd_IsRejected_AndProviderLookupFailureCreatesNothing()
+    public async Task UnknownExperienceEnd_UsesSriLankaEndOfDay_AndProviderLookupFailureCreatesNothing()
     {
-        await using var db = Db(); var b = (Booking)Seed(db, "Experience"); b.ScheduledEndAtUtc = null; db.SaveChanges();
+        await using var db = Db(); var b = (Booking)Seed(db, "Experience");
+        b.ScheduledEndAtUtc = null; b.BookingDate = new DateOnly(2026, 10, 7); b.TimeSlot = "unknown"; db.SaveChanges();
+        Assert.Equal(new DateTime(2026, 10, 7, 18, 29, 0, DateTimeKind.Utc), ReviewService.ScheduledEnd(b));
         Assert.Equal(409, (await Assert.ThrowsAsync<ReviewException>(() => Service(db).CreateAsync(b.VisitorId, Request(b)))).StatusCode);
-        b.ScheduledEndAtUtc = Now.AddHours(-1); b.ProviderId = null; db.SaveChanges();
+        Assert.Empty(db.ListingReviews); Assert.Empty(db.ReviewOutboxMessages);
+        b.BookingDate = b.BookingDate.AddDays(-1); b.ProviderId = null; db.SaveChanges();
+        var eligible = await Service(db).GetEligibilityAsync(b.VisitorId, b.ListingId, "Experience");
+        Assert.Equal(b.Id, Assert.Single(eligible.EligibleBookings).BookingId);
+        Assert.Equal(new DateTime(2026, 10, 6, 18, 29, 0, DateTimeKind.Utc), eligible.EligibleBookings.Single().ScheduledEndAtUtc);
+        Assert.Null(eligible.Message);
         var catalog = new Mock<ICatalogService>(); catalog.Setup(c => c.GetListingAsync(b.ListingId)).ThrowsAsync(new HttpRequestException());
         Assert.Equal(503, (await Assert.ThrowsAsync<ReviewException>(() => Service(db, catalog.Object).CreateAsync(b.VisitorId, Request(b)))).StatusCode);
         Assert.Empty(db.ListingReviews); Assert.Empty(db.ReviewOutboxMessages);
+        b.ProviderId = Guid.NewGuid(); db.SaveChanges();
+        var response = await Service(db).CreateAsync(b.VisitorId, Request(b));
+        Assert.Equal(response.Id, Assert.Single(db.ListingReviews).Id);
+        Assert.Equal(b.Id, db.ListingReviews.Single().BookingId);
+        Assert.Single(db.ReviewOutboxMessages);
     }
 
     [Fact]

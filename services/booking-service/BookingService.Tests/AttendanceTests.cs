@@ -78,15 +78,33 @@ public class AttendanceTests
 
     [Theory]
     [InlineData(AttendanceStatus.Pending)][InlineData(AttendanceStatus.NoShow)]
-    public async Task CompletedBookingWithoutAttended_RejectsSubmission(AttendanceStatus status)
+    public async Task CompletedPastBooking_AllowsPendingAttendance_ButRejectsNoShow(AttendanceStatus status)
     {
         await using var db = Db(); var booking = Seed(db, "Experience"); booking.Status = BookingStatus.Completed; booking.AttendanceStatus = status;
         await db.SaveChangesAsync();
         var service = new ReviewService(db, Catalog(booking).Object, new Clock());
         var eligibility = await service.GetEligibilityAsync(booking.VisitorId, booking.ListingId, "Experience");
+        if (status == AttendanceStatus.Pending)
+        {
+            Assert.Equal(booking.Id, Assert.Single(eligibility.EligibleBookings).BookingId);
+            Assert.Null(eligibility.Message);
+            var review = await service.CreateAsync(booking.VisitorId, new() { BookingId = booking.Id, BookingType = "Experience", Rating = 5, Comment = "Great" });
+            Assert.False(review.AttendanceVerified);
+            var saved = Assert.Single(db.ListingReviews);
+            Assert.Equal(review.Id, saved.Id); Assert.Equal(booking.Id, saved.BookingId);
+            Assert.Equal(5, saved.Rating); Assert.Equal("Great", saved.Comment);
+            Assert.False(saved.AttendanceVerified);
+            Assert.Equal("review.submitted", Assert.Single(db.ReviewOutboxMessages).Topic);
+            Assert.Equal(AttendanceStatus.Pending, booking.AttendanceStatus);
+            Assert.Null(booking.AttendanceVerifiedAtUtc);
+            Assert.Null(booking.AttendanceVerifiedByUserId);
+            return;
+        }
         Assert.Empty(eligibility.EligibleBookings);
+        Assert.Contains("NoShow", eligibility.Message);
         var ex = await Assert.ThrowsAsync<ReviewException>(() => service.CreateAsync(booking.VisitorId, new() { BookingId = booking.Id, BookingType = "Experience", Rating = 5, Comment = "Great" }));
-        Assert.Equal(409, ex.StatusCode); Assert.Empty(db.ListingReviews);
+        Assert.Equal(409, ex.StatusCode); Assert.Contains("NoShow", ex.Message);
+        Assert.Empty(db.ListingReviews); Assert.Empty(db.ReviewOutboxMessages);
     }
 
     [Fact]

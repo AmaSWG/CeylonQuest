@@ -5,11 +5,128 @@ using Microsoft.Extensions.Configuration;
 using NotificationService.Data;
 using NotificationService.Services;
 using Xunit;
+using System.Text;
+using System.Text.Json;
+using Moq;
+using Moq.Protected;
 
 namespace NotificationService.Tests;
 
 public class RecipientResolverTests
 {
+    private static Mock<HttpMessageHandler> MockHandler()
+    {
+        var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        handler.Protected().Setup("Dispose", ItExpr.IsAny<bool>());
+        return handler;
+    }
+
+    [Theory]
+    [InlineData("not-a-guid")]
+    [InlineData("00000000-0000-0000-0000-000000000000")]
+    [InlineData("")]
+    public async Task Provider_InvalidConfigurationWithoutCatalog_ThrowsWithoutWritingState(string value)
+    {
+        await using var db = Database(); var listing = Guid.NewGuid();
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            { [$"Notifications:ListingProviders:{listing}"] = value }).Build();
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new RecipientResolver(db, config).ProviderAsync(listing, null, default));
+        Assert.Contains(listing.ToString(), error.Message);
+        Assert.Empty(db.BookingContexts); Assert.Empty(db.Notifications);
+    }
+
+    [Fact]
+    public async Task Provider_EventIdentityTakesPrecedenceOverConflictingConfiguration_AndNeverCallsHttp()
+    {
+        await using var db = Database(); var listing = Guid.NewGuid(); var supplied = Guid.NewGuid();
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            { [$"Notifications:ListingProviders:{listing}"] = Guid.NewGuid().ToString() }).Build();
+        var handler = MockHandler();
+        using var client = new HttpClient(handler.Object) { BaseAddress = new Uri("https://catalog.invalid") };
+        Assert.Equal(supplied, await new RecipientResolver(db, config, client).ProviderAsync(listing, supplied, default));
+        handler.Protected().Verify("SendAsync", Times.Never(), ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>());
+        Assert.Empty(db.BookingContexts);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    public async Task Provider_ActivityHttpError_DoesNotFallThroughToCollections(HttpStatusCode status)
+    {
+        await using var db = Database(); var listing = Guid.NewGuid(); var handler = MockHandler();
+        var path = $"/api/catalog/activity-listings/public/{listing}";
+        handler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+            ItExpr.Is<HttpRequestMessage>(r => r.Method == HttpMethod.Get && r.RequestUri!.AbsolutePath == path),
+            ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage(status));
+        using var client = new HttpClient(handler.Object) { BaseAddress = new Uri("https://catalog.invalid") };
+        var error = await Assert.ThrowsAsync<HttpRequestException>(() => new RecipientResolver(db, new ConfigurationBuilder().Build(), client)
+            .ProviderAsync(listing, null, default));
+        Assert.Equal(status, error.StatusCode);
+        handler.Protected().Verify("SendAsync", Times.Once(), ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>());
+        Assert.Empty(db.BookingContexts);
+    }
+
+    [Theory]
+    [InlineData("activity")]
+    [InlineData("restaurant")]
+    [InlineData("accommodation")]
+    public async Task Provider_MalformedCatalogJson_StopsAtFailingEndpoint(string type)
+    {
+        await using var db = Database(); var listing = Guid.NewGuid(); var handler = MockHandler();
+        var paths = new List<string>();
+        handler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync((HttpRequestMessage request, CancellationToken token) =>
+            {
+                var path = request.RequestUri!.AbsolutePath; paths.Add(path);
+                if (path.Contains($"/{type}-listings/")) return new HttpResponseMessage(HttpStatusCode.OK)
+                    { Content = new StringContent("not-json", Encoding.UTF8, "application/json") };
+                return path.Contains("/activity-listings/") ? new HttpResponseMessage(HttpStatusCode.NotFound) : Json(Array.Empty<object>());
+            });
+        using var client = new HttpClient(handler.Object) { BaseAddress = new Uri("https://catalog.invalid") };
+        await Assert.ThrowsAsync<JsonException>(() => new RecipientResolver(db, new ConfigurationBuilder().Build(), client)
+            .ProviderAsync(listing, null, default));
+        var expected = new List<string> { $"/api/catalog/activity-listings/public/{listing}" };
+        if (type != "activity") expected.Add("/api/catalog/restaurant-listings/public");
+        if (type == "accommodation") expected.Add("/api/catalog/accommodation-listings/public");
+        Assert.Equal(expected, paths);
+        handler.Protected().Verify("SendAsync", Times.Exactly(expected.Count), ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>());
+        Assert.Empty(db.Notifications); Assert.Empty(db.BookingContexts);
+    }
+
+    [Fact]
+    public async Task Provider_NetworkException_PropagatesWithoutFallbackOrPersistence()
+    {
+        await using var db = Database(); var handler = MockHandler(); var listing = Guid.NewGuid();
+        var path = $"/api/catalog/activity-listings/public/{listing}";
+        var failure = new HttpRequestException("Simulated Catalog network outage");
+        handler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+            ItExpr.Is<HttpRequestMessage>(r => r.RequestUri!.AbsolutePath == path), ItExpr.IsAny<CancellationToken>()).ThrowsAsync(failure);
+        using var client = new HttpClient(handler.Object) { BaseAddress = new Uri("https://catalog.invalid") };
+        Assert.Same(failure, await Assert.ThrowsAsync<HttpRequestException>(() => new RecipientResolver(db, new ConfigurationBuilder().Build(), client)
+            .ProviderAsync(listing, null, default)));
+        handler.Protected().Verify("SendAsync", Times.Once(), ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>());
+        Assert.Empty(db.BookingContexts);
+    }
+
+    [Fact]
+    public async Task Provider_CancellationDuringHttp_PropagatesAndDoesNotTryOtherEndpoints()
+    {
+        await using var db = Database(); var handler = MockHandler(); using var cancellation = new CancellationTokenSource();
+        handler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .Returns((HttpRequestMessage request, CancellationToken token) =>
+            {
+                Assert.True(token.CanBeCanceled); cancellation.Cancel();
+                return Task.FromCanceled<HttpResponseMessage>(token);
+            });
+        using var client = new HttpClient(handler.Object) { BaseAddress = new Uri("https://catalog.invalid") };
+        var error = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new RecipientResolver(db, new ConfigurationBuilder().Build(), client)
+            .ProviderAsync(Guid.NewGuid(), null, cancellation.Token));
+        Assert.True(cancellation.IsCancellationRequested); Assert.True(error.CancellationToken.IsCancellationRequested);
+        handler.Protected().Verify("SendAsync", Times.Once(), ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>());
+        Assert.Empty(db.BookingContexts); Assert.Empty(db.Notifications);
+    }
+
     [Fact]
     public async Task ConfiguredProvider_IsUsedWithoutCatalogRequest()
     {

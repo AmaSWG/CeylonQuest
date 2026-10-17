@@ -15,6 +15,9 @@ using ProviderCatalogService.DTOs;
 using ProviderCatalogService.Models;
 using Shared.Storage;
 using Xunit;
+using System.Linq;
+using System.Text.Json;
+using Moq;
 
 namespace ProviderCatalogService.Tests;
 
@@ -51,6 +54,142 @@ public class ProviderApplicationsControllerTests
         var bytes = Encoding.UTF8.GetBytes(content);
         var stream = new MemoryStream(bytes);
         return new FormFile(stream, 0, bytes.Length, "LegalDocuments", fileName);
+    }
+
+    private static CreateProviderApplicationRequest ValidRequest(params IFormFile[] files) => new()
+    {
+        BusinessName = "  Island Tours  ", Email = "  TOURS@EXAMPLE.COM  ", PhoneNumber = " 0771234567 ",
+        ServiceType = " Activity ", Location = " Galle ", Description = " Lagoon tours ",
+        LegalDocuments = files.ToList()
+    };
+
+    private static ProviderApplicationsController CreateController(CatalogDbContext db, IBlobStorageService storage) =>
+        new(db, storage, new ConfigurationBuilder().Build());
+
+    [Theory]
+    [InlineData("license.exe", 1)]
+    [InlineData("license", 1)]
+    [InlineData("license.pdf", 10485761)]
+    [InlineData("license.pdf", 0)]
+    public async Task Submit_InvalidDocument_DoesNotUploadOrPersist(string filename, long length)
+    {
+        using var db = CreateDb();
+        using var stream = new MemoryStream(new byte[1]);
+        var file = new FormFile(stream, 0, length, "LegalDocuments", filename);
+        var storage = new Mock<IBlobStorageService>(MockBehavior.Strict);
+        Assert.IsType<BadRequestObjectResult>(await CreateController(db, storage.Object).Submit(ValidRequest(file)));
+        Assert.Empty(db.ProviderApplications);
+        storage.Verify(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        storage.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Submit_SixDocuments_RejectsBeforeAnyUpload()
+    {
+        using var db = CreateDb();
+        var storage = new Mock<IBlobStorageService>(MockBehavior.Strict);
+        var files = Enumerable.Range(0, 6).Select(i => CreateMockFile($"doc{i}.pdf")).ToArray();
+        try
+        {
+            Assert.IsType<BadRequestObjectResult>(await CreateController(db, storage.Object).Submit(ValidRequest(files)));
+            Assert.Empty(db.ProviderApplications);
+            storage.VerifyNoOtherCalls();
+        }
+        finally { foreach (var file in files) file.OpenReadStream().Dispose(); }
+    }
+
+    [Theory]
+    [InlineData("license.PDF", "application/pdf")]
+    [InlineData("license.jpg", "image/jpeg")]
+    [InlineData("license.jpeg", "image/jpeg")]
+    [InlineData("license.png", "image/png")]
+    public async Task Submit_MaximumSizeDocument_DeduplicatesLegacyFile_AndPersistsMetadata(string filename, string contentType)
+    {
+        using var db = CreateDb();
+        using var stream = new MemoryStream(new byte[10 * 1024 * 1024]);
+        var file = new FormFile(stream, 0, stream.Length, "LegalDocuments", filename);
+        var request = ValidRequest(file);
+        request.LegalDocument = file;
+        var storage = new Mock<IBlobStorageService>(MockBehavior.Strict);
+        string? uploadedName = null;
+        storage.Setup(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), "provider-verification-files", contentType))
+            .Callback<Stream, string, string, string>((content, name, container, type) =>
+            {
+                Assert.Equal(10 * 1024 * 1024, content.Length);
+                uploadedName = name;
+            }).ReturnsAsync("https://storage.invalid/document");
+
+        Assert.IsType<CreatedResult>(await CreateController(db, storage.Object).Submit(request));
+
+        db.ChangeTracker.Clear();
+        var saved = await db.ProviderApplications.SingleAsync();
+        Assert.Equal("Island Tours", saved.BusinessName); Assert.Equal("tours@example.com", saved.Email);
+        Assert.Equal("0771234567", saved.PhoneNumber); Assert.Equal("Activity", saved.ServiceType);
+        Assert.Equal("Galle", saved.Location); Assert.Equal("Lagoon tours", saved.Description);
+        Assert.Equal(ProviderStatus.Pending, saved.Status); Assert.Null(saved.ReviewedAt);
+        using var metadata = JsonDocument.Parse(saved.LegalDocumentsJson);
+        var doc = Assert.Single(metadata.RootElement.EnumerateArray());
+        Assert.Equal(uploadedName, doc.GetProperty("BlobName").GetString());
+        Assert.Equal(filename, doc.GetProperty("OriginalFileName").GetString());
+        Assert.Equal(filename, saved.LegalDocumentFileName);
+        Assert.EndsWith(System.IO.Path.GetExtension(filename).ToLowerInvariant(), uploadedName);
+        storage.Verify(s => s.UploadAsync(It.IsAny<Stream>(), uploadedName!, "provider-verification-files", contentType), Times.Once);
+        storage.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Submit_FiveDocuments_AcceptsMaximumCount()
+    {
+        using var db = CreateDb();
+        var storage = new Mock<IBlobStorageService>(MockBehavior.Strict);
+        storage.Setup(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), "provider-verification-files", "application/pdf"))
+            .ReturnsAsync("https://storage.invalid/document");
+        var files = Enumerable.Range(0, 5).Select(i => CreateMockFile($"doc{i}.pdf")).ToArray();
+        Assert.IsType<CreatedResult>(await CreateController(db, storage.Object).Submit(ValidRequest(files)));
+        db.ChangeTracker.Clear();
+        using var metadata = JsonDocument.Parse((await db.ProviderApplications.SingleAsync()).LegalDocumentsJson);
+        Assert.Equal(5, metadata.RootElement.GetArrayLength());
+        Assert.Equal(5, metadata.RootElement.EnumerateArray().Select(d => d.GetProperty("BlobName").GetString()).Distinct().Count());
+        storage.Verify(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), "provider-verification-files", "application/pdf"), Times.Exactly(5));
+        storage.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Submit_LaterDocumentFails_DoesNotPersistApplicationOrCleanUpEarlierUpload(bool storageFails)
+    {
+        using var db = CreateDb();
+        var storage = new Mock<IBlobStorageService>(MockBehavior.Strict);
+        var failure = new IOException("Simulated storage outage");
+        if (storageFails)
+            storage.SetupSequence(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), "provider-verification-files", "application/pdf"))
+                .ReturnsAsync("https://storage.invalid/first").ThrowsAsync(failure);
+        else
+            storage.Setup(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), "provider-verification-files", "application/pdf"))
+                .ReturnsAsync("https://storage.invalid/first");
+        var request = ValidRequest(CreateMockFile("first.pdf"), CreateMockFile(storageFails ? "second.pdf" : "second.exe"));
+        var controller = CreateController(db, storage.Object);
+        if (storageFails) Assert.Same(failure, await Assert.ThrowsAsync<IOException>(() => controller.Submit(request)));
+        else Assert.IsType<BadRequestObjectResult>(await controller.Submit(request));
+        db.ChangeTracker.Clear();
+        Assert.Empty(db.ProviderApplications);
+        storage.Verify(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), "provider-verification-files", "application/pdf"),
+            Times.Exactly(storageFails ? 2 : 1));
+        storage.Verify(s => s.DeleteAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        storage.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task GetStatus_BlankEmail_ReturnsBadRequest(string? email)
+    {
+        using var db = CreateDb();
+        var storage = new Mock<IBlobStorageService>(MockBehavior.Strict);
+        Assert.IsType<BadRequestObjectResult>(await CreateController(db, storage.Object).GetStatus(email!));
+        Assert.Empty(db.ProviderApplications); storage.VerifyNoOtherCalls();
     }
 
     /// <summary>

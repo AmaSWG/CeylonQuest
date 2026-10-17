@@ -7,11 +7,170 @@ using NotificationService.Data;
 using NotificationService.Models;
 using NotificationService.Services;
 using Xunit;
+using Moq;
 
 namespace NotificationService.Tests;
 
 public class NotificationProcessorTests
 {
+    [Theory]
+    [InlineData("EventId")]
+    [InlineData("BookingId")]
+    [InlineData("ListingId")]
+    [InlineData("VisitorId")]
+    [InlineData("VerifiedAtUtc")]
+    public async Task InvalidAttendanceInvitation_DoesNotResolveRecipientsOrWriteState(string field)
+    {
+        await using var db = Database();
+        var payload = Event("review.eligibility-granted");
+        payload["VerifiedAtUtc"] = "2026-10-11T10:00:00Z";
+        payload[field] = field.EndsWith("Id") ? Guid.Empty.ToString() : "0001-01-01T00:00:00";
+        var resolver = new Mock<IRecipientResolver>(MockBehavior.Strict);
+        await Assert.ThrowsAsync<JsonException>(() => new NotificationEventProcessor(db, resolver.Object)
+            .ProcessAsync("review.eligibility-granted", payload.ToJsonString(), default));
+        Assert.Empty(db.Notifications); Assert.Empty(db.ProcessedEvents); Assert.Empty(db.BookingContexts);
+        resolver.Verify(r => r.ProviderAsync(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+        resolver.Verify(r => r.BookingAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid?>(),
+            It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+        resolver.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("booking.created")]
+    [InlineData("booking.canceled")]
+    [InlineData("review.submitted")]
+    public async Task ResolverThrows_PropagatesOriginalErrorWithoutAcknowledgingOrWriting(string topic)
+    {
+        await using var db = Database();
+        var payload = Event(topic);
+        var listing = Guid.Parse(payload["ListingId"]!.GetValue<string>());
+        var booking = Guid.Parse(payload["BookingId"]!.GetValue<string>());
+        var visitor = Guid.Parse(payload["VisitorId"]!.GetValue<string>());
+        var provider = Guid.Parse(payload["ProviderUserId"]!.GetValue<string>());
+        using var cancellation = new CancellationTokenSource(); var token = cancellation.Token;
+        var resolver = new Mock<IRecipientResolver>(MockBehavior.Strict);
+        var failure = new HttpRequestException("Simulated recipient lookup failure");
+        if (topic == "booking.canceled")
+            resolver.Setup(r => r.BookingAsync(booking, listing, visitor, provider, token)).ThrowsAsync(failure);
+        else resolver.Setup(r => r.ProviderAsync(listing, provider, token)).ThrowsAsync(failure);
+        Assert.Same(failure, await Assert.ThrowsAsync<HttpRequestException>(() =>
+            new NotificationEventProcessor(db, resolver.Object).ProcessAsync(topic, payload.ToJsonString(), token)));
+        db.ChangeTracker.Clear();
+        Assert.Empty(db.Notifications); Assert.Empty(db.ProcessedEvents); Assert.Empty(db.BookingContexts);
+        Assert.Empty(db.FailedEvents); // Quarantine records belong to the consumer, not the processor.
+        if (topic == "booking.canceled") resolver.Verify(r => r.BookingAsync(booking, listing, visitor, provider, token), Times.Once);
+        else resolver.Verify(r => r.ProviderAsync(listing, provider, token), Times.Once);
+        resolver.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Cancellation_UsesResolvedRecipientsAndExactTokenRatherThanUnresolvedEventValues()
+    {
+        await using var db = Database(); var payload = Event("booking.canceled");
+        var booking = Guid.Parse(payload["BookingId"]!.GetValue<string>());
+        var listing = Guid.Parse(payload["ListingId"]!.GetValue<string>());
+        var visitor = Guid.Parse(payload["VisitorId"]!.GetValue<string>());
+        var provider = Guid.Parse(payload["ProviderUserId"]!.GetValue<string>());
+        var resolvedVisitor = Guid.NewGuid(); var resolvedProvider = Guid.NewGuid();
+        using var cancellation = new CancellationTokenSource(); var token = cancellation.Token;
+        var resolver = new Mock<IRecipientResolver>(MockBehavior.Strict);
+        resolver.Setup(r => r.BookingAsync(booking, listing, visitor, provider, token))
+            .ReturnsAsync((resolvedVisitor, resolvedProvider));
+        await new NotificationEventProcessor(db, resolver.Object).ProcessAsync("booking.canceled", payload.ToJsonString(), token);
+        db.ChangeTracker.Clear();
+        var notifications = await db.Notifications.ToListAsync();
+        Assert.Equal(new[] { resolvedVisitor, resolvedProvider }.Order(), notifications.Select(n => n.RecipientUserId).Order());
+        Assert.All(notifications, n => { Assert.Equal(booking, n.BookingId); Assert.Equal(listing, n.ListingId); Assert.False(n.IsRead); });
+        Assert.Single(db.ProcessedEvents); Assert.Empty(db.BookingContexts);
+        resolver.Verify(r => r.BookingAsync(booking, listing, visitor, provider, token), Times.Once);
+        resolver.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("booking.created")]
+    [InlineData("payment.completed")]
+    [InlineData("booking.canceled")]
+    [InlineData("review.submitted")]
+    public async Task LegacyEventWithoutEventId_UsesBusinessKeyDespiteChangedJsonRepresentation(string topic)
+    {
+        await using var db = Database(); var payload = Event(topic); payload.Remove("EventId");
+        var resolver = new Mock<IRecipientResolver>(MockBehavior.Strict);
+        var provider = Guid.Parse(payload["ProviderUserId"]!.GetValue<string>());
+        var visitor = Guid.Parse(payload["VisitorId"]!.GetValue<string>());
+        var listing = Guid.Parse(payload["ListingId"]!.GetValue<string>());
+        var booking = Guid.Parse(payload["BookingId"]!.GetValue<string>());
+        if (topic == "booking.canceled") resolver.Setup(r => r.BookingAsync(booking, listing, visitor, provider, default)).ReturnsAsync((visitor, provider));
+        else if (topic != "payment.completed") resolver.Setup(r => r.ProviderAsync(listing, provider, default)).ReturnsAsync(provider);
+        var processor = new NotificationEventProcessor(db, resolver.Object);
+        await processor.ProcessAsync(topic, payload.ToJsonString(), default);
+        var ids = await db.Notifications.Select(n => n.Id).ToListAsync();
+        payload["IgnoredMetadata"] = "added on replay";
+        await processor.ProcessAsync(topic, payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), default);
+        db.ChangeTracker.Clear();
+        Assert.Equal(ids.Order(), (await db.Notifications.Select(n => n.Id).ToListAsync()).Order());
+        var expectedKey = topic + ":" + (topic switch
+        {
+            "payment.completed" => payload["PaymentId"]!.GetValue<string>(),
+            "review.submitted" => payload["ReviewId"]!.GetValue<string>(),
+            "booking.canceled" => $"{booking}:{DateTime.Parse(payload["CanceledAt"]!.GetValue<string>(), null, System.Globalization.DateTimeStyles.RoundtripKind):O}",
+            _ => booking.ToString()
+        });
+        Assert.Equal(expectedKey, (await db.ProcessedEvents.SingleAsync()).EventKey);
+        if (topic == "booking.canceled") resolver.Verify(r => r.BookingAsync(booking, listing, visitor, provider, default), Times.Once);
+        else if (topic != "payment.completed") resolver.Verify(r => r.ProviderAsync(listing, provider, default), Times.Once);
+        resolver.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Process_CanceledToken_DoesNotCallResolverOrWriteRelationalState()
+    {
+        await using var fixture = await SqliteNotificationTestDatabase.CreateAsync();
+        using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
+        var resolver = new Mock<IRecipientResolver>(MockBehavior.Strict);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new NotificationEventProcessor(fixture.Db, resolver.Object)
+            .ProcessAsync("booking.created", Event("booking.created").ToJsonString(), cancellation.Token));
+        Assert.Empty(fixture.Db.Notifications); Assert.Empty(fixture.Db.ProcessedEvents); Assert.Empty(fixture.Db.BookingContexts);
+        resolver.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task SaveFailsAfterSqlWrites_TransactionRollsBackNotificationsContextAcknowledgementAndFailureResolution()
+    {
+        var interceptor = new FailAfterSqlSave();
+        await using var fixture = await SqliteNotificationTestDatabase.CreateAsync(interceptor);
+        var db = fixture.Db; var payload = Event("booking.created"); var json = payload.ToJsonString();
+        var failureKey = NotificationEventProcessor.PayloadKey("booking.created", json);
+        db.FailedEvents.Add(new() { EventKey = failureKey, Topic = "booking.created", Payload = json, AttemptCount = 2 });
+        await db.SaveChangesAsync(); interceptor.Enabled = true;
+        var resolver = new Mock<IRecipientResolver>(MockBehavior.Strict);
+        var listing = Guid.Parse(payload["ListingId"]!.GetValue<string>());
+        var provider = Guid.Parse(payload["ProviderUserId"]!.GetValue<string>());
+        resolver.Setup(r => r.ProviderAsync(listing, provider, default)).ReturnsAsync(provider);
+        var processor = new NotificationEventProcessor(db, resolver.Object);
+        Assert.Same(interceptor.Failure, await Assert.ThrowsAsync<DbUpdateException>(() => processor.ProcessAsync("booking.created", json, default)));
+        db.ChangeTracker.Clear();
+        Assert.Empty(await db.Notifications.ToListAsync()); Assert.Empty(await db.ProcessedEvents.ToListAsync());
+        Assert.Empty(await db.BookingContexts.ToListAsync());
+        var failed = await db.FailedEvents.SingleAsync(); Assert.False(failed.Resolved); Assert.Equal(2, failed.AttemptCount);
+        interceptor.Enabled = false;
+        await processor.ProcessAsync("booking.created", json, default);
+        db.ChangeTracker.Clear();
+        Assert.Equal(2, await db.Notifications.CountAsync()); Assert.Single(db.ProcessedEvents); Assert.Single(db.BookingContexts);
+        Assert.True((await db.FailedEvents.SingleAsync()).Resolved);
+        resolver.Verify(r => r.ProviderAsync(listing, provider, default), Times.Exactly(2)); resolver.VerifyNoOtherCalls();
+    }
+
+    private sealed class FailAfterSqlSave : SaveChangesInterceptor
+    {
+        internal bool Enabled { get; set; }
+        internal DbUpdateException Failure { get; } = new("Simulated failure after database writes");
+        public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            if (Enabled) throw Failure;
+            return new(result);
+        }
+    }
+
     private static NotificationDbContext Database() => new(new DbContextOptionsBuilder<NotificationDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning)).Options);
     private static NotificationEventProcessor Processor(NotificationDbContext db) => new(db, new RecipientResolver(db,new ConfigurationBuilder().Build()));

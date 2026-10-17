@@ -20,6 +20,68 @@ public class AvailabilityTests
         return new CatalogDbContext(options);
     }
 
+    [Theory]
+    [InlineData(3, 0)]
+    [InlineData(4, 1)]
+    [InlineData(12, 9)]
+    public async Task SetSlotCapacity_ExistingBookings_PreservesBookedCount(int capacity, int remaining)
+    {
+        using var db = CreateInMemoryDbContext();
+        var slot = new AvailabilitySlot { Id = Guid.NewGuid(), ListingId = Guid.NewGuid(),
+            Date = new DateOnly(2026, 10, 20), TimeSlot = "09:00 AM - 11:00 AM", TotalCapacity = 10, RemainingCapacity = 7 };
+        db.AvailabilitySlots.Add(slot); await db.SaveChangesAsync();
+        Assert.True(await new AvailabilityService(db).SetSlotCapacityAsync(slot.ListingId, slot.Date, slot.TimeSlot, capacity));
+        db.ChangeTracker.Clear();
+        var saved = await db.AvailabilitySlots.SingleAsync();
+        Assert.Equal(capacity, saved.TotalCapacity); Assert.Equal(remaining, saved.RemainingCapacity);
+        Assert.Equal(3, saved.TotalCapacity - saved.RemainingCapacity);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task SetSlotCapacity_BelowBookedCount_RejectsWithoutChangingSlot(int capacity)
+    {
+        using var db = CreateInMemoryDbContext();
+        var slot = new AvailabilitySlot { Id = Guid.NewGuid(), ListingId = Guid.NewGuid(),
+            Date = new DateOnly(2026, 10, 20), TimeSlot = "Morning", TotalCapacity = 10, RemainingCapacity = 7 };
+        db.AvailabilitySlots.Add(slot); await db.SaveChangesAsync();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new AvailabilityService(db)
+            .SetSlotCapacityAsync(slot.ListingId, slot.Date, slot.TimeSlot, capacity));
+        db.ChangeTracker.Clear();
+        var saved = await db.AvailabilitySlots.SingleAsync();
+        Assert.Equal(10, saved.TotalCapacity); Assert.Equal(7, saved.RemainingCapacity);
+    }
+
+    [Theory]
+    [InlineData(0, "Morning")]
+    [InlineData(-1, "Morning")]
+    [InlineData(1, "")]
+    [InlineData(1, "  ")]
+    public async Task DeductAndRestore_InvalidInput_ReturnFalseWithoutCreatingSlots(int guests, string timeSlot)
+    {
+        using var db = CreateInMemoryDbContext();
+        var service = new AvailabilityService(db);
+        var id = Guid.NewGuid(); var date = new DateOnly(2026, 10, 20);
+        Assert.False(await service.DeductCapacityAsync(id, date, timeSlot, guests));
+        Assert.False(await service.RestoreCapacityAsync(id, date, timeSlot, guests));
+        Assert.Empty(db.AvailabilitySlots);
+    }
+
+    [Fact]
+    public async Task DeductCapacity_ExceedsRemaining_LegacyMethodClampsToZeroAndReturnsSuccess()
+    {
+        using var db = CreateInMemoryDbContext();
+        var slot = new AvailabilitySlot { Id = Guid.NewGuid(), ListingId = Guid.NewGuid(),
+            Date = new DateOnly(2026, 10, 20), TimeSlot = "Morning", TotalCapacity = 10, RemainingCapacity = 2 };
+        db.AvailabilitySlots.Add(slot); await db.SaveChangesAsync();
+        // This legacy method clamps deductions; ReserveCapacityAsync is the guarded reservation API.
+        Assert.True(await new AvailabilityService(db).DeductCapacityAsync(slot.ListingId, slot.Date, slot.TimeSlot, 3));
+        db.ChangeTracker.Clear();
+        var saved = await db.AvailabilitySlots.SingleAsync();
+        Assert.Equal(10, saved.TotalCapacity); Assert.Equal(0, saved.RemainingCapacity);
+    }
+
     /// <summary>
     /// Verifies that a provider setting slot capacity creates the record
     /// and the slot appears as bookable to visitors
