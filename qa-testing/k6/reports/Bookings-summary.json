@@ -1,0 +1,147 @@
+{
+    "metrics": {
+        "checks": {
+            "passes": 1161,
+            "fails": 0,
+            "value": 1
+        },
+        "vus": {
+            "value": 1,
+            "min": 1,
+            "max": 39
+        },
+        "http_req_sending": {
+            "p(90)": 0,
+            "p(95)": 0.510145,
+            "avg": 0.03425310077519379,
+            "min": 0,
+            "med": 0,
+            "max": 0.8131
+        },
+        "iteration_duration": {
+            "p(90)": 2075.75166,
+            "p(95)": 2257.71175,
+            "avg": 1786.5312403100775,
+            "min": 1271.2139,
+            "med": 1557.2378,
+            "max": 10258.9219
+        },
+        "http_req_receiving": {
+            "p(90)": 0.8277100000000003,
+            "p(95)": 0.9781649999999996,
+            "avg": 1.817118217054265,
+            "min": 0,
+            "med": 0,
+            "max": 628.0935
+        },
+        "data_sent": {
+            "count": 303895,
+            "rate": 9600.950812429775
+        },
+        "http_reqs": {
+            "count": 774,
+            "rate": 24.452972009479083
+        },
+        "http_req_waiting": {
+            "max": 1043.8751,
+            "p(90)": 481.6994,
+            "p(95)": 623.6805,
+            "avg": 297.1887418604652,
+            "min": 99.8552,
+            "med": 253.5618
+        },
+        "http_req_connecting": {
+            "med": 0,
+            "max": 2403.7383,
+            "p(90)": 0,
+            "p(95)": 94.41083499999877,
+            "avg": 16.907500516795864,
+            "min": 0
+        },
+        "http_req_duration": {
+            "avg": 299.0401131782946,
+            "min": 100.2665,
+            "med": 254.07415,
+            "max": 1043.8751,
+            "p(90)": 483.7945700000001,
+            "p(95)": 624.2782249999999,
+            "thresholds": {
+                "p(95)<2000": false
+            }
+        },
+        "data_received": {
+            "count": 739882,
+            "rate": 23375.08247586228
+        },
+        "http_req_tls_handshaking": {
+            "p(95)": 314.7728299999998,
+            "avg": 74.23588901808786,
+            "min": 0,
+            "med": 0,
+            "max": 6625.757,
+            "p(90)": 0
+        },
+        "iterations": {
+            "count": 387,
+            "rate": 12.226486004739542
+        },
+        "http_req_blocked": {
+            "p(95)": 433.4436799999999,
+            "avg": 91.3560927648579,
+            "min": 0,
+            "med": 0,
+            "max": 8371.7883,
+            "p(90)": 0
+        },
+        "vus_max": {
+            "max": 40,
+            "value": 40,
+            "min": 40
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 774,
+            "thresholds": {
+                "rate<0.01": false
+            },
+            "value": 0
+        },
+        "http_req_duration{expected_response:true}": {
+            "avg": 299.0401131782946,
+            "min": 100.2665,
+            "med": 254.07415,
+            "max": 1043.8751,
+            "p(90)": 483.7945700000001,
+            "p(95)": 624.2782249999999
+        }
+    },
+    "root_group": {
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {
+                "summary status is 200": {
+                    "name": "summary status is 200",
+                    "path": "::summary status is 200",
+                    "id": "eacbfb410c63bf75c2283b558c5e28cc",
+                    "passes": 387,
+                    "fails": 0
+                },
+                "average rating returned": {
+                    "id": "707a548f9340a77164a9fd28d53a34d1",
+                    "passes": 387,
+                    "fails": 0,
+                    "name": "average rating returned",
+                    "path": "::average rating returned"
+                },
+                "list reviews status is 200": {
+                    "name": "list reviews status is 200",
+                    "path": "::list reviews status is 200",
+                    "id": "d5fe66754e2e736374578f657569acb2",
+                    "passes": 387,
+                    "fails": 0
+                }
+            },
+        "name": "",
+        "path": ""
+    }
+}
