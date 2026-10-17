@@ -1,0 +1,34 @@
+{
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 20,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 900.8,
+    "medianResTime" : 867.5,
+    "minResTime" : 624.0,
+    "maxResTime" : 1347.0,
+    "pct1ResTime" : 1224.0,
+    "pct2ResTime" : 1341.0,
+    "pct3ResTime" : 1347.0,
+    "throughput" : 3.8948393378773125,
+    "receivedKBytesPerSec" : 0.7340859298928919,
+    "sentKBytesPerSec" : 3.118914313534567
+  },
+  "JM-04-MarkOneAsRead Sampler" : {
+    "transaction" : "JM-04-MarkOneAsRead Sampler",
+    "sampleCount" : 20,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 900.8,
+    "medianResTime" : 867.5,
+    "minResTime" : 624.0,
+    "maxResTime" : 1347.0,
+    "pct1ResTime" : 1224.0,
+    "pct2ResTime" : 1341.0,
+    "pct3ResTime" : 1347.0,
+    "throughput" : 3.8948393378773125,
+    "receivedKBytesPerSec" : 0.7340859298928919,
+    "sentKBytesPerSec" : 3.118914313534567
+  }
+}

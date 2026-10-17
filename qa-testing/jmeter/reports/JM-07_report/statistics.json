@@ -1,0 +1,34 @@
+{
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 100,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 563.75,
+    "medianResTime" : 386.5,
+    "minResTime" : 288.0,
+    "maxResTime" : 2390.0,
+    "pct1ResTime" : 1260.3000000000009,
+    "pct2ResTime" : 1992.2999999999988,
+    "pct3ResTime" : 2389.94,
+    "throughput" : 6.680919294494923,
+    "receivedKBytesPerSec" : 2.6488801109032605,
+    "sentKBytesPerSec" : 5.826231376937467
+  },
+  "JM-07-RatingSummary Sampler" : {
+    "transaction" : "JM-07-RatingSummary Sampler",
+    "sampleCount" : 100,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 563.75,
+    "medianResTime" : 386.5,
+    "minResTime" : 288.0,
+    "maxResTime" : 2390.0,
+    "pct1ResTime" : 1260.3000000000009,
+    "pct2ResTime" : 1992.2999999999988,
+    "pct3ResTime" : 2389.94,
+    "throughput" : 6.680919294494923,
+    "receivedKBytesPerSec" : 2.6488801109032605,
+    "sentKBytesPerSec" : 5.826231376937467
+  }
+}
