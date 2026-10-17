@@ -1,131 +1,131 @@
 timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
-1791826699876,600,JM-09-DuplicateReviewRace Sampler,404,Not Found,Thread Group 1-5,text,false,"Test failed: code expected something using /
+1792219471308,120416,JM-09-DuplicateReviewRace Sampler,Non HTTP response code: org.apache.http.NoHttpResponseException,Non HTTP response message: ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443 failed to respond,Thread Group 1-1,text,false,"Test failed: code expected something using /
 
-****** received  : [[[404]]]
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
 
-****** comparison: [[[201]]]
-
-/	Test failed: code expected something using /
-
-****** received  : 40[[[4]]]
-
-****** comparison: 40[[[9]]]
-
-/	",366,900,10,10,http://localhost:5229/api/bookings/reviews,579,0,100
-1791826699878,598,JM-09-DuplicateReviewRace Sampler,404,Not Found,Thread Group 1-8,text,false,"Test failed: code expected something using /
-
-****** received  : [[[404]]]
-
-****** comparison: [[[201]]]
+****** comparison: [[[201                                                            ]]]
 
 /	Test failed: code expected something using /
 
-****** received  : 40[[[4]]]
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
 
-****** comparison: 40[[[9]]]
+****** comparison: [[[409                                                            ]]]
 
-/	",366,900,10,10,http://localhost:5229/api/bookings/reviews,577,0,98
-1791826699876,600,JM-09-DuplicateReviewRace Sampler,404,Not Found,Thread Group 1-4,text,false,"Test failed: code expected something using /
+/	",2161,0,10,10,http://ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443/api/bookings/reviews,0,0,343
+1792219471309,120416,JM-09-DuplicateReviewRace Sampler,Non HTTP response code: org.apache.http.NoHttpResponseException,Non HTTP response message: ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443 failed to respond,Thread Group 1-8,text,false,"Test failed: code expected something using /
 
-****** received  : [[[404]]]
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
 
-****** comparison: [[[201]]]
-
-/	Test failed: code expected something using /
-
-****** received  : 40[[[4]]]
-
-****** comparison: 40[[[9]]]
-
-/	",366,900,10,10,http://localhost:5229/api/bookings/reviews,579,0,100
-1791826699876,920,JM-09-DuplicateReviewRace Sampler,404,Not Found,Thread Group 1-6,text,false,"Test failed: code expected something using /
-
-****** received  : [[[404]]]
-
-****** comparison: [[[201]]]
+****** comparison: [[[201                                                            ]]]
 
 /	Test failed: code expected something using /
 
-****** received  : 40[[[4]]]
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
 
-****** comparison: 40[[[9]]]
+****** comparison: [[[409                                                            ]]]
 
-/	",366,900,7,7,http://localhost:5229/api/bookings/reviews,920,0,100
-1791826699876,970,JM-09-DuplicateReviewRace Sampler,404,Not Found,Thread Group 1-10,text,false,"Test failed: code expected something using /
+/	",2161,0,10,10,http://ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443/api/bookings/reviews,0,0,343
+1792219471308,120417,JM-09-DuplicateReviewRace Sampler,Non HTTP response code: org.apache.http.NoHttpResponseException,Non HTTP response message: ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443 failed to respond,Thread Group 1-9,text,false,"Test failed: code expected something using /
 
-****** received  : [[[404]]]
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
 
-****** comparison: [[[201]]]
-
-/	Test failed: code expected something using /
-
-****** received  : 40[[[4]]]
-
-****** comparison: 40[[[9]]]
-
-/	",366,900,6,6,http://localhost:5229/api/bookings/reviews,970,0,100
-1791826699876,999,JM-09-DuplicateReviewRace Sampler,404,Not Found,Thread Group 1-3,text,false,"Test failed: code expected something using /
-
-****** received  : [[[404]]]
-
-****** comparison: [[[201]]]
+****** comparison: [[[201                                                            ]]]
 
 /	Test failed: code expected something using /
 
-****** received  : 40[[[4]]]
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
 
-****** comparison: 40[[[9]]]
+****** comparison: [[[409                                                            ]]]
 
-/	",366,900,5,5,http://localhost:5229/api/bookings/reviews,998,0,100
-1791826699876,1013,JM-09-DuplicateReviewRace Sampler,404,Not Found,Thread Group 1-1,text,false,"Test failed: code expected something using /
+/	",2161,0,10,10,http://ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443/api/bookings/reviews,0,0,343
+1792219471309,120415,JM-09-DuplicateReviewRace Sampler,Non HTTP response code: org.apache.http.NoHttpResponseException,Non HTTP response message: ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443 failed to respond,Thread Group 1-3,text,false,"Test failed: code expected something using /
 
-****** received  : [[[404]]]
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
 
-****** comparison: [[[201]]]
-
-/	Test failed: code expected something using /
-
-****** received  : 40[[[4]]]
-
-****** comparison: 40[[[9]]]
-
-/	",366,900,4,4,http://localhost:5229/api/bookings/reviews,1013,0,100
-1791826699876,1014,JM-09-DuplicateReviewRace Sampler,404,Not Found,Thread Group 1-7,text,false,"Test failed: code expected something using /
-
-****** received  : [[[404]]]
-
-****** comparison: [[[201]]]
+****** comparison: [[[201                                                            ]]]
 
 /	Test failed: code expected something using /
 
-****** received  : 40[[[4]]]
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
 
-****** comparison: 40[[[9]]]
+****** comparison: [[[409                                                            ]]]
 
-/	",366,900,4,4,http://localhost:5229/api/bookings/reviews,1013,0,100
-1791826699877,1013,JM-09-DuplicateReviewRace Sampler,404,Not Found,Thread Group 1-2,text,false,"Test failed: code expected something using /
+/	",2161,0,10,10,http://ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443/api/bookings/reviews,0,0,342
+1792219471309,120416,JM-09-DuplicateReviewRace Sampler,Non HTTP response code: org.apache.http.NoHttpResponseException,Non HTTP response message: ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443 failed to respond,Thread Group 1-10,text,false,"Test failed: code expected something using /
 
-****** received  : [[[404]]]
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
 
-****** comparison: [[[201]]]
-
-/	Test failed: code expected something using /
-
-****** received  : 40[[[4]]]
-
-****** comparison: 40[[[9]]]
-
-/	",366,900,4,4,http://localhost:5229/api/bookings/reviews,1013,0,99
-1791826699876,1014,JM-09-DuplicateReviewRace Sampler,404,Not Found,Thread Group 1-9,text,false,"Test failed: code expected something using /
-
-****** received  : [[[404]]]
-
-****** comparison: [[[201]]]
+****** comparison: [[[201                                                            ]]]
 
 /	Test failed: code expected something using /
 
-****** received  : 40[[[4]]]
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
 
-****** comparison: 40[[[9]]]
+****** comparison: [[[409                                                            ]]]
 
-/	",366,900,4,4,http://localhost:5229/api/bookings/reviews,1014,0,100
+/	",2161,0,10,10,http://ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443/api/bookings/reviews,0,0,342
+1792219471309,120415,JM-09-DuplicateReviewRace Sampler,Non HTTP response code: org.apache.http.NoHttpResponseException,Non HTTP response message: ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443 failed to respond,Thread Group 1-2,text,false,"Test failed: code expected something using /
+
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
+
+****** comparison: [[[201                                                            ]]]
+
+/	Test failed: code expected something using /
+
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
+
+****** comparison: [[[409                                                            ]]]
+
+/	",2161,0,10,10,http://ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443/api/bookings/reviews,0,0,342
+1792219471308,120429,JM-09-DuplicateReviewRace Sampler,Non HTTP response code: org.apache.http.NoHttpResponseException,Non HTTP response message: ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443 failed to respond,Thread Group 1-6,text,false,"Test failed: code expected something using /
+
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
+
+****** comparison: [[[201                                                            ]]]
+
+/	Test failed: code expected something using /
+
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
+
+****** comparison: [[[409                                                            ]]]
+
+/	",2161,0,10,10,http://ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443/api/bookings/reviews,0,0,344
+1792219471308,120429,JM-09-DuplicateReviewRace Sampler,Non HTTP response code: org.apache.http.NoHttpResponseException,Non HTTP response message: ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443 failed to respond,Thread Group 1-4,text,false,"Test failed: code expected something using /
+
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
+
+****** comparison: [[[201                                                            ]]]
+
+/	Test failed: code expected something using /
+
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
+
+****** comparison: [[[409                                                            ]]]
+
+/	",2161,0,10,10,http://ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443/api/bookings/reviews,0,0,344
+1792219471309,120428,JM-09-DuplicateReviewRace Sampler,Non HTTP response code: org.apache.http.NoHttpResponseException,Non HTTP response message: ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443 failed to respond,Thread Group 1-5,text,false,"Test failed: code expected something using /
+
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
+
+****** comparison: [[[201                                                            ]]]
+
+/	Test failed: code expected something using /
+
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
+
+****** comparison: [[[409                                                            ]]]
+
+/	",2161,0,10,10,http://ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443/api/bookings/reviews,0,0,342
+1792219471309,120429,JM-09-DuplicateReviewRace Sampler,Non HTTP response code: org.apache.http.NoHttpResponseException,Non HTTP response message: ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443 failed to respond,Thread Group 1-7,text,false,"Test failed: code expected something using /
+
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
+
+****** comparison: [[[201                                                            ]]]
+
+/	Test failed: code expected something using /
+
+****** received  : [[[Non HTTP response code: org.apache.http.NoHttpResponseException]]]
+
+****** comparison: [[[409                                                            ]]]
+
+/	",2161,0,10,10,http://ceylonquest-booking-service-gccuc7fbhyckcpg9.southeastasia-01.azurewebsites.net:443/api/bookings/reviews,0,0,343

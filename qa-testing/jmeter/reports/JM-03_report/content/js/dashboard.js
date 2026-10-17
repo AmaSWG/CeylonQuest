@@ -173,7 +173,7 @@ $(document).ready(function() {
     });
 
     // Creates APDEX table
-    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [0.995, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [0.995, 500, 1500, "JM-03-UnreadBadgePolling Sampler"], "isController": false}]}, function(index, item){
+    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [0.585, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [0.585, 500, 1500, "JM-03-UnreadBadgePolling Sampler"], "isController": false}]}, function(index, item){
         switch(index){
             case 0:
                 item = item.toFixed(3);
@@ -187,7 +187,7 @@ $(document).ready(function() {
     }, [[0, 0]], 3);
 
     // Create statistics table
-    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 100, 0, 0.0, 194.41000000000008, 143, 556, 173.5, 245.60000000000002, 450.04999999999774, 555.1799999999996, 10.222858311183808, 1.7570537722347168, 7.637193953179309], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["JM-03-UnreadBadgePolling Sampler", 100, 0, 0.0, 194.41000000000008, 143, 556, 173.5, 245.60000000000002, 450.04999999999774, 555.1799999999996, 10.222858311183808, 1.7570537722347168, 7.637193953179309], "isController": false}]}, function(index, item){
+    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 100, 0, 0.0, 609.9200000000002, 426, 1539, 533.0, 862.9000000000005, 1364.099999999999, 1539.0, 9.879470460383324, 11.239827232760325, 7.7086883768030035], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["JM-03-UnreadBadgePolling Sampler", 100, 0, 0.0, 609.9200000000002, 426, 1539, 533.0, 862.9000000000005, 1364.099999999999, 1539.0, 9.879470460383324, 11.239827232760325, 7.7086883768030035], "isController": false}]}, function(index, item){
         switch(index){
             // Errors pct
             case 3:

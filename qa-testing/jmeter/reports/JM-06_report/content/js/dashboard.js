@@ -173,7 +173,7 @@ $(document).ready(function() {
     });
 
     // Creates APDEX table
-    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [0.81, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [0.81, 500, 1500, "JM-06-ListReviews Sampler"], "isController": false}]}, function(index, item){
+    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [0.76, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [0.76, 500, 1500, "JM-06-ListReviews Sampler"], "isController": false}]}, function(index, item){
         switch(index){
             case 0:
                 item = item.toFixed(3);
@@ -187,7 +187,7 @@ $(document).ready(function() {
     }, [[0, 0]], 3);
 
     // Create statistics table
-    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 50, 0, 0.0, 492.68, 431, 634, 487.0, 557.4, 602.0, 634.0, 5.003001801080648, 1.2605219381628978, 4.074710451270763], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["JM-06-ListReviews Sampler", 50, 0, 0.0, 492.68, 431, 634, 487.0, 557.4, 602.0, 634.0, 5.003001801080648, 1.2605219381628978, 4.074710451270763], "isController": false}]}, function(index, item){
+    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 50, 0, 0.0, 555.4400000000003, 353, 1422, 491.5, 841.1999999999998, 1297.4499999999996, 1422.0, 4.951475539710834, 1.8954867300455533, 4.37122449990097], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["JM-06-ListReviews Sampler", 50, 0, 0.0, 555.4400000000003, 353, 1422, 491.5, 841.1999999999998, 1297.4499999999996, 1422.0, 4.951475539710834, 1.8954867300455533, 4.37122449990097], "isController": false}]}, function(index, item){
         switch(index){
             // Errors pct
             case 3:

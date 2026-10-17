@@ -173,7 +173,7 @@ $(document).ready(function() {
     });
 
     // Creates APDEX table
-    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [0.485, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [0.485, 500, 1500, "JM-02-ListNotificationsPeak Sampler"], "isController": false}]}, function(index, item){
+    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [0.825, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [0.825, 500, 1500, "JM-02-ListNotificationsPeak Sampler"], "isController": false}]}, function(index, item){
         switch(index){
             case 0:
                 item = item.toFixed(3);
@@ -187,7 +187,7 @@ $(document).ready(function() {
     }, [[0, 0]], 3);
 
     // Create statistics table
-    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 100, 0, 0.0, 710.8999999999999, 501, 1778, 611.0, 962.9, 1316.649999999999, 1777.6299999999999, 6.508721687060661, 79.14071652889872, 4.900609785863057], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["JM-02-ListNotificationsPeak Sampler", 100, 0, 0.0, 710.8999999999999, 501, 1778, 611.0, 962.9, 1316.649999999999, 1777.6299999999999, 6.508721687060661, 79.14071652889872, 4.900609785863057], "isController": false}]}, function(index, item){
+    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 100, 0, 0.0, 518.0000000000001, 375, 1217, 470.5, 638.5, 1008.1999999999998, 1217.0, 6.6515897299454565, 7.567482456432087, 5.229032941998137], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["JM-02-ListNotificationsPeak Sampler", 100, 0, 0.0, 518.0000000000001, 375, 1217, 470.5, 638.5, 1008.1999999999998, 1217.0, 6.6515897299454565, 7.567482456432087, 5.229032941998137], "isController": false}]}, function(index, item){
         switch(index){
             // Errors pct
             case 3:

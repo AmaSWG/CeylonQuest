@@ -173,7 +173,7 @@ $(document).ready(function() {
     });
 
     // Creates APDEX table
-    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [0.925, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [0.925, 500, 1500, "JM-05-MarkAllAsRead Sampler"], "isController": false}]}, function(index, item){
+    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [0.85, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [0.85, 500, 1500, "JM-05-MarkAllAsRead Sampler"], "isController": false}]}, function(index, item){
         switch(index){
             case 0:
                 item = item.toFixed(3);
@@ -187,7 +187,7 @@ $(document).ready(function() {
     }, [[0, 0]], 3);
 
     // Create statistics table
-    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 20, 0, 0.0, 385.55, 308, 715, 343.5, 584.0, 708.4499999999999, 715.0, 4.14765657403567, 0.7817360535047698, 3.167448672749896], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["JM-05-MarkAllAsRead Sampler", 20, 0, 0.0, 385.55, 308, 715, 343.5, 584.0, 708.4499999999999, 715.0, 4.14765657403567, 0.7817360535047698, 3.167448672749896], "isController": false}]}, function(index, item){
+    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 20, 0, 0.0, 480.7, 370, 662, 472.0, 635.8000000000002, 661.0, 662.0, 3.995205753096284, 0.7530026468238114, 3.0705341090691167], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["JM-05-MarkAllAsRead Sampler", 20, 0, 0.0, 480.7, 370, 662, 472.0, 635.8000000000002, 661.0, 662.0, 3.995205753096284, 0.7530026468238114, 3.0705341090691167], "isController": false}]}, function(index, item){
         switch(index){
             // Errors pct
             case 3:

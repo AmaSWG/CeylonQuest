@@ -1,11 +1,11 @@
 timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
-1791828010549,434,JM-08-SubmitReviews Sampler,404,Not Found,Thread Group 1-2,text,false,,366,915,2,2,http://localhost:5229/api/bookings/reviews,433,0,14
-1791828010468,515,JM-08-SubmitReviews Sampler,404,Not Found,Thread Group 1-1,text,false,,366,915,2,2,http://localhost:5229/api/bookings/reviews,514,0,95
-1791828011047,386,JM-08-SubmitReviews Sampler,404,Not Found,Thread Group 1-3,text,false,,366,915,1,1,http://localhost:5229/api/bookings/reviews,386,0,2
-1791828011543,379,JM-08-SubmitReviews Sampler,404,Not Found,Thread Group 1-4,text,false,,366,915,1,1,http://localhost:5229/api/bookings/reviews,379,0,3
-1791828012043,471,JM-08-SubmitReviews Sampler,409,Conflict,Thread Group 1-5,text,false,,387,915,1,1,http://localhost:5229/api/bookings/reviews,471,0,3
-1791828012540,494,JM-08-SubmitReviews Sampler,409,Conflict,Thread Group 1-6,text,false,,394,915,1,1,http://localhost:5229/api/bookings/reviews,494,0,3
-1791828013038,416,JM-08-SubmitReviews Sampler,404,Not Found,Thread Group 1-7,text,false,,366,915,1,1,http://localhost:5229/api/bookings/reviews,416,0,2
-1791828013538,455,JM-08-SubmitReviews Sampler,404,Not Found,Thread Group 1-8,text,false,,366,915,1,1,http://localhost:5229/api/bookings/reviews,455,0,1
-1791828014035,401,JM-08-SubmitReviews Sampler,404,Not Found,Thread Group 1-9,text,false,,366,915,1,1,http://localhost:5229/api/bookings/reviews,401,0,2
-1791828014535,405,JM-08-SubmitReviews Sampler,404,Not Found,Thread Group 1-10,text,false,,366,915,1,1,http://localhost:5229/api/bookings/reviews,405,0,3
+1792216525039,58,JM-08-SubmitReviews Sampler,403,Forbidden,Thread Group 1-1,,false,,99,920,1,1,http://localhost:5229/api/bookings/reviews,58,0,40
+1792216525340,6,JM-08-SubmitReviews Sampler,403,Forbidden,Thread Group 1-2,,false,,99,920,1,1,http://localhost:5229/api/bookings/reviews,6,0,3
+1792216525838,4,JM-08-SubmitReviews Sampler,403,Forbidden,Thread Group 1-3,,false,,99,920,1,1,http://localhost:5229/api/bookings/reviews,4,0,2
+1792216526338,3,JM-08-SubmitReviews Sampler,403,Forbidden,Thread Group 1-4,,false,,99,920,1,1,http://localhost:5229/api/bookings/reviews,3,0,2
+1792216526834,3,JM-08-SubmitReviews Sampler,403,Forbidden,Thread Group 1-5,,false,,99,920,1,1,http://localhost:5229/api/bookings/reviews,3,0,2
+1792216527334,4,JM-08-SubmitReviews Sampler,403,Forbidden,Thread Group 1-6,,false,,99,920,1,1,http://localhost:5229/api/bookings/reviews,4,0,2
+1792216527835,4,JM-08-SubmitReviews Sampler,403,Forbidden,Thread Group 1-7,,false,,99,920,1,1,http://localhost:5229/api/bookings/reviews,4,0,2
+1792216528333,4,JM-08-SubmitReviews Sampler,403,Forbidden,Thread Group 1-8,,false,,99,920,1,1,http://localhost:5229/api/bookings/reviews,4,0,2
+1792216528833,4,JM-08-SubmitReviews Sampler,403,Forbidden,Thread Group 1-9,,false,,99,920,1,1,http://localhost:5229/api/bookings/reviews,4,0,2
+1792216529331,6,JM-08-SubmitReviews Sampler,403,Forbidden,Thread Group 1-10,,false,,99,920,1,1,http://localhost:5229/api/bookings/reviews,6,0,4
