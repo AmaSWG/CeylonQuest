@@ -1,0 +1,166 @@
+name: ASE Comprehensive Testing Pipeline
+
+on:
+  push:
+    branches:
+      - "test/ASE-mutation-testing"
+      - "test/ASE-JMeter-and-k6-testing"
+      - "test/final-selenium-e2e"
+      - "feature/ASE-unit-testing-and-mocking"
+      - "test/ase-integrated-testing"
+  pull_request:
+    branches:
+      - "test/ase-integrated-testing"
+  workflow_dispatch: # Allows manual 1-click trigger from GitHub Actions web UI
+
+permissions:
+  contents: read
+
+jobs:
+  # STAGE 1: Unit Testing & Mocking (xUnit + Moq across 4 services) (IT24101636 Yavindi M.D.C)
+  unit-tests:
+    name: Unit Tests - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: provider-catalog
+            project: services/provider-catalog-service/ProviderCatalogService.Tests/ProviderCatalogService.Tests.csproj
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore Dependencies
+        run: dotnet restore "${{ matrix.project }}"
+
+      - name: Build Test Project
+        run: dotnet build "${{ matrix.project }}" --no-restore --configuration Release
+
+      - name: Run xUnit Unit & Mock Tests
+        run: >-
+          dotnet test "${{ matrix.project }}"
+          --no-build --no-restore --configuration Release
+          --logger "trx;LogFileName=${{ matrix.service }}-unit-tests.trx"
+          --results-directory "${{ github.workspace }}/test-results/${{ matrix.service }}"
+
+      - name: Upload Test Report (TRX)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results-${{ matrix.service }}
+          path: test-results/${{ matrix.service }}/
+
+  # STAGE 2: Mutation Testing (Stryker.NET on Provider Catalog) (IT24101656 Gunasekara A.S.W)
+
+  mutation-testing:
+    name: Mutation Testing (Stryker.NET)
+    runs-on: windows-latest
+    needs: unit-tests
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore Local dotnet Tools (Stryker)
+        run: dotnet tool restore
+
+      - name: Run Stryker Mutation Testing
+        working-directory: services/provider-catalog-service/ProviderCatalogService.Tests
+        run: dotnet stryker --reporter progress --reporter html --reporter cleartext
+
+      - name: Upload Stryker HTML Mutation Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-mutation-report
+          path: services/provider-catalog-service/ProviderCatalogService.Tests/StrykerOutput/**/reports/mutation-report.html
+
+  # STAGE 3: Performance Testing (k6 & JMeter) (IT24101662 Wijerathna T.M.V)
+  
+  performance-testing:
+    name: Performance Tests (k6 & JMeter)
+    runs-on: windows-latest
+    needs: unit-tests
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Check for qa-testing directory
+        id: check-qa
+        shell: pwsh
+        run: |
+          if (Test-Path "qa-testing") {
+            echo "exists=true" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "exists=false" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Install k6
+        if: steps.check-qa.outputs.exists == 'true'
+        run: choco install k6 -y
+
+      - name: Run k6 Performance Tests (Provider Catalog)
+        if: steps.check-qa.outputs.exists == 'true'
+        shell: pwsh
+        run: |
+          .\qa-testing\k6\run-k6-tests.ps1 -Target AzureCloud -Test Catalog
+
+      - name: Run JMeter Performance Tests
+        if: steps.check-qa.outputs.exists == 'true'
+        shell: pwsh
+        run: |
+          .\qa-testing\jmeter\run-jmeter-tests.ps1 -Target AzureCloud
+
+      - name: Upload Performance Test Reports
+        if: always() && steps.check-qa.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-test-reports
+          path: |
+            qa-testing/k6/reports/
+            qa-testing/jmeter/reports/
+
+  # STAGE 4: End-to-End Testing (Selenium UI) (IT2410854 Somarathne H.D.P.Y)
+  
+  selenium-e2e-testing:
+    name: Selenium E2E UI Tests
+    runs-on: windows-latest
+    needs: unit-tests
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Run Selenium Tests (if present)
+        shell: pwsh
+        run: |
+          $e2eProject = Get-ChildItem -Recurse -Filter "*Selenium*.csproj" | Select-Object -First 1
+          if ($e2eProject) {
+            Write-Host "Running Selenium tests in $($e2eProject.FullName)"
+            dotnet test $e2eProject.FullName --configuration Release --logger "trx;LogFileName=selenium-results.trx"
+          } else {
+            Write-Host "No Selenium project found on this branch yet. Skipping."
+          }
+
+      - name: Upload E2E Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-e2e-results
+          path: "**/TestResults/*.trx"
+          if-no-files-found: ignore
