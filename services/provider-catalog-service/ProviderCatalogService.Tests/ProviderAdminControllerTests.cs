@@ -26,6 +26,12 @@ namespace ProviderCatalogService.Tests;
 
 public class ProviderAdminControllerTests
 {
+    private static string? GetMessage(IActionResult result)
+    {
+        var objResult = Assert.IsAssignableFrom<ObjectResult>(result);
+        return JsonSerializer.SerializeToElement(objResult.Value).GetProperty("message").GetString();
+    }
+
     private class FakeKafkaProducer : IKafkaProducer
     {
         public List<(string Topic, string? Key, object Message)> PublishedMessages { get; } = new();
@@ -144,7 +150,9 @@ public class ProviderAdminControllerTests
         var controller = CreateController(db, kafka.Object, email.Object, blob.Object);
         var result = approve ? await controller.Approve(app.Id) : await controller.Reject(app.Id,
             new RejectProviderApplicationRequest { RejectionReason = "Missing license" });
-        Assert.IsType<BadRequestObjectResult>(result);
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var expectedMsg = approve ? "Only pending applications can be approved." : "Only pending applications can be rejected.";
+        Assert.Equal(expectedMsg, GetMessage(badRequest));
         db.ChangeTracker.Clear();
         var saved = await db.ProviderApplications.SingleAsync();
         Assert.Equal(status, saved.Status);
@@ -182,6 +190,8 @@ public class ProviderAdminControllerTests
         var email = new Mock<IEmailService>(MockBehavior.Strict);
         var blob = new Mock<IBlobStorageService>(MockBehavior.Strict);
         var controller = CreateController(db, kafka.Object, email.Object, blob.Object);
+        var result = await controller.Reject(app.Id, new RejectProviderApplicationRequest { RejectionReason = reason! });
+Assert.Equal("A rejection reason is required.", GetMessage(result)); 
         Assert.IsType<BadRequestObjectResult>(await controller.Reject(app.Id,
             new RejectProviderApplicationRequest { RejectionReason = reason! }));
         db.ChangeTracker.Clear();
@@ -271,6 +281,8 @@ public class ProviderAdminControllerTests
         var kafka = new Mock<IKafkaProducer>(MockBehavior.Strict);
         var email = new Mock<IEmailService>(MockBehavior.Strict);
         var blob = new Mock<IBlobStorageService>(MockBehavior.Strict);
+        var result = await CreateController(db, kafka.Object, email.Object, blob.Object).Approve(app.Id);
+Assert.Equal("A provider with this email already exists.", GetMessage(result));
         Assert.IsType<ConflictObjectResult>(await CreateController(db, kafka.Object, email.Object, blob.Object).Approve(app.Id));
         db.ChangeTracker.Clear();
         Assert.Equal(ProviderStatus.Pending, (await db.ProviderApplications.SingleAsync()).Status);
@@ -286,25 +298,29 @@ public class ProviderAdminControllerTests
     /// the status filter narrows the results to the requested status
     /// </summary>
     [Fact]
-    public async Task GetApplications_ReturnsAllAndFiltersByStatus()
+    public async Task GetApplications_FiltersStrictlyByStatus_AndOrdersByDescendingSubmission()
     {
         using var db = CreateDb();
-        var kafka = new FakeKafkaProducer();
-        var email = new FakeEmailService();
-        var blob = new FakeBlobStorage();
-        var controller = CreateController(db, kafka, email, blob);
+        var controller = CreateController(db, new FakeKafkaProducer(), new FakeEmailService(), new FakeBlobStorage());
+
+        var olderDate = DateTime.UtcNow.AddDays(-2);
+        var newerDate = DateTime.UtcNow;
 
         db.ProviderApplications.AddRange(
-            new ProviderApplication { Id = Guid.NewGuid(), BusinessName = "App 1", Email = "a1@test.com", PhoneNumber = "123", ServiceType = "Hotel", Location = "Galle", Description = "Desc", Status = ProviderStatus.Pending },
-            new ProviderApplication { Id = Guid.NewGuid(), BusinessName = "App 2", Email = "a2@test.com", PhoneNumber = "456", ServiceType = "Activity", Location = "Kandy", Description = "Desc", Status = ProviderStatus.Approved }
+            new ProviderApplication { Id = Guid.NewGuid(), BusinessName = "Older Pending", Email = "old@test.com", PhoneNumber = "123", ServiceType = "Hotel", Location = "Galle", Description = "Desc", Status = ProviderStatus.Pending, SubmittedAt = olderDate },
+            new ProviderApplication { Id = Guid.NewGuid(), BusinessName = "Newer Pending", Email = "new@test.com", PhoneNumber = "456", ServiceType = "Hotel", Location = "Galle", Description = "Desc", Status = ProviderStatus.Pending, SubmittedAt = newerDate },
+            new ProviderApplication { Id = Guid.NewGuid(), BusinessName = "Approved One", Email = "app@test.com", PhoneNumber = "789", ServiceType = "Hotel", Location = "Galle", Description = "Desc", Status = ProviderStatus.Approved, SubmittedAt = newerDate }
         );
         await db.SaveChangesAsync();
 
-        var allResult = await controller.GetApplications(null) as OkObjectResult;
-        Assert.NotNull(allResult);
+        // Verify status filter excludes Approved items (kills == to != mutation)
+        var pendingResult = Assert.IsType<OkObjectResult>(await controller.GetApplications(ProviderStatus.Pending));
+        var pendingList = Assert.IsAssignableFrom<System.Collections.IEnumerable>(pendingResult.Value).Cast<object>().ToList();
+        Assert.Equal(2, pendingList.Count);
 
-        var pendingResult = await controller.GetApplications(ProviderStatus.Pending) as OkObjectResult;
-        Assert.NotNull(pendingResult);
+        // Verify newest first (kills OrderByDescending to OrderBy mutation)
+        var firstItem = JsonSerializer.SerializeToElement(pendingList[0]);
+        Assert.Equal("Newer Pending", firstItem.GetProperty("BusinessName").GetString());
     }
 
     /// <summary>
@@ -419,5 +435,250 @@ public class ProviderAdminControllerTests
         Assert.NotNull(result);
         Assert.Equal("application/pdf", result.ContentType);
         Assert.Equal("license.pdf", result.FileDownloadName);
+    }
+
+    [Fact]
+    public async Task DownloadDocument_WithCustomContainerConfiguration_UsesConfiguredContainer()
+    {
+        using var db = CreateDb();
+        var blob = new FakeBlobStorage();
+        blob.Files["custom-verification-files/test.pdf"] = Encoding.UTF8.GetBytes("pdf content");
+
+        var inMemorySettings = new Dictionary<string, string?> {
+            {"AzureStorage:VerificationFilesContainer", "custom-verification-files"}
+        };
+        var config = new ConfigurationBuilder().AddInMemoryCollection(inMemorySettings).Build();
+
+        var app = new ProviderApplication {
+            Id = Guid.NewGuid(), Email = "test@doc.com", BusinessName = "Test Co",
+            LegalDocumentsJson = JsonSerializer.Serialize(new[] { new { BlobName = "test.pdf", OriginalFileName = "test.pdf" } })
+        };
+        db.ProviderApplications.Add(app);
+        await db.SaveChangesAsync();
+
+        var controller = new ProviderAdminController(db, new FakeKafkaProducer(), new FakeEmailService(), blob, config) {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var result = await controller.DownloadDocument(app.Id, 0) as FileStreamResult;
+        Assert.NotNull(result);
+        Assert.True(blob.Files.ContainsKey("custom-verification-files/test.pdf"));
+    }
+
+    [Fact]
+    public async Task DownloadDocument_MissingApplication_ReturnsNotFoundWithMessage()
+    {
+        using var db = CreateDb();
+        var controller = CreateController(db, new FakeKafkaProducer(), new FakeEmailService(), new FakeBlobStorage());
+        var result = await controller.DownloadDocument(Guid.NewGuid());
+        Assert.Equal("Application not found.", GetMessage(result));
+    }
+
+    [Fact]
+    public async Task DownloadDocument_NoDocumentsConfigured_ReturnsNotFoundWithMessage()
+    {
+        using var db = CreateDb();
+        var app = await SeedApplication(db);
+        app.LegalDocumentsJson = "[]";
+        app.LegalDocumentPath = null;
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, new FakeKafkaProducer(), new FakeEmailService(), new FakeBlobStorage());
+        var result = await controller.DownloadDocument(app.Id);
+        Assert.Equal("No verification document was found for this application.", GetMessage(result));
+    }
+
+    [Fact]
+    public async Task DownloadDocument_BlobMissingInStorage_ReturnsNotFoundWithMessage()
+    {
+        using var db = CreateDb();
+        var app = await SeedApplication(db);
+        app.LegalDocumentsJson = JsonSerializer.Serialize(new[] { new { BlobName = "nonexistent.pdf" } });
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, new FakeKafkaProducer(), new FakeEmailService(), new FakeBlobStorage());
+        var result = await controller.DownloadDocument(app.Id);
+        Assert.Equal("Document file was not found in Azure Storage.", GetMessage(result));
+    }
+
+    [Theory]
+    [InlineData("license.png", "image/png")]
+    [InlineData("license.jpg", "image/jpeg")]
+    [InlineData("license.jpeg", "image/jpeg")]
+    [InlineData("license.docx", "application/octet-stream")]
+    public async Task DownloadDocument_MimeTypes_ReturnsCorrectContentType(string filename, string expectedContentType)
+    {
+        using var db = CreateDb();
+        var blob = new FakeBlobStorage();
+        blob.Files["provider-verification-files/" + filename] = Encoding.UTF8.GetBytes("file content");
+
+        var app = new ProviderApplication {
+            Id = Guid.NewGuid(), Email = "mime@test.com", BusinessName = "Mime Co",
+            LegalDocumentFileName = filename,
+            LegalDocumentsJson = JsonSerializer.Serialize(new[] { new { BlobName = filename, OriginalFileName = filename } })
+        };
+        db.ProviderApplications.Add(app);
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, new FakeKafkaProducer(), new FakeEmailService(), blob);
+        var result = Assert.IsType<FileStreamResult>(await controller.DownloadDocument(app.Id, 0));
+        Assert.Equal(expectedContentType, result.ContentType);
+        Assert.Equal(filename, result.FileDownloadName);
+    }
+
+    [Fact]
+    public async Task DownloadDocument_WhenNoFileNameProvided_FallsBackToDefaultPdfName()
+    {
+        using var db = CreateDb();
+        var blob = new FakeBlobStorage();
+        blob.Files["provider-verification-files/blob.bin"] = Encoding.UTF8.GetBytes("content");
+
+        var app = new ProviderApplication {
+            Id = Guid.NewGuid(), Email = "fallback@test.com", BusinessName = "Fallback Co",
+            LegalDocumentFileName = null, // tests fallback to "Verification_Document.pdf"
+            LegalDocumentsJson = JsonSerializer.Serialize(new[] { new { BlobName = "blob.bin", OriginalFileName = (string?)null } })
+        };
+        db.ProviderApplications.Add(app);
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, new FakeKafkaProducer(), new FakeEmailService(), blob);
+        var result = Assert.IsType<FileStreamResult>(await controller.DownloadDocument(app.Id, 0));
+        Assert.Equal("Verification_Document.pdf", result.FileDownloadName);
+        Assert.Equal("application/pdf", result.ContentType);
+    }
+
+    [Fact]
+    public async Task DownloadDocument_LegacyFallback_WhenJsonIsEmpty_UsesLegacyPath()
+    {
+        using var db = CreateDb();
+        var blob = new FakeBlobStorage();
+        blob.Files["provider-verification-files/legacy.pdf"] = Encoding.UTF8.GetBytes("legacy pdf");
+
+        var app = new ProviderApplication {
+            Id = Guid.NewGuid(), Email = "legacy@test.com", BusinessName = "Legacy Co",
+            LegalDocumentsJson = "[]",
+            LegalDocumentPath = "uploads/legacy.pdf"
+        };
+        db.ProviderApplications.Add(app);
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, new FakeKafkaProducer(), new FakeEmailService(), blob);
+        var result = Assert.IsType<FileStreamResult>(await controller.DownloadDocument(app.Id, 0));
+        Assert.NotNull(result);
+    }
+
+    [Fact]
+    public async Task GetApplicationDocuments_ReturnsExactSasUrl_AndHandlesLegacyPath()
+    {
+        using var db = CreateDb();
+        var blob = new FakeBlobStorage();
+        var controller = CreateController(db, new FakeKafkaProducer(), new FakeEmailService(), blob);
+
+        var modernAppId = Guid.NewGuid();
+        var legacyAppId = Guid.NewGuid();
+
+        db.ProviderApplications.AddRange(
+            new ProviderApplication {
+                Id = modernAppId, Email = "modern@test.com", BusinessName = "Modern Co",
+                LegalDocumentsJson = JsonSerializer.Serialize(new[] {
+                    new { BlobName = "cert.pdf", OriginalFileName = "Original_Cert.pdf" }
+                })
+            },
+            new ProviderApplication {
+                Id = legacyAppId, Email = "legacy@test.com", BusinessName = "Legacy Co",
+                LegalDocumentsJson = "[]", // <-- Changed from null to "[]" to satisfy EF Core!
+                LegalDocumentPath = "uploads/legacy_deed.pdf",
+                LegalDocumentFileName = "My_Deed.pdf"
+            }
+        );
+        await db.SaveChangesAsync();
+
+        // 1. Missing application -> 404
+        var notFoundResult = await controller.GetApplicationDocuments(Guid.NewGuid());
+        Assert.Equal("Application not found.", GetMessage(notFoundResult));
+
+        // 2. Modern document -> Kills Mutant 291:32 by checking the exact blob in the URL!
+        var modernOk = Assert.IsType<OkObjectResult>(await controller.GetApplicationDocuments(modernAppId));
+        var modernJson = JsonSerializer.SerializeToElement(modernOk.Value);
+        Assert.Equal("Original_Cert.pdf", modernJson[0].GetProperty("fileName").GetString());
+        Assert.Equal("https://fake.blob/provider-verification-files/cert.pdf?sas=token", modernJson[0].GetProperty("url").GetString());
+
+        // 3. Legacy path -> Kills NoCoverage on lines 299-303
+        var legacyOk = Assert.IsType<OkObjectResult>(await controller.GetApplicationDocuments(legacyAppId));
+        var legacyJson = JsonSerializer.SerializeToElement(legacyOk.Value);
+        Assert.Equal("My_Deed.pdf", legacyJson[0].GetProperty("fileName").GetString());
+        Assert.Equal("https://fake.blob/provider-verification-files/legacy_deed.pdf?sas=token", legacyJson[0].GetProperty("url").GetString());
+    }
+
+    [Fact]
+    public async Task DownloadDocument_ModernMetadataTakesPrecedenceOverLegacyPath()
+    {
+        using var db = CreateDb();
+        var blob = new FakeBlobStorage();
+        blob.Files["provider-verification-files/modern.pdf"] = Encoding.UTF8.GetBytes("modern content");
+        // Notice: legacy.pdf does NOT exist in storage!
+
+        var app = new ProviderApplication {
+            Id = Guid.NewGuid(), Email = "precedence@test.com", BusinessName = "Precedence Co",
+            LegalDocumentsJson = JsonSerializer.Serialize(new[] { new { BlobName = "modern.pdf", OriginalFileName = "modern.pdf" } }),
+            LegalDocumentPath = "uploads/legacy.pdf" // Both are present!
+        };
+        db.ProviderApplications.Add(app);
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, new FakeKafkaProducer(), new FakeEmailService(), blob);
+        var result = Assert.IsType<FileStreamResult>(await controller.DownloadDocument(app.Id, 0));
+
+        // If mutated to ||, blobName is overwritten with legacy.pdf, which fails because it's not in blob storage!
+        Assert.Equal("modern.pdf", result.FileDownloadName);
+    }
+
+    [Fact]
+    public async Task DownloadDocument_UsesLegalDocumentFileName_WhenOriginalFileNameMissing()
+    {
+        using var db = CreateDb();
+        var blob = new FakeBlobStorage();
+        blob.Files["provider-verification-files/blob123.bin"] = Encoding.UTF8.GetBytes("doc content");
+
+        var app = new ProviderApplication {
+            Id = Guid.NewGuid(), Email = "customname@test.com", BusinessName = "Custom Co",
+            LegalDocumentFileName = "SpecialContract.pdf", // Custom name!
+            LegalDocumentsJson = JsonSerializer.Serialize(new[] {
+                new { BlobName = "blob123.bin" } // No OriginalFileName!
+            })
+        };
+        db.ProviderApplications.Add(app);
+        await db.SaveChangesAsync();
+
+        var controller = CreateController(db, new FakeKafkaProducer(), new FakeEmailService(), blob);
+        var result = Assert.IsType<FileStreamResult>(await controller.DownloadDocument(app.Id, 0));
+
+        // If Stryker replaces with "Verification_Document.pdf", this fails and kills the mutant!
+        Assert.Equal("SpecialContract.pdf", result.FileDownloadName);
+    }
+
+    
+    [Fact]
+    public async Task Controller_WithoutConfigurationKey_FallsBackToDefaultVerificationContainer()
+    {
+        using var db = CreateDb();
+        var blob = new FakeBlobStorage();
+        blob.Files["provider-verification-files/default.pdf"] = Encoding.UTF8.GetBytes("default content");
+
+        var emptyConfig = new ConfigurationBuilder().Build(); // No keys!
+
+        var app = new ProviderApplication {
+            Id = Guid.NewGuid(), Email = "default@test.com", BusinessName = "Default Co",
+            LegalDocumentsJson = JsonSerializer.Serialize(new[] { new { BlobName = "default.pdf", OriginalFileName = "default.pdf" } })
+        };
+        db.ProviderApplications.Add(app);
+        await db.SaveChangesAsync();
+
+        var controller = new ProviderAdminController(db, new FakeKafkaProducer(), new FakeEmailService(), blob, emptyConfig) {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var result = Assert.IsType<FileStreamResult>(await controller.DownloadDocument(app.Id, 0));
+        Assert.NotNull(result);
     }
 }
