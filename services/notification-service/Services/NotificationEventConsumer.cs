@@ -125,7 +125,8 @@ public class NotificationEventConsumer(IOptions<KafkaSettings> settings, IConfig
 
     private async Task EnsureTopicsAsync(ConsumerConfig consumerConfig, CancellationToken ct)
     {
-        if (!configuration.GetValue("Notifications:ProvisionTopics", true)) return;
+        // Keep existing deployments working without requiring Kafka topic CREATE permission.
+        if (!configuration.GetValue("Notifications:ProvisionTopics", false)) return;
 
         // Use the same broker and credentials as the consumer, without group settings.
         var adminConfig = new AdminClientConfig
