@@ -1,4 +1,7 @@
+using System.Globalization;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using CeylonQuest.E2E.Tests.Infrastructure;
 using CeylonQuest.E2E.Tests.Provider.Infrastructure;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
@@ -8,192 +11,367 @@ namespace CeylonQuest.E2E.Tests.Provider.Pages;
 
 internal sealed class ProviderListingsPage(ProviderUi ui, ProviderDashboardPage dashboard)
 {
-    private readonly string ownedName = "CQ-E2E-" + Guid.NewGuid().ToString("N");
-    private string? ownedId;
-    private string currentOwnedName = "";
-    private static readonly By Submit = By.CssSelector(".pd-modal__form button[type='submit']");
+    private static readonly By Rows = By.CssSelector(".pd-activities-tab .pd-table tbody tr");
+    private static readonly By SearchInput = By.CssSelector(".pd-activities-tab .pd-search-input");
+    private static readonly By Form = By.CssSelector(".pd-modal__form");
+    private string Prefix => dashboard.ListingType switch { "Accommodation" => "hotel", "Restaurant" => "rest", _ => "exp" };
+    private string NameId => dashboard.ListingType switch { "Accommodation" => "hotel-room", "Restaurant" => "rest-name", _ => "exp-title" };
+    private string EmptyTitle => dashboard.ListingType switch {
+        "Accommodation" => "No accommodation listings found", "Restaurant" => "No dining listing found", _ => "No experience listings found"
+    };
 
     public void Open()
     {
         dashboard.Navigate("services");
         ui.Browser.Visible(By.Id("add-listing-btn"));
-        ProviderUi.EqualText(dashboard.ListingType switch {
-            "Accommodation" => "Rooms and Accommodations", "Restaurant" => "Menu and Dining", _ => "Experience Listings"
-        }, ui.Browser.Visible(By.CssSelector(".pd-activities-tab h1")).Text);
+        ProviderUi.EqualText(dashboard.PageTitle, ui.Browser.Visible(By.CssSelector(".pd-activities-tab h1")).Text);
+        AssertRows(dashboard.Listings);
+        AssertCounts();
     }
 
-    public void AssertOwnedListing(string id)
+    public void Reset()
     {
-        var item = Assert.Single(dashboard.Listings, listing => listing.Text("id") == id);
-        ui.Browser.Fill(By.CssSelector(".pd-activities-tab .pd-search-input"), item.ListingName());
-        var row = Row(item.ListingName());
-        ProviderUi.EqualText(item.ListingName(), row.FindElement(By.CssSelector("td:first-child > div:first-child")).Text);
-        Assert.Contains(item.Text("location"), row.Text, StringComparison.OrdinalIgnoreCase);
-        Assert.True(row.FindElements(By.CssSelector(".pd-row-actions button")).Count >= 2);
+        ui.Browser.Fill(SearchInput, "");
+        Status("all");
+        AssertRows(dashboard.Listings);
     }
 
-    public void AssertRequiredFieldValidation()
+    public JsonElement[] SearchKnown(JsonElement item)
     {
-        ui.Browser.Click(By.Id("add-listing-btn"));
-        ui.Browser.Visible(By.CssSelector(".pd-modal__form"));
-        ui.Browser.Click(Submit);
-        var expected = dashboard.ListingType switch {
-            "Accommodation" => "Room type is required.", "Restaurant" => "Restaurant / item name is required.", _ => "Experience title is required."
-        };
-        ProviderUi.EqualText(expected, ui.Browser.Visible(By.CssSelector(".pd-form-error")).Text);
-        Assert.Equal(dashboard.Listings.Length, ui.Wait(dashboard.CatalogPath).Body.GetArrayLength());
-        ui.Browser.Capture("required-listing-field");
-        ui.Browser.Click(By.CssSelector(".pd-modal__form .pd-cancel-btn"));
+        var query = item.ListingName().ToUpperInvariant();
+        ui.Browser.Fill(SearchInput, query);
+        var expected = dashboard.Listings.Where(listing => new[] {
+            listing.ListingName(), listing.Text("description"), listing.Text("location")
+        }.Any(text => text.Contains(query, StringComparison.OrdinalIgnoreCase))).ToArray();
+        Assert.Contains(expected, listing => listing.Text("id") == item.Text("id"));
+        AssertRows(expected);
+        return expected;
     }
 
-    public void ExerciseOwnedListingLifecycle()
+    public void AssertSearchAndClear(JsonElement item)
     {
-        ProviderSettings.AssertWriteTarget(dashboard.CatalogOriginUrl);
-        Exception? testFailure = null;
-        try
-        {
-            CreateOwned();
-            AssertOwnedListing(ownedId!);
-            EditOwned();
-            DeleteOwned();
-        }
-        catch (Exception error)
-        {
-            ui.Browser.Capture("listing-before-cleanup");
-            testFailure = error;
-        }
-        try
-        {
-            if (ownedId is not null) DeleteOwned();
-        }
-        catch (Exception cleanupError)
-        {
-            ui.Browser.Step("Cleanup failed for test-created listing " + ownedName + ". Review its ID before manual cleanup: " + ownedId);
-            if (testFailure is not null) throw new AggregateException("Listing assertions and cleanup both failed.", testFailure, cleanupError);
-            throw;
-        }
-        if (testFailure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(testFailure).Throw();
+        SearchKnown(item);
+        ui.Browser.Fill(SearchInput, "");
+        AssertRows(dashboard.Listings);
     }
 
-    private void CreateOwned()
+    public void Status(string status)
     {
-        var previousIds = dashboard.Listings.Select(item => item.Text("id")).ToHashSet();
-        ui.Browser.Click(By.Id("add-listing-btn"));
-        ui.Browser.Visible(By.CssSelector(".pd-modal__form"));
-        var prefix = dashboard.ListingType switch { "Accommodation" => "hotel", "Restaurant" => "rest", _ => "exp" };
-        var nameField = dashboard.ListingType switch { "Accommodation" => "hotel-room", "Restaurant" => "rest-name", _ => "exp-title" };
-        ui.Browser.Fill(By.Id(nameField), ownedName);
-        ui.Browser.Fill(By.Id(prefix + "-location"), "Colombo");
-        ui.Browser.Fill(By.Id(prefix + "-desc"), "Dedicated Selenium test listing; created inactive and removed by this test.");
-        ui.Browser.Fill(By.Id(prefix + "-price"), "12000");
-        if (dashboard.ListingType == "Accommodation")
+        var count = status == "all" ? dashboard.Listings.Length :
+            dashboard.Listings.Count(item => item.Flag("isActive") == (status == "active"));
+        var label = status switch { "active" => "Active", "inactive" => "Inactive", "all" => "All",
+            _ => throw new ArgumentException("Unknown status.", nameof(status)) };
+        ui.ClickText("//div[contains(@class,'pd-filter-pills')]", $"{label} ({count})");
+        ui.Browser.Until(_ => ProviderUi.Normalize(ui.Browser.Visible(By.CssSelector(".pd-filter-pill.active")).Text) == $"{label} ({count})",
+            "Listing status filter did not become active.");
+    }
+
+    public void AssertStatus(string status)
+    {
+        Status(status);
+        AssertRows(status == "all" ? dashboard.Listings :
+            dashboard.Listings.Where(item => item.Flag("isActive") == (status == "active")).ToArray());
+        AssertCounts();
+    }
+
+    private void AssertCounts()
+    {
+        var labels = ui.Browser.Driver.FindElements(By.CssSelector(".pd-filter-pills .pd-filter-pill")).Select(element => element.Text).ToArray();
+        Assert.Equal(new[] {
+            $"All ({dashboard.Listings.Length})",
+            $"Active ({dashboard.Listings.Count(item => item.Flag("isActive"))})",
+            $"Inactive ({dashboard.Listings.Count(item => !item.Flag("isActive"))})"
+        }, labels);
+    }
+
+    public void AssertRows(IReadOnlyList<JsonElement> expected)
+    {
+        ui.Browser.Until(driver => {
+            var rows = driver.FindElements(Rows).Where(element => element.Displayed).ToArray();
+            return rows.Length == expected.Count && rows.Select((row, index) =>
+                row.FindElement(By.CssSelector("td:first-child > div:first-child")).Text == expected[index].ListingName()).All(match => match);
+        }, "Provider listing rows did not match the real catalog response and selected filters.");
+        if (expected.Count == 0)
         {
-            new SelectElement(ui.Browser.Visible(By.Id("hotel-prop"))).SelectByText("Guesthouse");
-            ui.Browser.Fill(By.Id("hotel-guests"), "2");
-            ui.Browser.Fill(By.Id("hotel-minstay"), "1");
-            ui.Browser.Fill(By.Id("hotel-bed"), "1 King Bed");
+            ProviderUi.EqualText(EmptyTitle, ui.Browser.Visible(By.CssSelector(".pd-activities-tab .pd-empty__title")).Text);
+            return;
         }
-        else if (dashboard.ListingType == "Restaurant")
+        var actual = ui.Browser.Driver.FindElements(Rows).Where(element => element.Displayed).ToArray();
+        for (var index = 0; index < expected.Count; index++) AssertRow(actual[index], expected[index]);
+    }
+
+    private void AssertRow(IWebElement row, JsonElement item)
+    {
+        var cells = row.FindElements(By.CssSelector("td"));
+        Assert.Equal(7, cells.Count);
+        ProviderUi.EqualText(item.ListingName(), cells[0].FindElement(By.CssSelector("div:first-child")).Text);
+        var description = item.Text("description");
+        ProviderUi.EqualText(description.Length > 60 ? description[..60] + "\u2026" : description,
+            cells[0].FindElements(By.CssSelector("div"))[1].Text);
+        if (dashboard.ListingType == "Restaurant")
         {
-            ui.Browser.Fill(By.Id("rest-cuisine"), "Sri Lankan");
-            ui.Browser.Fill(By.Id("rest-seats"), "2");
-            // The real create form initializes 09:00-22:00 opening hours and a
-            // 09:00-10:00 reservation slot. Explicitly verify these valid defaults.
-            Assert.Equal("09:00", ui.Browser.Visible(By.Id("rest-hours-open")).GetDomProperty("value"));
-            Assert.Equal("22:00", ui.Browser.Visible(By.Id("rest-hours-close")).GetDomProperty("value"));
-            var slots = ui.Browser.Driver.FindElements(By.CssSelector("#rest-time-slots input[type='time']"));
-            Assert.Equal(2, slots.Count);
-            Assert.True(slots.All(input => !string.IsNullOrWhiteSpace(input.GetDomProperty("value"))));
+            ProviderUi.EqualText(item.Text("cuisineType") + " " + item.Text("diningStyle"), cells[1].Text);
+            ProviderUi.EqualText(item.Text("location"), cells[2].Text);
+            ProviderUi.EqualText(ui.Money(item.Money("pricePerPerson")) + " " + item.Text("priceRange"), cells[3].Text);
+            var group = item.Text("groupSizeCategory");
+            ProviderUi.EqualText(group == "Large Group (More than 10)" ? $"Large Group {item.Int("seatingCapacity")} seats" :
+                string.IsNullOrEmpty(group) ? $"{item.Int("seatingCapacity")} seats" : group, cells[4].Text);
+        }
+        else if (dashboard.ListingType == "Accommodation")
+        {
+            ProviderUi.EqualText(item.Text("propertyType"), cells[1].Text);
+            ProviderUi.EqualText(item.Text("location"), cells[2].Text);
+            ProviderUi.EqualText(ui.Money(item.Money("pricePerNight")), cells[3].Text);
+            ProviderUi.EqualText($"{item.Int("maxGuests")} guests", cells[4].Text);
         }
         else
         {
-            ui.Browser.Fill(By.Id("exp-max"), "2");
-            ui.Browser.Fill(By.Id("exp-duration"), "2 Hours");
-            ui.Browser.Fill(By.Id("exp-days"), "Daily");
-            var times = ui.Browser.Driver.FindElements(By.CssSelector(".pd-slot-card input[type='time']"));
-            Assert.Equal(2, times.Count);
-            SetTime(times[0], "08:00");
-            SetTime(times[1], "10:00");
+            ProviderUi.EqualText(item.Text("location"), cells[1].Text);
+            ProviderUi.EqualText(ui.Money(item.Money("price")) + " / " + item.Text("unit"), cells[2].Text);
+            var slots = item.Text("timeSlots");
+            ProviderUi.EqualText(string.IsNullOrEmpty(slots) ? "\u2014" :
+                string.Join(" ", slots.Split(',', StringSplitOptions.TrimEntries)), cells[3].Text);
+            ProviderUi.EqualText($"{item.Int("maxParticipants")} guests", cells[4].Text);
         }
-        var active = ui.Browser.Visible(By.CssSelector(".pd-modal__form input[name='isActive']"));
-        if (active.Selected) active.Click();
-        Assert.False(active.Selected);
-        var before = ui.Sequence;
-        // A write is sent only by the actual form submit, with its validation intact.
-        ui.Browser.Step("Submitting inactive test-owned listing: " + ownedName);
-        ui.Browser.Click(Submit);
-        WaitSaved();
-        dashboard.RefreshListingSnapshot(before);
-        var created = Assert.Single(dashboard.Listings, item => item.ListingName() == ownedName && !previousIds.Contains(item.Text("id")));
-        ownedId = created.Text("id");
-        currentOwnedName = ownedName;
-        Assert.False(created.Flag("isActive"));
-        ui.Browser.Step("Created inactive test-owned listing: " + ownedId + " / " + ownedName);
-        ui.Browser.Capture("test-listing-created");
+        // Selenium .Text includes the badge's CSS text-transform: uppercase.
+        ProviderUi.EqualText(item.Flag("isActive") ? "Active" : "Inactive", cells[5].Text, ignoreCase: true);
+        Assert.Equal("Click to toggle status", cells[5].FindElement(By.TagName("button")).GetDomAttribute("title"));
+        Assert.Equal(new[] { "Edit", "Delete" }, cells[6].FindElements(By.TagName("button")).Select(button => button.Text).ToArray());
+        // Status and Delete confirmation controls are never used to persist a mutation.
     }
 
-    private void EditOwned()
+    private IWebElement Row(JsonElement item) => ui.Browser.Driver.FindElements(Rows).Single(row =>
+        row.Displayed && row.FindElement(By.CssSelector("td:first-child > div:first-child")).Text == item.ListingName());
+
+    public void OpenEdit(JsonElement item)
     {
-        ProviderSettings.AssertWriteTarget(dashboard.CatalogOriginUrl);
-        AssertOwnership();
-        ui.Browser.Fill(By.CssSelector(".pd-activities-tab .pd-search-input"), currentOwnedName);
-        Row(currentOwnedName).FindElement(By.XPath(".//button[normalize-space()='Edit']")).Click();
-        var updated = ownedName + " Updated";
-        var nameField = dashboard.ListingType switch { "Accommodation" => "hotel-room", "Restaurant" => "rest-name", _ => "exp-title" };
-        ui.Browser.Fill(By.Id(nameField), updated);
-        var before = ui.Sequence;
-        ui.Browser.Click(Submit);
-        WaitSaved();
-        dashboard.RefreshListingSnapshot(before);
-        var saved = Assert.Single(dashboard.Listings, item => item.Text("id") == ownedId);
-        Assert.Equal(updated, saved.ListingName());
-        Assert.False(saved.Flag("isActive"));
-        currentOwnedName = updated;
-        AssertOwnedListing(ownedId!);
-        ui.Browser.Capture("test-listing-edited");
+        Reset();
+        Row(item).FindElements(By.CssSelector(".pd-row-actions button")).Single(button => button.Text == "Edit").Click();
+        ui.Browser.Visible(Form);
+        ProviderUi.EqualText(dashboard.ListingType switch {
+            "Accommodation" => "Edit Accommodation Listing", "Restaurant" => "Edit Dining Listing", _ => "Edit Experience Listing"
+        }, ui.Browser.Visible(By.CssSelector(".pd-modal__title")).Text);
     }
 
-    private void DeleteOwned()
+    private void Value(string id, string expected)
     {
-        ProviderSettings.AssertWriteTarget(dashboard.CatalogOriginUrl);
-        if (ui.Browser.Driver.FindElements(By.CssSelector(".pd-modal__form")).Count > 0)
-            ui.Browser.Click(By.CssSelector(".pd-modal__form .pd-cancel-btn"));
-        Open();
-        var item = Assert.Single(dashboard.Listings, listing => listing.Text("id") == ownedId);
-        AssertOwnership();
-        currentOwnedName = item.ListingName();
-        ui.Browser.Fill(By.CssSelector(".pd-activities-tab .pd-search-input"), currentOwnedName);
-        Row(currentOwnedName).FindElement(By.CssSelector(".pd-row-btn--delete")).Click();
-        ProviderUi.EqualText("Delete Listing", ui.Browser.Visible(By.CssSelector(".cq-confirm-title")).Text);
-        var before = ui.Sequence;
-        ui.Browser.Click(By.CssSelector(".cq-confirm-btn--danger"));
-        dashboard.RefreshListingSnapshot(before);
-        Assert.DoesNotContain(dashboard.Listings, listing => listing.Text("id") == ownedId);
-        ui.Browser.Until(d => d.FindElements(By.CssSelector(".pd-activities-tab tbody tr"))
-            .All(row => !row.Text.Contains(currentOwnedName, StringComparison.Ordinal)), "Deleted test listing still appears.");
-        ui.Browser.Step("Deleted only this test's created listing: " + ownedId);
-        ownedId = null;
-        ui.Browser.Capture("test-listing-deleted");
+        var input = ui.Browser.Visible(By.Id(id));
+        var actual = input.GetDomProperty("value");
+        Assert.NotNull(actual);
+        if (input.TagName.Equals("textarea", StringComparison.OrdinalIgnoreCase))
+        {
+            // Selenium on Windows can return CRLF for LF text received from the API.
+            // Preserve spaces, blank lines and text; normalize only line-ending format.
+            expected = expected.Replace("\r\n", "\n").Replace('\r', '\n');
+            actual = actual.Replace("\r\n", "\n").Replace('\r', '\n');
+        }
+        Assert.Equal(expected, actual);
     }
+    private void Fill(string id, string value) => ui.Browser.Fill(By.Id(id), value);
+    private static string Default(JsonElement item, string key, string fallback) => item.Text(key) is { Length: > 0 } value ? value : fallback;
+    private static string DateValue(JsonElement item, string key) => item.Text(key) is { Length: >= 10 } value ? value[..10] : "";
 
-    private void AssertOwnership()
+    public void AssertEditValues(JsonElement item)
     {
-        Assert.False(string.IsNullOrWhiteSpace(ownedId));
-        var item = Assert.Single(dashboard.Listings, listing => listing.Text("id") == ownedId);
-        Assert.True(item.ListingName() is var name && (name == ownedName || name == ownedName + " Updated"),
-            "Refusing to edit/delete a listing not created by this test.");
+        Value(NameId, item.ListingName());
+        Value(Prefix + "-location", item.Text("location"));
+        Value(Prefix + "-desc", item.Text("description"));
+        Value(Prefix + "-price", ProviderUi.Number(item.Money(dashboard.ListingType switch {
+            "Accommodation" => "pricePerNight", "Restaurant" => "pricePerPerson", _ => "price"
+        })));
+        Assert.Equal(item.Flag("isActive"), ui.Browser.Visible(By.CssSelector(".pd-modal__form input[name='isActive']")).Selected);
+        if (dashboard.ListingType == "Accommodation")
+        {
+            foreach (var (id, key) in new[] {
+                ("hotel-prop","propertyType"), ("hotel-bed","bedDetails"), ("hotel-amenities","amenities"), ("hotel-bath","bathroomDetails")
+            }) Value(id, item.Text(key));
+            Value("hotel-guests", item.Int("maxGuests") == 0 ? "2" : item.Int("maxGuests").ToString(CultureInfo.InvariantCulture));
+            Value("hotel-minstay", item.Int("minStayNights") == 0 ? "1" : item.Int("minStayNights").ToString(CultureInfo.InvariantCulture));
+        }
+        else if (dashboard.ListingType == "Restaurant")
+        {
+            Value("rest-cuisine", item.Text("cuisineType"));
+            Value("rest-style", Default(item, "diningStyle", "Casual Dining"));
+            Value("rest-range", Default(item, "priceRange", "Moderate"));
+            Value("rest-group-size", Default(item, "groupSizeCategory", "Table for Two"));
+            Value("rest-seats", item.Int("seatingCapacity").ToString(CultureInfo.InvariantCulture));
+            Value("rest-menu", item.Text("setMenuDetails"));
+            Value("rest-diet", Default(item, "dietaryOptions", "Standard"));
+            var hours = item.Text("openingHours").Split(" - ", StringSplitOptions.TrimEntries);
+            var opening = hours.Length == 2 ? InputTime(hours[0]) : "11:30";
+            var closing = hours.Length == 2 ? InputTime(hours[1]) : "22:00";
+            Value("rest-hours-open", opening);
+            Value("rest-hours-close", closing);
+            AssertSlots(item, opening, "1 Hour");
+        }
+        else
+        {
+            Value("exp-unit", Default(item, "unit", "Per Person"));
+            Value("exp-max", item.Int("maxParticipants") == 0 ? "10" : item.Int("maxParticipants").ToString(CultureInfo.InvariantCulture));
+            Value("exp-duration", Default(item, "duration", "2 Hours"));
+            Value("exp-days", item.Text("availableDays"));
+            Value("exp-valid-from", DateValue(item, "validFrom"));
+            Value("exp-valid-until", DateValue(item, "validUntil"));
+            AssertSlots(item, "08:00", Default(item, "duration", "2 Hours"));
+        }
+        AssertNoFormError();
     }
 
-    private IWebElement Row(string title) => ui.Browser.Visible(By.XPath(
-        $"//div[contains(@class,'pd-activities-tab')]//tbody/tr[td[1]/div[1][normalize-space()={ProviderUi.Literal(title)}]]"));
-    private void WaitSaved() => ui.Browser.Until(d => {
-        var error = d.FindElements(By.CssSelector(".pd-form-error")).FirstOrDefault(element => element.Displayed);
-        Assert.True(error is null, "Listing save failed: " + error?.Text);
-        return d.FindElements(By.CssSelector(".pd-modal__form")).Count == 0;
-    }, "Listing modal did not close after saving.");
-    private void SetTime(IWebElement input, string value) => ui.Browser.Script.ExecuteScript("""
-        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(arguments[0],arguments[1]);
-        arguments[0].dispatchEvent(new Event('input',{bubbles:true}));
-        arguments[0].dispatchEvent(new Event('change',{bubbles:true}));
-        """, input, value);
+    private static string InputTime(string value)
+    {
+        Assert.True(TimeOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out var time),
+            "Existing provider time must be a parseable 12-hour or 24-hour value.");
+        return time.ToString("HH:mm", CultureInfo.InvariantCulture);
+    }
+
+    private static string AddDuration(string start, string duration)
+    {
+        var match = Regex.Match(duration, @"\d+(?:\.\d+)?");
+        var number = match.Success ? double.Parse(match.Value, CultureInfo.InvariantCulture) : 0;
+        var minutes = duration.Contains("hour", StringComparison.OrdinalIgnoreCase) ? number * 60 :
+            duration.Contains("min", StringComparison.OrdinalIgnoreCase) ? number : 120;
+        return TimeOnly.ParseExact(start, "HH:mm", CultureInfo.InvariantCulture)
+            .AddMinutes(Math.Round(minutes, MidpointRounding.AwayFromZero)).ToString("HH:mm", CultureInfo.InvariantCulture);
+    }
+
+    private void AssertSlots(JsonElement item, string fallbackStart, string duration)
+    {
+        var slots = new List<(string Start, string End)>();
+        foreach (var raw in item.Text("timeSlots").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = raw.Split(" - ", StringSplitOptions.TrimEntries);
+            if (parts.Length == 2) slots.Add((InputTime(parts[0]), InputTime(parts[1])));
+            else if (dashboard.ListingType == "Experience")
+            {
+                var start = InputTime(raw);
+                slots.Add((start, AddDuration(start, duration)));
+            }
+        }
+        if (slots.Count == 0) slots.Add((fallbackStart, AddDuration(fallbackStart, duration)));
+        var inputs = ui.Browser.Driver.FindElements(By.CssSelector(".pd-modal__form .pd-slot-card input[type='time']"));
+        Assert.Equal(slots.Count * 2, inputs.Count);
+        for (var index = 0; index < slots.Count; index++)
+        {
+            Assert.Equal(slots[index].Start, inputs[index * 2].GetDomProperty("value"));
+            Assert.Equal(slots[index].End, inputs[index * 2 + 1].GetDomProperty("value"));
+        }
+    }
+
+    private void SetTime(IWebElement input, string value)
+    {
+        ui.Browser.Script.ExecuteScript("""
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(arguments[0],arguments[1]);
+            arguments[0].dispatchEvent(new Event('input',{bubbles:true}));
+            arguments[0].dispatchEvent(new Event('change',{bubbles:true}));
+            """, input, value);
+        ui.Browser.Until(_ => input.GetDomProperty("value") == value, "Time input did not retain its draft value.");
+    }
+
+    public void PrepareValidDraftAndCancel()
+    {
+        Reset();
+        ui.Browser.Click(By.Id("add-listing-btn"));
+        ui.Browser.Visible(Form);
+        var name = "CQ-E2E-DRAFT-" + Guid.NewGuid().ToString("N")[..8];
+        var values = new Dictionary<string, string> {
+            [NameId] = name, [Prefix + "-location"] = "Colombo",
+            [Prefix + "-desc"] = "Valid catalog form draft; canceled without creating a listing.",
+            [Prefix + "-price"] = "12000"
+        };
+        if (dashboard.ListingType == "Accommodation")
+        {
+            new SelectElement(ui.Browser.Visible(By.Id("hotel-prop"))).SelectByText("Guesthouse");
+            Value("hotel-prop", "Guesthouse");
+            values["hotel-guests"] = "2"; values["hotel-minstay"] = "1"; values["hotel-bed"] = "1 King Bed";
+            values["hotel-amenities"] = "WiFi, Breakfast"; values["hotel-bath"] = "Private Bathroom";
+        }
+        else if (dashboard.ListingType == "Restaurant")
+        {
+            values["rest-cuisine"] = "Sri Lankan"; values["rest-seats"] = "20";
+            values["rest-menu"] = "Three course Sri Lankan menu"; values["rest-diet"] = "Vegetarian options";
+            new SelectElement(ui.Browser.Visible(By.Id("rest-style"))).SelectByText("Casual Dining");
+            new SelectElement(ui.Browser.Visible(By.Id("rest-range"))).SelectByValue("Moderate");
+            new SelectElement(ui.Browser.Visible(By.Id("rest-group-size"))).SelectByValue("Table for Two");
+            Value("rest-style", "Casual Dining");
+            Value("rest-range", "Moderate");
+            Value("rest-group-size", "Table for Two");
+            SetTime(ui.Browser.Visible(By.Id("rest-hours-open")), "09:00");
+            SetTime(ui.Browser.Visible(By.Id("rest-hours-close")), "22:00");
+        }
+        else
+        {
+            values["exp-max"] = "10"; values["exp-duration"] = "2 Hours"; values["exp-days"] = "Daily";
+            new SelectElement(ui.Browser.Visible(By.Id("exp-unit"))).SelectByValue("Per Person");
+            Value("exp-unit", "Per Person");
+            var tomorrow = TestSettings.TodayInSriLanka.AddDays(1);
+            ui.Browser.SetDate(By.Id("exp-valid-from"), tomorrow);
+            ui.Browser.SetDate(By.Id("exp-valid-until"), tomorrow.AddDays(30));
+            Value("exp-valid-from", tomorrow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+            Value("exp-valid-until", tomorrow.AddDays(30).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        }
+        foreach (var (id, value) in values) Fill(id, value);
+        foreach (var (id, value) in values) Value(id, value);
+        if (dashboard.ListingType != "Accommodation")
+        {
+            var inputs = ui.Browser.Driver.FindElements(By.CssSelector(".pd-modal__form .pd-slot-card input[type='time']"));
+            Assert.Equal(2, inputs.Count);
+            SetTime(inputs[0], dashboard.ListingType == "Restaurant" ? "09:00" : "08:00");
+            SetTime(inputs[1], "10:00");
+        }
+        Assert.True(ui.Browser.Visible(By.CssSelector(".pd-modal__form input[name='isActive']")).Selected);
+        Assert.True(ui.Browser.Visible(By.CssSelector(".pd-modal__form button[type='submit']")).Enabled);
+        AssertNoFormError();
+        ui.Browser.Capture("valid-listing-draft");
+        CancelForm();
+        AssertRows(dashboard.Listings);
+        Assert.DoesNotContain(ui.Browser.Driver.FindElements(Rows), row => row.Text.Contains(name, StringComparison.Ordinal));
+        ui.Browser.Click(By.Id("add-listing-btn"));
+        ui.Browser.Visible(Form);
+        foreach (var id in new[] { NameId, Prefix + "-location", Prefix + "-desc", Prefix + "-price" }) Value(id, "");
+        CancelForm();
+        ui.AssertNoBusinessWrites();
+    }
+
+    public void ChangeAndCancelEdit(JsonElement item)
+    {
+        OpenEdit(item);
+        AssertEditValues(item);
+        var draftName = "CQ-E2E-CANCEL-" + Guid.NewGuid().ToString("N")[..8];
+        Fill(NameId, draftName);
+        Fill(Prefix + "-desc", "Valid local edit that is canceled without saving.");
+        Value(NameId, draftName);
+        ui.Browser.Capture("unsaved-listing-edit");
+        CancelForm();
+        AssertRows(dashboard.Listings);
+        OpenEdit(item);
+        AssertEditValues(item);
+        CancelForm();
+        ui.AssertNoBusinessWrites();
+    }
+
+    public void CancelDelete(JsonElement item)
+    {
+        Reset();
+        Row(item).FindElements(By.CssSelector(".pd-row-actions button")).Single(button => button.Text == "Delete").Click();
+        var dialog = ui.Browser.Visible(By.CssSelector(".cq-confirm-modal[role='dialog']"));
+        ProviderUi.EqualText("Delete Listing", dialog.FindElement(By.CssSelector(".cq-confirm-title")).Text);
+        Assert.Contains("Are you sure you want to delete this listing?", dialog.Text);
+        Assert.True(dialog.FindElement(By.CssSelector(".cq-confirm-btn--danger")).Enabled);
+        ui.Browser.Capture("delete-confirmation-before-cancel");
+        ui.Browser.Click(By.CssSelector(".cq-confirm-btn--cancel"));
+        ui.Browser.Until(driver => !driver.FindElements(By.CssSelector(".cq-confirm-modal")).Any(element => element.Displayed),
+            "Delete confirmation did not close.");
+        AssertRows(dashboard.Listings);
+        AssertRow(Row(item), item);
+        ui.AssertNoBusinessWrites();
+    }
+
+    public void CancelForm()
+    {
+        ui.Browser.Click(By.CssSelector(".pd-modal__form .pd-cancel-btn"));
+        ui.Browser.Until(driver => !driver.FindElements(Form).Any(element => element.Displayed), "Listing form did not close.");
+    }
+
+    private void AssertNoFormError() => Assert.DoesNotContain(
+        ui.Browser.Driver.FindElements(By.CssSelector(".pd-modal__form .pd-form-error")), element => element.Displayed);
 }

@@ -12,13 +12,8 @@ internal sealed record UiResponse(int Sequence, string Url, int Status, JsonElem
 internal sealed class ProviderUi(BrowserSession browser)
 {
     public BrowserSession Browser { get; } = browser;
+    public bool ObservationInstalled { get; private set; }
     public static string Normalize(string text) => Regex.Replace(text, @"\s+", " ").Trim();
-    public static string SriLankaTime(string timestamp)
-    {
-        var utc = DateTimeOffset.Parse(timestamp, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
-        return TimeZoneInfo.ConvertTime(utc, TimeZoneInfo.FindSystemTimeZoneById("Asia/Colombo"))
-            .ToString("MMM d, yyyy | h:mm tt", CultureInfo.GetCultureInfo("en-US"));
-    }
     public static void EqualText(string expected, string actual, bool ignoreCase = false) =>
         Assert.Equal(Normalize(expected), Normalize(actual), ignoreCase: ignoreCase);
     public static string Literal(string text) => !text.Contains('\'') ? "'" + text + "'" :
@@ -26,99 +21,78 @@ internal sealed class ProviderUi(BrowserSession browser)
 
     public void Observe()
     {
+        // Passive copies of the real UI's catalog GETs. No extra requests, request
+        // bodies, credentials, tokens, or modified server responses.
         Browser.Script.ExecuteScript("""
-            if (!window.__cqProviderReads) {
-              const state = window.__cqProviderReads = {sequence: 0, responses: [], writes: []};
+            if (!window.__cqProviderCatalog) {
+              const state = window.__cqProviderCatalog = {sequence:0, responses:[], writes:[]};
               const original = window.fetch;
               window.fetch = async function(...args) {
+                const url = new URL(args[0] instanceof Request ? args[0].url : args[0], location.href);
                 const method = String(args[1]?.method || args[0]?.method || 'GET').toUpperCase();
                 const sequence = ++state.sequence;
-                const requestUrl = new URL(args[0] instanceof Request ? args[0].url : args[0], location.href);
-                if (!['GET', 'HEAD', 'OPTIONS'].includes(method) &&
-                    (/^\/api\/catalog\/(accommodation-listings|restaurant-listings|activity-listings)(\/|$)/.test(requestUrl.pathname) ||
-                     requestUrl.pathname.startsWith('/api/provider-bookings/') ||
-                     requestUrl.pathname.startsWith('/api/bookings/reviews/') ||
-                     requestUrl.pathname.startsWith('/api/notifications'))) {
-                  state.writes.push({sequence, method, path: requestUrl.pathname});
-                }
+                if (url.pathname.startsWith('/api/') && !['GET','HEAD','OPTIONS'].includes(method) &&
+                    !(method === 'POST' && url.pathname === '/api/auth/login'))
+                  state.writes.push({sequence, method, path:url.pathname});
                 const response = await original.apply(this, args);
-                const path = new URL(response.url).pathname;
-                const watch = /^\/api\/catalog\/(provider\/profile|accommodation-listings|restaurant-listings|activity-listings)$/.test(path) ||
-                  path === '/api/provider-bookings/my' || path === '/api/notifications' ||
-                  /^\/api\/bookings\/reviews\/[0-9a-f-]+$/i.test(path);
-                if (method === 'GET' && watch) {
+                if (method === 'GET' &&
+                    /^\/api\/catalog\/(provider\/profile|accommodation-listings|restaurant-listings|activity-listings)$/.test(url.pathname)) {
+                  const record = {sequence, url:response.url, status:response.status, body:null};
                   response.clone().json().then(body => {
-                    state.responses.push({sequence, url: response.url, status: response.status, body});
-                    if (state.responses.length > 200) state.responses.shift();
-                  }).catch(() => {
-                    state.responses.push({sequence, url: response.url, status: response.status, body: null});
-                  });
+                    record.body = body; state.responses.push(record);
+                  }).catch(() => state.responses.push(record));
                 }
                 return response;
               };
             }
             """);
+        ObservationInstalled = true;
     }
 
-    public int Sequence => Convert.ToInt32(Browser.Script.ExecuteScript("return window.__cqProviderReads?.sequence || 0"));
-    public void AssertNoBusinessWritesSince(int sequence) => Assert.Equal(0, Convert.ToInt32(Browser.Script.ExecuteScript(
-        "return (window.__cqProviderReads?.writes || []).filter(item => item.sequence > arguments[0]).length", sequence)));
-    public UiResponse? Latest(string path, int after = -1, Func<Uri, bool>? query = null)
-    {
-        var json = Browser.Script.ExecuteScript("return JSON.stringify(window.__cqProviderReads?.responses || [])") as string
-            ?? throw new InvalidOperationException("Provider response observation was lost after document navigation.");
+    public UiResponse Wait(string path) => Browser.Until(_ => {
+        var json = Browser.Script.ExecuteScript("""
+            if (!window.__cqProviderCatalog) throw new Error('Provider catalog observer lost after navigation');
+            return JSON.stringify(window.__cqProviderCatalog.responses);
+            """) as string ?? "[]";
         using var document = JsonDocument.Parse(json);
-        var record = document.RootElement.EnumerateArray().Where(item => item.GetProperty("sequence").GetInt32() > after &&
-            new Uri(item.GetProperty("url").GetString()!).AbsolutePath.Equals(path, StringComparison.OrdinalIgnoreCase) &&
-            (query is null || query(new Uri(item.GetProperty("url").GetString()!))))
-            .OrderByDescending(item => item.GetProperty("sequence").GetInt32()).FirstOrDefault();
-        return record.ValueKind == JsonValueKind.Undefined ? null : new UiResponse(record.GetProperty("sequence").GetInt32(),
-            record.Text("url"), record.GetProperty("status").GetInt32(), record.GetProperty("body").Clone());
-    }
+        var records = document.RootElement.EnumerateArray().Where(item =>
+            new Uri(item.GetProperty("url").GetString()!).AbsolutePath == path)
+            .OrderByDescending(item => item.GetProperty("sequence").GetInt32()).ToArray();
+        if (records.Length == 0) return null!;
+        var record = records[0];
+        var status = record.GetProperty("status").GetInt32();
+        Assert.True(status is >= 200 and < 300, $"Provider UI request {path} returned HTTP {status}.");
+        Assert.NotEqual(JsonValueKind.Null, record.GetProperty("body").ValueKind);
+        return new UiResponse(record.GetProperty("sequence").GetInt32(), record.Text("url"),
+            status, record.GetProperty("body").Clone());
+    }, "No successful real UI response for " + path + ". Check provider approval, service availability and deployment.");
 
-    public UiResponse Wait(string path, int after = -1, Func<Uri, bool>? query = null)
+    public void AssertNoBusinessWrites()
     {
-        return Browser.Until(_ => {
-            var response = Latest(path, after, query);
-            if (response is null) return null!;
-            Assert.True(response.Status is >= 200 and < 300, $"Actual UI request {path} returned HTTP {response.Status}.");
-            Assert.NotEqual(JsonValueKind.Null, response.Body.ValueKind);
-            return response;
-        }, "No successful UI response for " + path + ". Check the service, role and deployed frontend contract.");
+        var writes = Browser.Script.ExecuteScript("""
+            if (!window.__cqProviderCatalog) throw new Error('Provider catalog observer was lost');
+            return JSON.stringify(window.__cqProviderCatalog.writes);
+            """) as string;
+        Assert.Equal("[]", writes);
     }
 
-    public static string Query(Uri url, string key)
-    {
-        return url.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries)
-            .Select(part => part.Split('=', 2)).Where(part => Uri.UnescapeDataString(part[0]) == key)
-            .Select(part => part.Length > 1 ? Uri.UnescapeDataString(part[1].Replace('+', ' ')) : "").FirstOrDefault() ?? "";
-    }
+    public void ClickText(string xpathScope, string text) => Browser.Click(By.XPath(
+        $"{xpathScope}//button[normalize-space()={Literal(text)}]"));
 
-    public void ClickText(string scope, string text) => Browser.Click(By.XPath(
-        $"{scope}//button[normalize-space()={Literal(text)}]"));
-    public void AssertNoVisibleError(string scope)
-    {
-        var errors = Browser.Driver.FindElements(By.CssSelector(scope + " [role='alert']"))
-            .Where(element => element.Displayed).Select(element => element.Text).ToArray();
-        Assert.True(errors.Length == 0, "UI reported an error: " + string.Join("; ", errors));
-    }
+    public string Money(decimal amount) => "LKR " + (Browser.Script.ExecuteScript(
+        "return Number(arguments[0]).toLocaleString()", (double)amount) as string
+        ?? throw new InvalidOperationException("Browser money formatting failed."));
 
-    public static string BrowserMoney(BrowserSession browser, decimal amount, int decimals) =>
-        browser.Script.ExecuteScript("""
-            return new Intl.NumberFormat('en-LK', {style:'currency', currency:'LKR',
-              minimumFractionDigits:arguments[1], maximumFractionDigits:arguments[1]}).format(arguments[0]);
-            """, (double)amount, decimals) as string ?? throw new InvalidOperationException("Currency formatting failed.");
+    public static string Number(decimal amount) => amount.ToString("0.############################", CultureInfo.InvariantCulture);
 }
 
 internal static class ProviderJson
 {
     public static string Text(this JsonElement value, string property, string fallback = "") =>
-        value.TryGetProperty(property, out var item) && item.ValueKind != JsonValueKind.Null ? item.GetString() ?? fallback : fallback;
+        value.TryGetProperty(property, out var item) && item.ValueKind == JsonValueKind.String
+            ? item.GetString() ?? fallback : fallback;
     public static int Int(this JsonElement value, string property) => value.GetProperty(property).GetInt32();
     public static decimal Money(this JsonElement value, string property) => value.GetProperty(property).GetDecimal();
     public static bool Flag(this JsonElement value, string property) => value.GetProperty(property).GetBoolean();
-    public static JsonElement[] Items(this JsonElement value) => value.GetProperty("items").EnumerateArray().ToArray();
     public static string ListingName(this JsonElement value) => value.Text("title", value.Text("name", value.Text("roomType")));
-    public static DateOnly Date(this JsonElement value, string property) =>
-        DateOnly.ParseExact(value.Text(property)[..10], "yyyy-MM-dd", CultureInfo.InvariantCulture);
 }

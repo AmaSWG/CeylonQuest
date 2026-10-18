@@ -1,5 +1,4 @@
 using System.Text.Json;
-using CeylonQuest.E2E.Tests.Infrastructure;
 using CeylonQuest.E2E.Tests.Pages;
 using CeylonQuest.E2E.Tests.Provider.Infrastructure;
 using OpenQA.Selenium;
@@ -9,12 +8,13 @@ namespace CeylonQuest.E2E.Tests.Provider.Pages;
 
 internal sealed class ProviderDashboardPage(ProviderUi ui)
 {
-    public static readonly string[] Navigation = ["overview", "business", "services", "bookings", "reviews", "notifications", "platform-reviews", "account"];
     public JsonElement Profile { get; private set; }
     public JsonElement[] Listings { get; private set; } = [];
     public string ListingType { get; private set; } = "";
     public string CatalogPath { get; private set; } = "";
-    public string CatalogOriginUrl { get; private set; } = "";
+    public string PageTitle => ListingType switch {
+        "Accommodation" => "Rooms and Accommodations", "Restaurant" => "Menu and Dining", _ => "Experience Listings"
+    };
 
     public void Login()
     {
@@ -26,62 +26,82 @@ internal sealed class ProviderDashboardPage(ProviderUi ui)
         Assert.Equal("Provider", ui.Browser.Script.ExecuteScript("return localStorage.getItem('userRole')"));
         Assert.True(ui.Browser.Script.ExecuteScript("return Boolean(localStorage.getItem('authToken'))") is true);
         Profile = ui.Wait("/api/catalog/provider/profile").Body;
+        Assert.True(Guid.TryParse(Profile.Text("id"), out var providerId) && providerId != Guid.Empty);
+        Assert.False(string.IsNullOrWhiteSpace(Profile.Text("businessName")));
+        ProviderUi.EqualText(ProviderSettings.Required("CQ_E2E_PROVIDER_EMAIL"), Profile.Text("email"), ignoreCase: true);
         var category = Profile.Text("serviceType").ToLowerInvariant();
+        Assert.False(string.IsNullOrWhiteSpace(category));
         ListingType = new[] { "hotel", "accommodat", "villa", "resort", "room" }.Any(category.Contains) ? "Accommodation" :
             new[] { "restaurant", "dining", "dinner", "food", "cafe", "catering" }.Any(category.Contains) ? "Restaurant" : "Experience";
         CatalogPath = "/api/catalog/" + (ListingType == "Accommodation" ? "accommodation-listings" :
             ListingType == "Restaurant" ? "restaurant-listings" : "activity-listings");
-        RefreshListingSnapshot();
-        foreach (var key in Navigation) ui.Browser.Visible(By.Id("nav-" + key));
-        ProviderUi.EqualText("Dashboard Overview", ui.Browser.Visible(By.CssSelector(".pd-overview h1")).Text);
-        ui.Browser.Step("Provider login and actual role-specific navigation verified; category: " + ListingType);
-        foreach (var listing in Listings)
-            ui.Browser.Step("Provider-owned listing ID: " + listing.Text("id") + " / " + listing.ListingName());
-    }
-
-    public void RefreshListingSnapshot(int after = -1)
-    {
-        var response = ui.Wait(CatalogPath, after);
+        var response = ui.Wait(CatalogPath);
         Assert.Equal(JsonValueKind.Array, response.Body.ValueKind);
-        CatalogOriginUrl = response.Url;
-        Listings = response.Body.EnumerateArray().ToArray();
+        Listings = response.Body.EnumerateArray().Select(item => item.Clone()).ToArray();
+        Assert.Equal(Listings.Length, Listings.Select(item => item.Text("id")).Distinct().Count());
+        Assert.Equal(Listings.Length, Listings.Select(item => item.ListingName()).Distinct().Count());
+        foreach (var listing in Listings)
+        {
+            Assert.True(Guid.TryParse(listing.Text("id"), out var id) && id != Guid.Empty);
+            Assert.False(string.IsNullOrWhiteSpace(listing.ListingName()));
+            // Activity GetMyListings currently omits ProviderId (DTO defaults to empty).
+            // Compare ownership where the actual response exposes a nonempty provider ID.
+            if (Guid.TryParse(listing.Text("providerId"), out var ownerId) && ownerId != Guid.Empty)
+                Assert.Equal(providerId, ownerId);
+        }
+        foreach (var tab in new[] { "overview", "business", "services" }) ui.Browser.Visible(By.Id("nav-" + tab));
+        ProviderUi.EqualText("Dashboard Overview", ui.Browser.Visible(By.CssSelector(".pd-overview h1")).Text);
+        ui.Browser.Step($"Valid provider login; {ListingType} catalog loaded {Listings.Length} owned listings.");
+        foreach (var item in Listings) ui.Browser.Step("Owned listing: " + item.Text("id") + " / " + item.ListingName());
     }
 
     public void Navigate(string tab) => ui.Browser.Click(By.Id("nav-" + tab));
 
-    public void AssertOverview(JsonElement[] bookings)
+    public JsonElement ChooseListing()
     {
-        Navigate("overview");
-        ui.Browser.Visible(By.CssSelector(".pd-overview"));
-        foreach (var heading in new[] { "Business Profile Summary", "Recent Bookings", "Recent Notifications" })
-            ui.Browser.Visible(By.XPath($"//div[contains(@class,'pd-overview')]//h2[normalize-space()={ProviderUi.Literal(heading)}]"));
-        var active = Listings.Count(item => !item.TryGetProperty("isActive", out var status) || status.GetBoolean());
-        ui.Browser.Until(_ => ProviderUi.Normalize(Metric("Listings")) == $"{active} Active" &&
-            ProviderUi.Normalize(Metric("Total Bookings")) == bookings.Length.ToString(),
-            "Overview statistics did not update after their real data loaded.");
-        ProviderUi.EqualText($"{active} Active", Metric("Listings"));
-        ProviderUi.EqualText(bookings.Length.ToString(), Metric("Total Bookings"));
-        var earnings = bookings.Where(item => item.Text("status") is "Confirmed" or "Completed").Sum(item => item.Money("totalAmount"));
-        ProviderUi.EqualText(ProviderUi.BrowserMoney(ui.Browser, earnings, 0), Metric("Estimated Earnings"));
-        if (!string.IsNullOrWhiteSpace(Profile.Text("businessName")))
-            Assert.Contains(Profile.Text("businessName"), ui.Browser.Visible(By.CssSelector(".pd-overview .pd-page-header")).Text);
-        Assert.Equal(3, ui.Browser.Driver.FindElements(By.CssSelector(".pd-metrics-grid .pd-metric-card")).Count);
+        var id = ProviderSettings.ListingId;
+        if (id is not null)
+            return Assert.Single(Listings, item => item.Text("id").Equals(id, StringComparison.OrdinalIgnoreCase));
+        Assert.True(Listings.Length > 0, "This scenario requires at least one existing listing owned by the provider.");
+        return Listings[0];
     }
 
-    private string Metric(string title) => ui.Browser.Visible(By.XPath(
-        $"//div[contains(@class,'pd-metric-info')][div[normalize-space()={ProviderUi.Literal(title)}]]/div[contains(@class,'pd-metric-value')]")).Text;
-
-    public void LogoutAndAssertProtectedDashboardGone()
+    public void AssertBusinessProfile()
     {
-        ui.Browser.Click(By.Id("pd-logout-btn"));
-        ui.Browser.Visible(By.Id("nav-login-btn"));
-        Assert.True(ui.Browser.Script.ExecuteScript("return !localStorage.getItem('authToken') && !localStorage.getItem('userRole')") is true);
-        ui.Browser.Driver.Navigate().Refresh();
-        ui.Browser.Visible(By.Id("nav-login-btn"));
-        ui.Browser.Driver.Navigate().GoToUrl(TestSettings.BaseUrl);
-        ui.Browser.Visible(By.Id("nav-login-btn"));
-        foreach (var key in Navigation) Assert.Empty(ui.Browser.Driver.FindElements(By.Id("nav-" + key)));
-        // Dashboard tabs have no independent provider URL. Reload/reopen checks the
-        // implemented UI auth boundary without inventing /provider/dashboard routes.
+        Navigate("business");
+        ui.Browser.Visible(By.CssSelector(".pd-business-tab"));
+        foreach (var (label, property) in new[] {
+            ("Business / Enterprise Name", "businessName"), ("Primary Service Category", "serviceType"),
+            ("Operating Location / Base", "location"), ("Business & Service Description", "description"),
+            ("Contact Phone", "phoneNumber"), ("Official Contact Email", "email")
+        })
+        {
+            // Labels are visually uppercased by CSS; keep the actual field values strict.
+            var field = Assert.Single(ui.Browser.Driver.FindElements(By.CssSelector(".pd-business-tab .pd-field")),
+                element => ProviderUi.Normalize(element.FindElement(By.CssSelector(".pd-field__label")).Text)
+                    .Equals(label, StringComparison.OrdinalIgnoreCase));
+            var expected = Profile.Text(property);
+            ProviderUi.EqualText(string.IsNullOrEmpty(expected) ? "\u2014" : expected,
+                field.FindElement(By.CssSelector(".pd-field__value")).Text);
+        }
+        ui.Browser.Visible(By.Id("edit-business-btn")); // View only: profile saving uses another service.
+        ui.Browser.Step("Business profile fields verified against the catalog profile response.");
+    }
+
+    public void AssertListingSummary()
+    {
+        Navigate("overview");
+        var metric = By.XPath("//div[contains(@class,'pd-metric-info')][div[normalize-space()='Listings']]");
+        var active = Listings.Count(item => item.Flag("isActive"));
+        ui.Browser.Until(_ => {
+            var current = ui.Browser.Visible(metric);
+            return ProviderUi.Normalize(current.FindElement(By.CssSelector(".pd-metric-value")).Text) == $"{active} Active" &&
+                ProviderUi.Normalize(current.FindElement(By.CssSelector(".pd-metric-sub")).Text) == $"{Listings.Length} Total Registered";
+        }, "Listing overview did not update after catalog loading.");
+        var card = ui.Browser.Visible(metric);
+        ProviderUi.EqualText($"{active} Active", card.FindElement(By.CssSelector(".pd-metric-value")).Text);
+        ProviderUi.EqualText($"{Listings.Length} Total Registered", card.FindElement(By.CssSelector(".pd-metric-sub")).Text);
+        Assert.Contains(Profile.Text("businessName"), ui.Browser.Visible(By.CssSelector(".pd-overview .pd-page-header")).Text);
+        // Do not inspect booking/earnings cards or navigate to their workflows.
     }
 }
