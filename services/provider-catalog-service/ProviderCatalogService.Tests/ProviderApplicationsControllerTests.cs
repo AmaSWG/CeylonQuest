@@ -23,6 +23,12 @@ namespace ProviderCatalogService.Tests;
 
 public class ProviderApplicationsControllerTests
 {
+    private static string? GetMessage(IActionResult result)
+    {
+        var objResult = Assert.IsAssignableFrom<ObjectResult>(result);
+        return JsonSerializer.SerializeToElement(objResult.Value).GetProperty("message").GetString();
+    }
+
     private class FakeBlobStorage : IBlobStorageService
     {
         public List<string> UploadedBlobs { get; } = new();
@@ -67,17 +73,19 @@ public class ProviderApplicationsControllerTests
         new(db, storage, new ConfigurationBuilder().Build());
 
     [Theory]
-    [InlineData("license.exe", 1)]
-    [InlineData("license", 1)]
-    [InlineData("license.pdf", 10485761)]
-    [InlineData("license.pdf", 0)]
-    public async Task Submit_InvalidDocument_DoesNotUploadOrPersist(string filename, long length)
+    [InlineData("license.exe", 1, "File 'license.exe' has an invalid format. Only PDF, JPG, and PNG are accepted.")]
+    [InlineData("license", 1, "File 'license' has an invalid format. Only PDF, JPG, and PNG are accepted.")]
+    [InlineData("license.pdf", 10485761, "File 'license.pdf' exceeds the 10MB file size limit.")]
+    public async Task Submit_InvalidDocument_DoesNotUploadOrPersist(string filename, long length, string expectedMessage)
     {
         using var db = CreateDb();
         using var stream = new MemoryStream(new byte[1]);
         var file = new FormFile(stream, 0, length, "LegalDocuments", filename);
         var storage = new Mock<IBlobStorageService>(MockBehavior.Strict);
-        Assert.IsType<BadRequestObjectResult>(await CreateController(db, storage.Object).Submit(ValidRequest(file)));
+        
+        var result = await CreateController(db, storage.Object).Submit(ValidRequest(file));
+        
+        Assert.Equal(expectedMessage, GetMessage(result)); // <-- Kills String Mutants (Image 1)
         Assert.Empty(db.ProviderApplications);
         storage.Verify(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         storage.VerifyNoOtherCalls();
@@ -91,7 +99,8 @@ public class ProviderApplicationsControllerTests
         var files = Enumerable.Range(0, 6).Select(i => CreateMockFile($"doc{i}.pdf")).ToArray();
         try
         {
-            Assert.IsType<BadRequestObjectResult>(await CreateController(db, storage.Object).Submit(ValidRequest(files)));
+            var result = await CreateController(db, storage.Object).Submit(ValidRequest(files));
+            Assert.Equal("You can upload a maximum of 5 verification documents.", GetMessage(result)); // <-- Kills Mutant (Line 47)
             Assert.Empty(db.ProviderApplications);
             storage.VerifyNoOtherCalls();
         }
@@ -188,7 +197,10 @@ public class ProviderApplicationsControllerTests
     {
         using var db = CreateDb();
         var storage = new Mock<IBlobStorageService>(MockBehavior.Strict);
-        Assert.IsType<BadRequestObjectResult>(await CreateController(db, storage.Object).GetStatus(email!));
+        var result = await CreateController(db, storage.Object).GetStatus(email!);
+
+        Assert.Equal("Email is required.", GetMessage(result));
+        Assert.IsType<BadRequestObjectResult>(result);
         Assert.Empty(db.ProviderApplications); storage.VerifyNoOtherCalls();
     }
 
@@ -219,6 +231,8 @@ public class ProviderApplicationsControllerTests
         Assert.NotNull(result);
         Assert.Equal(201, result.StatusCode);
 
+        Assert.Equal("/api/catalog/provider-applications/status?email=bluelagoon@example.com", result.Location);
+
         var saved = await db.ProviderApplications.FirstOrDefaultAsync(a => a.Email == "bluelagoon@example.com");
         Assert.NotNull(saved);
         Assert.Equal(2, blob.UploadedBlobs.Count);
@@ -235,21 +249,14 @@ public class ProviderApplicationsControllerTests
         var blob = new FakeBlobStorage();
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
         var controller = new ProviderApplicationsController(db, blob, config);
-
         var request = new CreateProviderApplicationRequest
         {
-            BusinessName = "No Docs Hotel",
-            Email = "nodocs@example.com",
-            PhoneNumber = "123",
-            ServiceType = "Hotel",
-            Location = "Colombo",
-            Description = "Test desc",
+            BusinessName = "No Docs Hotel", Email = "nodocs@example.com", PhoneNumber = "123",
+            ServiceType = "Hotel", Location = "Colombo", Description = "Test desc",
             LegalDocuments = new List<IFormFile>()
         };
-
-        var result = await controller.Submit(request) as BadRequestObjectResult;
-        Assert.NotNull(result);
-        Assert.Equal(400, result.StatusCode);
+        var result = await controller.Submit(request);
+        Assert.Equal("At least one legal verification document is required.", GetMessage(result)); // <-- Kills Mutant (Line 45)
     }
 
     /// <summary>
@@ -280,7 +287,25 @@ public class ProviderApplicationsControllerTests
         var okResult = await controller.GetStatus("kandy@example.com") as OkObjectResult;
         Assert.NotNull(okResult);
 
-        var notFoundResult = await controller.GetStatus("unknown@example.com") as NotFoundObjectResult;
-        Assert.NotNull(notFoundResult);
+        var notFoundResult = await controller.GetStatus("unknown@example.com");
+        Assert.Equal("No provider application found.", GetMessage(notFoundResult));
+    }
+
+    [Fact]
+    public async Task Submit_WithCustomContainerConfiguration_UsesConfiguredContainer()
+    {
+        using var db = CreateDb();
+        var storage = new Mock<IBlobStorageService>(MockBehavior.Strict);
+        storage.Setup(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), "custom-app-container", "application/pdf"))
+            .ReturnsAsync("https://storage.invalid/custom/doc.pdf");
+        var inMemorySettings = new Dictionary<string, string?> {
+            {"AzureStorage:VerificationFilesContainer", "custom-app-container"}
+        };
+        var config = new ConfigurationBuilder().AddInMemoryCollection(inMemorySettings).Build();
+        var controller = new ProviderApplicationsController(db, storage.Object, config);
+        var file = CreateMockFile("doc.pdf");
+        var result = await controller.Submit(ValidRequest(file));
+        Assert.IsType<CreatedResult>(result);
+        storage.Verify(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), "custom-app-container", "application/pdf"), Times.Once);
     }
 }

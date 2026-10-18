@@ -3,12 +3,11 @@
     "project": "ProviderCatalogService.csproj",
     "reporters": [ "progress", "html", "cleartext" ],
     "mutate": [
-      "!Services/**",
-      "!Migrations/**",
       "Controllers/ImagesController.cs",
       "Controllers/ProviderAdminController.cs",
       "Controllers/ProviderApplicationsController.cs"
     ],
+    "concurrency": 4,
     "thresholds": {
       "high": 80,
       "low": 60,
