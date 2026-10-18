@@ -1,0 +1,34 @@
+{
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 100,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 609.9200000000002,
+    "medianResTime" : 533.0,
+    "minResTime" : 426.0,
+    "maxResTime" : 1539.0,
+    "pct1ResTime" : 862.9000000000005,
+    "pct2ResTime" : 1364.099999999999,
+    "pct3ResTime" : 1539.0,
+    "throughput" : 9.879470460383324,
+    "receivedKBytesPerSec" : 11.239827232760325,
+    "sentKBytesPerSec" : 7.7086883768030035
+  },
+  "JM-03-UnreadBadgePolling Sampler" : {
+    "transaction" : "JM-03-UnreadBadgePolling Sampler",
+    "sampleCount" : 100,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 609.9200000000002,
+    "medianResTime" : 533.0,
+    "minResTime" : 426.0,
+    "maxResTime" : 1539.0,
+    "pct1ResTime" : 862.9000000000005,
+    "pct2ResTime" : 1364.099999999999,
+    "pct3ResTime" : 1539.0,
+    "throughput" : 9.879470460383324,
+    "receivedKBytesPerSec" : 11.239827232760325,
+    "sentKBytesPerSec" : 7.7086883768030035
+  }
+}
