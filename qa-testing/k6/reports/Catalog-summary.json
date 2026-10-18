@@ -1,182 +1,210 @@
 {
-    "root_group": {
-        "name": "",
-        "path": "",
-        "id": "d41d8cd98f00b204e9800998ecf8427e",
-        "groups": {},
-        "checks": {
-                "activity listings status is 200": {
-                    "fails": 0,
-                    "name": "activity listings status is 200",
-                    "path": "::activity listings status is 200",
-                    "id": "e5a9300934ed26c191aafa15d874a935",
-                    "passes": 121
-                },
-                "activity listings returned array": {
-                    "name": "activity listings returned array",
-                    "path": "::activity listings returned array",
-                    "id": "70339afd3e5a172abeb7ac596d4540ac",
-                    "passes": 121,
-                    "fails": 0
-                },
-                "restaurant listings status is 200": {
-                    "name": "restaurant listings status is 200",
-                    "path": "::restaurant listings status is 200",
-                    "id": "b82a3604d4efd8fd56da179aff00281d",
-                    "passes": 121,
-                    "fails": 0
-                },
-                "restaurant listings returned array": {
-                    "id": "e8d21e56d0c5dcdb5705e2fb14edfefc",
-                    "passes": 121,
-                    "fails": 0,
-                    "name": "restaurant listings returned array",
-                    "path": "::restaurant listings returned array"
-                },
-                "accommodation listings status is 200": {
-                    "passes": 121,
-                    "fails": 0,
-                    "name": "accommodation listings status is 200",
-                    "path": "::accommodation listings status is 200",
-                    "id": "2ac0bd358da604e2c340540442752834"
-                },
-                "accommodation listings returned array": {
-                    "name": "accommodation listings returned array",
-                    "path": "::accommodation listings returned array",
-                    "id": "cebb142206b5a02de7641e2af8a6d720",
-                    "passes": 121,
-                    "fails": 0
-                },
-                "unified search status is 200": {
-                    "fails": 0,
-                    "name": "unified search status is 200",
-                    "path": "::unified search status is 200",
-                    "id": "fa95ee743a8f197086348bab3f84f967",
-                    "passes": 121
-                },
-                "unified search returned valid payload": {
-                    "name": "unified search returned valid payload",
-                    "path": "::unified search returned valid payload",
-                    "id": "279c0bc0160a3e4e20cdb6157386aa64",
-                    "passes": 121,
-                    "fails": 0
-                }
-            }
-    },
     "metrics": {
-        "vus_max": {
-            "value": 20,
-            "min": 20,
+        "http_req_duration{expected_response:true}": {
+            "avg": 569.889847652582,
+            "min": 75.5829,
+            "med": 447.539,
+            "max": 2698.6554,
+            "p(90)": 1098.18215,
+            "p(95)": 1342.78385
+        },
+        "iterations": {
+            "count": 71,
+            "rate": 2.584464222075104
+        },
+        "data_sent": {
+            "rate": 5098.747500204282,
+            "count": 140072
+        },
+        "vus": {
+            "value": 2,
+            "min": 2,
             "max": 20
         },
+        "http_req_blocked": {
+            "avg": 23.212009154929575,
+            "min": 0,
+            "med": 0,
+            "max": 1327.0026,
+            "p(90)": 0,
+            "p(95)": 0.58485
+        },
+        "http_req_tls_handshaking": {
+            "avg": 18.62484600938967,
+            "min": 0,
+            "med": 0,
+            "max": 1173.3242,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "http_req_sending": {
+            "avg": 0.04978943661971831,
+            "min": 0,
+            "med": 0,
+            "max": 1.2658,
+            "p(90)": 0,
+            "p(95)": 0.5615
+        },
+        "iteration_duration": {
+            "avg": 5077.843519718308,
+            "min": 2655.4206,
+            "med": 4461.1031,
+            "max": 9139.6911,
+            "p(90)": 7361.8784,
+            "p(95)": 7770.6873
+        },
+        "checks": {
+            "passes": 852,
+            "fails": 0,
+            "value": 1
+        },
+        "http_req_waiting": {
+            "med": 440.254,
+            "max": 2698.6554,
+            "p(90)": 1082.3243499999999,
+            "p(95)": 1342.689375,
+            "avg": 564.0347347417842,
+            "min": 74.0477
+        },
+        "http_req_receiving": {
+            "max": 440.7339,
+            "p(90)": 1.00875,
+            "p(95)": 5.389,
+            "avg": 5.805323474178411,
+            "min": 0,
+            "med": 0
+        },
         "data_received": {
-            "count": 2614073,
-            "rate": 97143.53293462885
+            "count": 2149722,
+            "rate": 78251.82530151743
+        },
+        "http_req_duration": {
+            "avg": 569.889847652582,
+            "min": 75.5829,
+            "med": 447.539,
+            "max": 2698.6554,
+            "p(90)": 1098.18215,
+            "p(95)": 1342.78385,
+            "thresholds": {
+                "p(95)<2000": false
+            }
         },
         "http_req_failed": {
             "passes": 0,
-            "fails": 484,
+            "fails": 426,
             "thresholds": {
                 "rate<0.01": false
             },
             "value": 0
         },
-        "http_reqs": {
-            "count": 484,
-            "rate": 17.986288041826057
-        },
-        "http_req_blocked": {
-            "max": 680.1878,
+        "http_req_connecting": {
+            "max": 212.6568,
             "p(90)": 0,
             "p(95)": 0,
-            "avg": 19.36180144628099,
+            "avg": 4.352448591549296,
             "min": 0,
             "med": 0
         },
-        "http_req_tls_handshaking": {
-            "max": 512.6812,
-            "p(90)": 0,
-            "p(95)": 0,
-            "avg": 16.87142438016529,
-            "min": 0,
-            "med": 0
-        },
-        "http_req_waiting": {
-            "p(90)": 403.50566,
-            "p(95)": 543.0426849999997,
-            "avg": 252.47185289256183,
-            "min": 67.0878,
-            "med": 184.94915,
-            "max": 3156.5199
-        },
-        "http_req_duration": {
-            "avg": 260.2746256198347,
-            "min": 67.0878,
-            "med": 195.14704999999998,
-            "max": 3185.3448,
-            "p(90)": 422.8901899999999,
-            "p(95)": 549.72858,
-            "thresholds": {
-                "p(95)<2000": false
-            }
-        },
-        "http_req_receiving": {
-            "min": 0,
-            "med": 0.5896,
-            "max": 180.1775,
-            "p(90)": 28.74863,
-            "p(95)": 40.97622499999997,
-            "avg": 7.758272314049594
-        },
-        "vus": {
-            "value": 3,
-            "min": 2,
+        "vus_max": {
+            "value": 20,
+            "min": 20,
             "max": 20
         },
-        "http_req_duration{expected_response:true}": {
-            "avg": 260.2746256198347,
-            "min": 67.0878,
-            "med": 195.14704999999998,
-            "max": 3185.3448,
-            "p(90)": 422.8901899999999,
-            "p(95)": 549.72858
-        },
-        "http_req_connecting": {
-            "avg": 2.2406927685950415,
-            "min": 0,
-            "med": 0,
-            "max": 76.12,
-            "p(90)": 0,
-            "p(95)": 0
-        },
-        "iteration_duration": {
-            "avg": 2630.572291735538,
-            "min": 1875.23,
-            "med": 2409.8555,
-            "max": 7182.1769,
-            "p(90)": 3213.0703,
-            "p(95)": 4152.6607
-        },
-        "checks": {
-            "passes": 968,
-            "fails": 0,
-            "value": 1
-        },
-        "data_sent": {
-            "count": 152286,
-            "rate": 5659.214588300667
-        },
-        "http_req_sending": {
-            "med": 0,
-            "max": 2.3203,
-            "p(90)": 0,
-            "p(95)": 0.5512199999999997,
-            "avg": 0.044500413223140495,
-            "min": 0
-        },
-        "iterations": {
-            "count": 121,
-            "rate": 4.496572010456514
+        "http_reqs": {
+            "count": 426,
+            "rate": 15.506785332450626
         }
+    },
+    "root_group": {
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {
+                "activity listings status is 200": {
+                    "name": "activity listings status is 200",
+                    "path": "::activity listings status is 200",
+                    "id": "e5a9300934ed26c191aafa15d874a935",
+                    "passes": 71,
+                    "fails": 0
+                },
+                "activity listings returned array": {
+                    "name": "activity listings returned array",
+                    "path": "::activity listings returned array",
+                    "id": "70339afd3e5a172abeb7ac596d4540ac",
+                    "passes": 71,
+                    "fails": 0
+                },
+                "restaurant listings status is 200": {
+                    "path": "::restaurant listings status is 200",
+                    "id": "b82a3604d4efd8fd56da179aff00281d",
+                    "passes": 71,
+                    "fails": 0,
+                    "name": "restaurant listings status is 200"
+                },
+                "restaurant listings returned array": {
+                    "path": "::restaurant listings returned array",
+                    "id": "e8d21e56d0c5dcdb5705e2fb14edfefc",
+                    "passes": 71,
+                    "fails": 0,
+                    "name": "restaurant listings returned array"
+                },
+                "accommodation listings status is 200": {
+                    "id": "2ac0bd358da604e2c340540442752834",
+                    "passes": 71,
+                    "fails": 0,
+                    "name": "accommodation listings status is 200",
+                    "path": "::accommodation listings status is 200"
+                },
+                "accommodation listings returned array": {
+                    "id": "cebb142206b5a02de7641e2af8a6d720",
+                    "passes": 71,
+                    "fails": 0,
+                    "name": "accommodation listings returned array",
+                    "path": "::accommodation listings returned array"
+                },
+                "unified search status is 200": {
+                    "name": "unified search status is 200",
+                    "path": "::unified search status is 200",
+                    "id": "fa95ee743a8f197086348bab3f84f967",
+                    "passes": 71,
+                    "fails": 0
+                },
+                "unified search returned valid payload": {
+                    "path": "::unified search returned valid payload",
+                    "id": "279c0bc0160a3e4e20cdb6157386aa64",
+                    "passes": 71,
+                    "fails": 0,
+                    "name": "unified search returned valid payload"
+                },
+                "activity search status is 200": {
+                    "name": "activity search status is 200",
+                    "path": "::activity search status is 200",
+                    "id": "345e27c9bbb278f03ed5f4e6af8c2dcb",
+                    "passes": 71,
+                    "fails": 0
+                },
+                "activity search returned paginated result": {
+                    "path": "::activity search returned paginated result",
+                    "id": "0d8e1e3cee4f3c88bd89f0c9aad1e349",
+                    "passes": 71,
+                    "fails": 0,
+                    "name": "activity search returned paginated result"
+                },
+                "location search status is 200": {
+                    "fails": 0,
+                    "name": "location search status is 200",
+                    "path": "::location search status is 200",
+                    "id": "76ace10efb087c9d4947948d9ac75781",
+                    "passes": 71
+                },
+                "location search returned paginated result": {
+                    "name": "location search returned paginated result",
+                    "path": "::location search returned paginated result",
+                    "id": "8b0cd7dda035d86f418ca2fdc308d1c8",
+                    "passes": 71,
+                    "fails": 0
+                }
+            },
+        "name": "",
+        "path": ""
     }
 }

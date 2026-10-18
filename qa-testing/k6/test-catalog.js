@@ -85,6 +85,39 @@ export default function () {
     },
   });
 
+  // 5. Simple Endpoint: Activity-filtered Catalog Search
+  // Viva Explanation: A tourist specifically searching for activities/experiences only.
+  // Uses the same unified search controller but filters by type=activity.
+  const activitySearchRes = http.get(`${BASE_URL}/api/catalog/search?type=activity`, { headers });
+  check(activitySearchRes, {
+    'activity search status is 200': (r) => r.status === 200,
+    'activity search returned paginated result': (r) => {
+      try {
+        const body = JSON.parse(r.body);
+        // Paginated response has an 'items' array and 'totalCount'
+        return body !== null && Array.isArray(body.items) && typeof body.totalCount === 'number';
+      } catch (e) {
+        return false;
+      }
+    },
+  });
+
+  // 6. Simple Endpoint: Location-filtered Accommodation Search
+  // Viva Explanation: A tourist looking for places to stay in Colombo specifically.
+  // Tests the search controller's location filter query param.
+  const locationSearchRes = http.get(`${BASE_URL}/api/catalog/search?type=accommodation&location=colombo`, { headers });
+  check(locationSearchRes, {
+    'location search status is 200': (r) => r.status === 200,
+    'location search returned paginated result': (r) => {
+      try {
+        const body = JSON.parse(r.body);
+        return body !== null && Array.isArray(body.items) && typeof body.totalCount === 'number';
+      } catch (e) {
+        return false;
+      }
+    },
+  });
+
   sleep(1.5);
 }
 
