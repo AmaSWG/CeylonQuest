@@ -71,3 +71,5 @@ services/identity-service/uploads/
 
 # Test coverage output
 **/coveragereport/
+
+StrykerOutput/

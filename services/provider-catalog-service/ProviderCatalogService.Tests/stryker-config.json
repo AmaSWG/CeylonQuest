@@ -1,0 +1,18 @@
+{
+  "stryker-config": {
+    "project": "ProviderCatalogService.csproj",
+    "reporters": [ "progress", "html", "cleartext" ],
+    "mutate": [
+      "!Services/**",
+      "!Migrations/**",
+      "Controllers/ImagesController.cs",
+      "Controllers/ProviderAdminController.cs",
+      "Controllers/ProviderApplicationsController.cs"
+    ],
+    "thresholds": {
+      "high": 80,
+      "low": 60,
+      "break": 0
+    }
+  }
+}
